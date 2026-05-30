@@ -61,19 +61,29 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     if (!res.ok) {
-      // Fall back to browser voice rather than blocking the lesson.
-      return new Response(null, { status: 204 });
+      // Surface WHY (the route still falls back to the browser voice so the
+      // lesson is never blocked) — silent failures here are hard to debug.
+      let reason = `HTTP ${res.status}`;
+      try {
+        const err = (await res.json()) as { error?: { message?: string; status?: string } };
+        if (err.error) reason = `${err.error.status ?? res.status}: ${err.error.message ?? ""}`;
+      } catch {
+        /* ignore parse failure */
+      }
+      console.warn(`[speak] Google TTS failed (${reason}). Falling back to browser voice.`);
+      return new Response(null, { status: 204, headers: { "X-TTS-Fallback": "google-error" } });
     }
 
     const data = (await res.json()) as { audioContent?: string };
-    if (!data.audioContent) return new Response(null, { status: 204 });
+    if (!data.audioContent) return new Response(null, { status: 204, headers: { "X-TTS-Fallback": "no-audio" } });
 
     const audio = Buffer.from(data.audioContent, "base64");
     return new Response(audio, {
       status: 200,
       headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
     });
-  } catch {
-    return new Response(null, { status: 204 });
+  } catch (err) {
+    console.warn("[speak] Google TTS request threw; falling back to browser voice.", err);
+    return new Response(null, { status: 204, headers: { "X-TTS-Fallback": "exception" } });
   }
 }
