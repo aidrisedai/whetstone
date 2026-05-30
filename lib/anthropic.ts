@@ -14,9 +14,9 @@ export const MODELS = {
   scoring: process.env.WHETSTONE_SCORING_MODEL || "claude-opus-4-8",
   // One-shot at the end — quality over speed.
   lesson: process.env.WHETSTONE_LESSON_MODEL || "claude-opus-4-8",
-  // The builder — fast + strong at code, streamed so you watch it come alive.
-  builder: process.env.WHETSTONE_BUILDER_MODEL || "claude-sonnet-4-6",
-  // The build coach — deliberate teaching after each step.
+  // The builder — Opus 4.8 for the strongest, highest-quality code generation.
+  builder: process.env.WHETSTONE_BUILDER_MODEL || "claude-opus-4-8",
+  // The build coach + whiteboard teacher — deliberate teaching.
   coach: process.env.WHETSTONE_COACH_MODEL || "claude-opus-4-8",
 } as const;
 

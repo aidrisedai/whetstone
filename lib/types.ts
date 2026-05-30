@@ -129,6 +129,30 @@ export interface BuildLesson {
   concept: string; // short technical concept label
 }
 
+/** One item drawn on the whiteboard during the teaching stage. */
+export interface BoardItem {
+  kind: "title" | "bullet" | "box" | "arrow" | "code" | "note" | "callout";
+  text: string;
+  /** For arrow: optional label already in text. Visual emphasis hint. */
+  emphasis?: boolean;
+}
+
+/** One step of the whiteboard lesson: the teacher draws items + says something. */
+export interface BoardStep {
+  say: string; // what the teacher SAYS aloud for this step (the teaching)
+  items: BoardItem[]; // what appears on the board this step (added cumulatively)
+  /** Optional check-for-understanding to ask the student before moving on. */
+  ask?: string;
+}
+
+/** The whiteboard teaching session for one build part (before any code). */
+export interface BoardLesson {
+  partTitle: string;
+  boardTitle: string; // heading drawn at the top of the board
+  steps: BoardStep[];
+  closing: string; // teacher's line right before "let's code it"
+}
+
 /** One multiple-choice checkpoint question, generated from the real code + prompt. */
 export interface QuizQuestion {
   id: string;

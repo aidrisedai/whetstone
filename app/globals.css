@@ -135,3 +135,16 @@
 .tk .tk-tag { color: #ff8a5b; }
 .tk .tk-kw { color: #4cc9e6; }
 .tk .tk-str { color: #41d49a; }
+
+/* Whiteboard "ink" appear animation */
+@keyframes ink-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ink-in { animation: ink-in 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* Subtle dotted whiteboard grid */
+.board-grid {
+  background-image: radial-gradient(rgba(76, 201, 230, 0.10) 1px, transparent 1px);
+  background-size: 22px 22px;
+}

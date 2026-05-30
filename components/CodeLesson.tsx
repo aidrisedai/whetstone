@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { BuildLesson, CodeBeat } from "@/lib/types";
 import { assembleBeats, assembleBeatsUpTo } from "@/lib/format";
-import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
+import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { ArrowIcon, CheckIcon, SoundIcon, MuteIcon, SparkIcon } from "./icons";
 
 const LANG_BADGE: Record<CodeBeat["lang"], { label: string; cls: string }> = {
@@ -77,7 +77,7 @@ export function CodeLesson({
   const [typed, setTyped] = useState(false); // user tapped "skip typing"
   const codeScrollRef = useRef<HTMLDivElement>(null);
   const beatRef = useRef<HTMLDivElement>(null);
-  const { supported: ttsSupported, speak, cancel } = useSpeechSynthesis();
+  const { supported: ttsSupported, speak, stop: cancel } = useTeacherVoice();
 
   const onIntro = i < 0;
   const onOutro = i >= beats.length;

@@ -1,8 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BuildPlan, BuildPart, BuilderProfile, ChatMessage, Checkpoint, Lesson } from "@/lib/types";
+import type {
+  BoardLesson,
+  BuildPlan,
+  BuildPart,
+  BuilderProfile,
+  ChatMessage,
+  Checkpoint,
+  Lesson,
+} from "@/lib/types";
 import {
+  fetchBoardLesson,
   fetchBuildLesson,
   fetchExtendPart,
   fetchLesson,
@@ -25,6 +34,7 @@ import { CheckpointQuiz } from "./CheckpointQuiz";
 import { CodeLesson } from "./CodeLesson";
 import { CodeViewer } from "./CodeViewer";
 import { LessonCard } from "./LessonCard";
+import { Whiteboard } from "./Whiteboard";
 import { ArrowIcon, CheckIcon, CloseIcon, SendIcon, SparkIcon } from "./icons";
 
 const CONFETTI_COLORS = ["#ff6b35", "#ffb020", "#4cc9e6", "#41d49a", "#ff8a5b"];
@@ -47,7 +57,7 @@ interface BuildWorkspaceProps {
   onBack: () => void;
 }
 
-type Stage = "profile" | "planning" | "walkthrough" | "lesson" | "checkpoint" | "done";
+type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "checkpoint" | "done";
 
 /* ----------------------------- small parts ----------------------------- */
 
@@ -142,9 +152,11 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   const [activeLesson, setActiveLesson] = useState<Awaited<ReturnType<typeof fetchBuildLesson>> | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(false);
 
+  const [board, setBoard] = useState<BoardLesson | null>(null);
+  const [loadingBoard, setLoadingBoard] = useState(false);
+
   const [checkpoint, setCheckpoint] = useState<Checkpoint | null>(null);
   const [quizLoading, setQuizLoading] = useState(false);
-  const [pendingPart, setPendingPart] = useState<BuildPart | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [builderUrl, setBuilderUrl] = useState<string | null>(null);
@@ -170,11 +182,11 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   }, [code]);
 
   useEffect(() => {
-    if (!loadingLesson) return;
+    if (!loadingLesson && !loadingBoard) return;
     setLoadMsg(0);
     const id = setInterval(() => setLoadMsg((m) => m + 1), 2600);
     return () => clearInterval(id);
-  }, [loadingLesson]);
+  }, [loadingLesson, loadingBoard]);
 
   const awardXp = useCallback((delta: number, patch?: Partial<BuilderProfile>) => {
     setProfile((prev) => {
@@ -228,6 +240,32 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     saveProfile(p);
     void makePlan(p);
   };
+
+  // Approve the part → open the WHITEBOARD (teach the idea before any code).
+  const startBoard = useCallback(async () => {
+    if (!plan) return;
+    const part = plan.parts[partIndex];
+    setLoadingBoard(true);
+    setError(null);
+    try {
+      const bl = await fetchBoardLesson({
+        projectName: plan.projectName,
+        bigPicture: plan.bigPicture,
+        part: { title: part.title, whatItIs: part.whatItIs, concept: part.concept, buildSpec: part.buildSpec },
+        partNumber: partIndex + 1,
+        totalParts: plan.parts.length,
+        name: profile.name,
+        favoriteGame: profile.favoriteGame,
+      });
+      if (!bl.steps || bl.steps.length === 0) throw new Error("The board came back empty — try again.");
+      setBoard(bl);
+      setStage("board");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't set up the whiteboard.");
+    } finally {
+      setLoadingBoard(false);
+    }
+  }, [plan, partIndex, profile.name, profile.favoriteGame]);
 
   const startLesson = useCallback(async () => {
     if (!plan) return;
@@ -521,33 +559,57 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
               You&apos;ll learn: {currentPart.concept}
             </div>
 
-            {loadingLesson ? (
-              <div className="mt-5 rounded-xl border border-ember/30 bg-base/40 p-5 text-center">
-                <div className="mb-2 animate-float text-3xl">{LOAD_EMOJI[loadMsg % LOAD_EMOJI.length]}</div>
-                <p className="font-display text-base font-bold text-ink">{LOAD_LINES[loadMsg % LOAD_LINES.length]}</p>
+            {loadingBoard ? (
+              <div className="mt-5 rounded-xl border border-steel/30 bg-base/40 p-5 text-center">
+                <div className="mb-2 animate-float text-3xl">🖍️</div>
+                <p className="font-display text-base font-bold text-ink">Coach Spark is heading to the whiteboard…</p>
                 <div className="mx-auto mt-3 h-1.5 w-44 overflow-hidden rounded-full bg-panel2">
-                  <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-amber to-ember" />
+                  <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-steel to-good" />
                 </div>
                 <p className="mt-2 text-xs text-muted">
-                  Coach Spark is writing real code for <span className="text-ink">{currentPart.title}</span>…
+                  We&apos;ll sketch out <span className="text-ink">{currentPart.title}</span> before writing any code.
                 </p>
               </div>
             ) : (
               <>
                 <button
                   type="button"
-                  onClick={() => void startLesson()}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep px-5 py-3.5 font-display text-lg font-bold text-base shadow-glow transition-transform hover:scale-[1.02]"
+                  onClick={() => void startBoard()}
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-steel to-good px-5 py-3.5 font-display text-lg font-bold text-base shadow-glow transition-transform hover:scale-[1.02]"
                 >
-                  Let&apos;s write the code! ⌨️
+                  Teach me at the board! 🖍️
                 </button>
                 <p className="mt-2 text-center text-xs text-muted">
-                  We&apos;ll write it together, one piece at a time — you&apos;ll see exactly what each line does.
+                  First we&apos;ll plan it on the whiteboard — ask anything — then we write the real code together.
                 </p>
               </>
             )}
             {error && <p className="mt-2 text-center text-sm text-warn">{error}</p>}
           </div>
+        </div>
+      )}
+
+      {/* BOARD — whiteboard teaching before code */}
+      {stage === "board" && plan && board && currentPart && (
+        <div className="flex flex-col gap-3">
+          <PlanMap plan={plan} partIndex={partIndex} />
+          <Whiteboard
+            board={board}
+            projectName={plan.projectName}
+            part={{ title: currentPart.title, concept: currentPart.concept }}
+            partNumber={partIndex + 1}
+            totalParts={plan.parts.length}
+            voiceOn={voiceOn}
+            onToggleVoice={() => setVoiceOn((v) => !v)}
+            onReadyToCode={() => void startLesson()}
+          />
+          {loadingLesson && (
+            <p className="text-center text-sm text-muted">
+              <span className="mr-2">⌨️</span>
+              Getting the code ready…
+            </p>
+          )}
+          {error && <p className="text-center text-sm text-warn">{error}</p>}
         </div>
       )}
 

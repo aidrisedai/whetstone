@@ -1,6 +1,8 @@
 import { uid } from "./format";
 import type {
   Assessment,
+  BoardItem,
+  BoardLesson,
   BuildLesson,
   BuildPart,
   BuildPlan,
@@ -154,6 +156,48 @@ export async function fetchPlan(payload: {
     bigPicture: raw.bigPicture,
     parts: (raw.parts || []).slice(0, 5).map((p) => ({ ...p, id: uid("part") })),
   };
+}
+
+/** Fetch the whiteboard teaching lesson for one part (before any code). */
+export async function fetchBoardLesson(payload: {
+  projectName: string;
+  bigPicture: string;
+  part: { title: string; whatItIs: string; concept: string; buildSpec: string };
+  partNumber: number;
+  totalParts: number;
+  name: string;
+  favoriteGame: string;
+}): Promise<BoardLesson> {
+  const res = await fetch("/api/board", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Board lesson failed (${res.status})`);
+  }
+  return (await res.json()) as BoardLesson;
+}
+
+/** Send a student message during the whiteboard chat; teacher replies (+ optional board item). */
+export async function sendBoardChat(payload: {
+  projectName: string;
+  part: { title: string; concept: string };
+  boardSoFar: string;
+  studentSaid: string;
+  lastAsk?: string;
+}): Promise<{ reply: string; boardItem: BoardItem | null }> {
+  const res = await fetch("/api/board-chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Chat failed (${res.status})`);
+  }
+  return (await res.json()) as { reply: string; boardItem: BoardItem | null };
 }
 
 /** Fetch the narrated, code-by-code build lesson for one part. */

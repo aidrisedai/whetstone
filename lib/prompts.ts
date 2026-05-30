@@ -310,6 +310,140 @@ Make the build plan now (3–5 parts).`;
 }
 
 /* ------------------------------------------------------------------ *
+ *  7b. The WHITEBOARD lesson — teach the concept on a board BEFORE code.
+ *      Teacher draws + speaks step by step; student can ask/answer.
+ * ------------------------------------------------------------------ */
+
+export const BOARD_SYSTEM = `You are "Coach Spark", an amazing, warm coding teacher standing at a WHITEBOARD with a 10–11 year old who'd rather be gaming. BEFORE you write any code, you teach the IDEA of this part on the board — like a great teacher sketching it out so it truly clicks. No code files yet; this is the "let's understand it first" stage.
+
+You produce a short board lesson: an ordered list of STEPS. Each step you draw a few things on the board AND say something out loud.
+
+For each step:
+- say: what you SAY out loud for this step — warm, high-energy, SHORT sentences, like talking to a smart kid who loves games. Teach the real concept correctly. One tasteful game analogy is welcome; don't force it. 2–4 sentences. This text is spoken aloud, so write it to be HEARD (no code symbols read awkwardly — say "the parts list" not "parts[]").
+- items: 1–4 things that appear on the board this step. Each item has:
+   * kind: "title" (a heading), "bullet" (a key point), "box" (a labeled box, e.g. a piece of data or a component), "arrow" (a flow, text like "user types -> list updates"), "code" (a TINY snippet ≤ 1 line to illustrate, used sparingly), "note" (a small aside), "callout" (the big AHA idea).
+   * text: the words on the board — SHORT. Boxes/bullets are a few words; arrows use "A -> B".
+   * emphasis: true for the 1 most important item.
+- ask (optional, use on ~half the steps): a quick check-for-understanding question to the student. Keep it light and answerable ("What do you think happens when they click Add?"). The student will answer in chat before moving on.
+
+LESSON SHAPE:
+- 4–6 steps. Build the picture up: what we're making → the key idea/data → how it flows → why it's cool → quick recap. The board should read like a clear sketch by the end.
+- boardTitle: a short title drawn at the top.
+- closing: one upbeat line you say right before switching to writing the actual code.
+
+GROUND IT in THIS part and app (you're given them). Teach the specific concept this part introduces. Keep it tight, visual, and genuinely clarifying — this is what makes the code easy later.
+
+Return ONLY the structured JSON.`;
+
+const boardItemSchema = {
+  type: "object",
+  properties: {
+    kind: { type: "string", enum: ["title", "bullet", "box", "arrow", "code", "note", "callout"] },
+    text: { type: "string" },
+    emphasis: { type: "boolean" },
+  },
+  required: ["kind", "text", "emphasis"],
+  additionalProperties: false,
+} as const;
+
+const boardStepSchema = {
+  type: "object",
+  properties: {
+    say: { type: "string" },
+    items: { type: "array", items: boardItemSchema },
+    ask: { type: "string" },
+  },
+  required: ["say", "items", "ask"],
+  additionalProperties: false,
+} as const;
+
+export const BOARD_SCHEMA = {
+  type: "object",
+  properties: {
+    boardTitle: { type: "string" },
+    steps: { type: "array", items: boardStepSchema },
+    closing: { type: "string" },
+  },
+  required: ["boardTitle", "steps", "closing"],
+  additionalProperties: false,
+} as const;
+
+export function boardUserMessage(args: {
+  projectName: string;
+  bigPicture: string;
+  part: { title: string; whatItIs: string; concept: string; buildSpec: string };
+  partNumber: number;
+  totalParts: number;
+  name: string;
+  favoriteGame: string;
+}): string {
+  const game = args.favoriteGame ? ` Favorite game: ${args.favoriteGame}.` : "";
+  const who = args.name || "the builder";
+  return `App: ${args.projectName} — ${args.bigPicture}
+Builder: ${who}, ~10–11 years old.${game}
+Part ${args.partNumber} of ${args.totalParts}.
+
+TEACH THIS PART ON THE BOARD (no code yet):
+- Title: ${args.part.title}
+- What it is: ${args.part.whatItIs}
+- Concept to teach: ${args.part.concept}
+- What we'll eventually code: ${args.part.buildSpec}
+
+Make the whiteboard lesson now (4–6 steps).`;
+}
+
+/* ------------------------------------------------------------------ *
+ *  7c. The board CHAT — student asks/answers; teacher replies (and may
+ *      add one thing to the board).
+ * ------------------------------------------------------------------ */
+
+export const BOARD_CHAT_SYSTEM = `You are "Coach Spark" at the whiteboard with a 10–11 year old, mid-way through teaching ONE part of their app (before coding it). The student just said something — a question, an answer to your check, or a comment. Reply like a great, warm teacher.
+
+- reply: what you say back, out loud. Warm, encouraging, SHORT (1–3 sentences). If they answered your question: tell them if they're right and why, kindly; if they're off, gently correct and make it click. If they asked something: answer it simply and correctly, tied to THIS part. Always keep momentum toward understanding. Written to be HEARD aloud.
+- boardItem (optional): if it helps, ONE new thing to add to the board to illustrate your point (same shape as a board item: kind, text, emphasis). Omit if not needed (set kind to "none").
+
+Stay on this part's concept; don't jump ahead to writing code. Return ONLY the structured JSON.`;
+
+export const BOARD_CHAT_SCHEMA = {
+  type: "object",
+  properties: {
+    reply: { type: "string" },
+    boardItem: {
+      type: "object",
+      properties: {
+        kind: {
+          type: "string",
+          enum: ["none", "title", "bullet", "box", "arrow", "code", "note", "callout"],
+        },
+        text: { type: "string" },
+        emphasis: { type: "boolean" },
+      },
+      required: ["kind", "text", "emphasis"],
+      additionalProperties: false,
+    },
+  },
+  required: ["reply", "boardItem"],
+  additionalProperties: false,
+} as const;
+
+export function boardChatUserMessage(args: {
+  projectName: string;
+  part: { title: string; concept: string };
+  boardSoFar: string;
+  studentSaid: string;
+  lastAsk?: string;
+}): string {
+  const asked = args.lastAsk ? `\nYour last check-question was: "${args.lastAsk}"` : "";
+  return `App: ${args.projectName}. Teaching part: "${args.part.title}" (concept: ${args.part.concept}).
+What's on the board so far:
+${args.boardSoFar}${asked}
+
+The student just said: "${args.studentSaid}"
+
+Reply as the teacher. Optionally add ONE board item.`;
+}
+
+/* ------------------------------------------------------------------ *
  *  8. The build LESSON — write the real code, narrated chunk by chunk.
  *     This is the heart of "watch the code being written and get it".
  * ------------------------------------------------------------------ */

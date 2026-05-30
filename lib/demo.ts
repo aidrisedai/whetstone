@@ -1,5 +1,7 @@
 import type {
   Assessment,
+  BoardItem,
+  BoardLesson,
   BuildLesson,
   BuildPart,
   ChatMessage,
@@ -490,5 +492,58 @@ export function demoExtendPart(request: string): Omit<BuildPart, "id"> {
     why: "Great builders never stop at v1 — you spotted something to add, and that instinct is the whole game.",
     concept: "Adding a feature",
     buildSpec: `Add the following to the existing app, wired into the current state and render(): ${r}`,
+  };
+}
+
+/* ---- Demo whiteboard lesson (offline stand-in) ---- */
+export function demoBoardLesson(
+  part: { title: string; whatItIs: string; concept: string; buildSpec: string },
+  projectName: string,
+): BoardLesson {
+  return {
+    partTitle: part.title,
+    boardTitle: `${part.title} — the plan`,
+    steps: [
+      {
+        say: `Okay! Before we touch any code, let's sketch out ${part.title} so it totally makes sense. Picture this part of ${projectName} like a little machine.`,
+        items: [
+          { kind: "title", text: part.title, emphasis: true },
+          { kind: "bullet", text: part.whatItIs },
+        ],
+      },
+      {
+        say: `The big idea here is "${part.concept}". That's the superpower this part gives your app.`,
+        items: [{ kind: "callout", text: part.concept, emphasis: true }],
+        ask: "Why do you think that idea matters for your app?",
+      },
+      {
+        say: "Here's the flow: something happens, and the app reacts. Inputs go in, the screen updates.",
+        items: [
+          { kind: "box", text: "user does something" },
+          { kind: "arrow", text: "action -> app updates" },
+          { kind: "box", text: "screen shows the change" },
+        ],
+      },
+      {
+        say: "When we code it, this whole sketch becomes real. You'll recognize every piece because we drew it first!",
+        items: [{ kind: "note", text: "next: turn this board into real code" }],
+      },
+    ],
+    closing: "Love it. Now let's turn this board into actual working code!",
+  };
+}
+
+/* ---- Demo board chat reply (offline stand-in) ---- */
+export function demoBoardChat(studentSaid: string): { reply: string; boardItem: BoardItem | null } {
+  const s = studentSaid.toLowerCase();
+  if (s.includes("?") || s.startsWith("what") || s.startsWith("why") || s.startsWith("how")) {
+    return {
+      reply: "Great question! Short version: each piece on the board becomes a small bit of code that does exactly one job — and together they make the feature work. We'll see it click when we build it.",
+      boardItem: { kind: "note", text: "every box = a bit of code", emphasis: false },
+    };
+  }
+  return {
+    reply: "Nice thinking! That's exactly the right instinct. Let's keep going.",
+    boardItem: null,
   };
 }
