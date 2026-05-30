@@ -1,6 +1,7 @@
 import type { Assessment } from "@/lib/types";
 import { DimensionBar } from "./DimensionBar";
 import { ScoreRing } from "./ScoreRing";
+import { ArrowIcon, SparkIcon } from "./icons";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -23,10 +24,12 @@ export function ScorePanel({
   assessment,
   scoring,
   threshold,
+  onBuild,
 }: {
   assessment: Assessment | null;
   scoring: boolean;
   threshold: number;
+  onBuild?: () => void;
 }) {
   return (
     <aside className="flex flex-col gap-5">
@@ -67,6 +70,32 @@ export function ScorePanel({
               </p>
             </div>
           </div>
+
+          {onBuild && (
+            <button
+              type="button"
+              onClick={onBuild}
+              className={[
+                "group flex w-full items-center justify-between gap-2 rounded-2xl border px-4 py-3 text-left transition-colors",
+                assessment.ready
+                  ? "border-ember/50 bg-gradient-to-br from-ember/15 to-panel/40 shadow-glow"
+                  : "border-line bg-panel/60 hover:border-ember/40",
+              ].join(" ")}
+            >
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 font-display text-base font-bold text-ink">
+                  <SparkIcon className="h-4 w-4 text-ember" />
+                  Build it{assessment.ready ? "" : " now"}
+                </span>
+                <span className="block text-xs text-muted">
+                  {assessment.ready
+                    ? "It's sharp — bring it to life."
+                    : "Sharpen more, or jump in and build."}
+                </span>
+              </span>
+              <ArrowIcon className="h-5 w-5 shrink-0 text-ember transition-transform group-hover:translate-x-0.5" />
+            </button>
+          )}
 
           <section>
             <SectionLabel>Fixed · every prompt</SectionLabel>

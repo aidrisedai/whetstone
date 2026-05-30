@@ -11,6 +11,7 @@ import { ExportCard } from "./ExportCard";
 import { IdeaIntake } from "./IdeaIntake";
 import { LessonCard } from "./LessonCard";
 import { ScorePanel } from "./ScorePanel";
+import { BuildWorkspace } from "./BuildWorkspace";
 import { MuteIcon, SoundIcon, SparkIcon } from "./icons";
 
 export function WhetstoneApp({
@@ -33,6 +34,7 @@ export function WhetstoneApp({
   const [busy, setBusy] = useState(false);
   const [voiceOut, setVoiceOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"sharpen" | "build">("sharpen");
 
   const { supported: ttsSupported, speak, cancel: cancelSpeech } = useSpeechSynthesis();
 
@@ -152,6 +154,7 @@ export function WhetstoneApp({
 
   const reset = useCallback(() => {
     cancelSpeech();
+    setMode("sharpen");
     setMessages([]);
     setAssessment(null);
     setLesson(null);
@@ -219,6 +222,14 @@ export function WhetstoneApp({
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         {!started ? (
           <IdeaIntake onSubmit={handleSubmit} demo={demo} builderName={builderName} />
+        ) : mode === "build" && assessment ? (
+          <BuildWorkspace
+            refinedPrompt={assessment.refinedPrompt}
+            projectType={assessment.projectType}
+            messages={messages}
+            builderName={builderName}
+            onBack={() => setMode("sharpen")}
+          />
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <section className="flex min-w-0 flex-col gap-5">
@@ -243,7 +254,19 @@ export function WhetstoneApp({
             </section>
 
             <div className="lg:sticky lg:top-20 lg:self-start">
-              <ScorePanel assessment={assessment} scoring={scoring} threshold={threshold} />
+              <ScorePanel
+                assessment={assessment}
+                scoring={scoring}
+                threshold={threshold}
+                onBuild={
+                  assessment
+                    ? () => {
+                        cancelSpeech();
+                        setMode("build");
+                      }
+                    : undefined
+                }
+              />
             </div>
           </div>
         )}

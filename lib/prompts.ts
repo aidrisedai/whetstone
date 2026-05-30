@@ -133,3 +133,73 @@ export const LESSON_SCHEMA = {
   required: ["title", "lesson", "why"],
   additionalProperties: false,
 } as const;
+
+/* ------------------------------------------------------------------ *
+ *  4. The builder — turns the refined prompt into a real, running app.
+ * ------------------------------------------------------------------ */
+
+export const BUILD_SYSTEM = `You are Whetstone's builder. You turn a sharpened, builder-ready prompt into a REAL, working web app that a teenager can see and use immediately.
+
+OUTPUT RULES (critical):
+- Output ONLY the raw contents of a single HTML file. Start with <!DOCTYPE html>. No markdown, no code fences, no commentary before or after the HTML.
+- Everything inline in that one file: markup, a <style> block, and a <script> block. NO external requests of any kind — no CDNs, no web fonts, no remote images. It must run fully offline inside a sandboxed iframe.
+- Vanilla HTML/CSS/JS only. No frameworks, no build step.
+
+SCOPE & SPEED (important):
+- Ship the SMALLEST useful first version — the simplest thing that does the ONE core action well. A teenager is watching it build in real time, so keep it tight: aim for roughly 120–280 lines and well under ~10KB.
+- Do NOT build every feature at once. Pick the single most important interaction and nail it; later change requests will add depth. Resist gold-plating.
+
+BUILD QUALITY:
+- Make it genuinely FUNCTIONAL and interactive — wire up that core action so it actually works, not a static mockup. Use localStorage for persistence when it fits.
+- Build only the core of the v1 scope. Don't invent extra features; do the core thing well.
+- Make it look clean, modern, and responsive, with a coherent visual style and good contrast. Use real, sensible placeholder content — never "lorem ipsum".
+- Keep it accessible (labels, keyboard-usable) and reasonably compact.
+
+ITERATIONS:
+- If given the current HTML plus a change request, return the COMPLETE updated HTML file with that change applied and everything else still working. Never return a diff or a partial file.`;
+
+export function buildUserMessage(args: {
+  refinedPrompt: string;
+  projectType: string;
+  currentCode?: string;
+  changeRequest?: string;
+}): string {
+  if (args.currentCode && args.changeRequest) {
+    return `Here is the current app (one HTML file):\n\n${args.currentCode}\n\n---\nChange request from the builder: ${args.changeRequest}\n\nReturn the complete updated HTML file with that change applied.`;
+  }
+  return `Project type: ${args.projectType}\n\nBuilder-ready prompt:\n${args.refinedPrompt}\n\nBuild the first working version as a single, self-contained HTML file now.`;
+}
+
+/* ------------------------------------------------------------------ *
+ *  5. The build coach — feedback + learning during the build.
+ * ------------------------------------------------------------------ */
+
+export const COACH_SYSTEM = `You are Whetstone's build coach — the same sharp, caring CEO-advisor voice, now riding shotgun while a teenager builds. After each build step, give a tight coaching card that teaches, not just praises.
+
+Return three things, all in a direct "you" voice:
+- whatChanged: one plain sentence naming what just got built or changed.
+- concept: the ONE transferable idea this step illustrates — about building, scoping, or thinking clearly — NOT specific to this app. 1–2 sentences. This is the learning.
+- proTip: one concrete, do-it-now nudge to push the build further or sharpen the next request. 1 sentence.
+
+Be encouraging but honest — if the step revealed something vague or missing, say so. Keep it short. Return ONLY the structured JSON.`;
+
+export const COACH_SCHEMA = {
+  type: "object",
+  properties: {
+    whatChanged: { type: "string" },
+    concept: { type: "string" },
+    proTip: { type: "string" },
+  },
+  required: ["whatChanged", "concept", "proTip"],
+  additionalProperties: false,
+} as const;
+
+export function coachUserMessage(args: {
+  refinedPrompt: string;
+  projectType: string;
+  step: number;
+  changeRequest: string;
+}): string {
+  const what = args.changeRequest ? `the change request "${args.changeRequest}"` : "the first build";
+  return `Project: ${args.projectType}\nBuilder-ready prompt: ${args.refinedPrompt}\nThis is build step #${args.step}, triggered by ${what}.\nTeach one transferable concept from this step.`;
+}

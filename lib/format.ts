@@ -36,3 +36,23 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
   return false;
 }
+
+/** Strip any stray markdown code fences the model may have wrapped the HTML in. */
+export function cleanGeneratedHtml(text: string): string {
+  let t = (text ?? "").trim();
+  t = t.replace(/^```[a-zA-Z]*\s*/, "").replace(/\s*```$/, "");
+  return t.trim();
+}
+
+/** Trigger a client-side download of text content (e.g. the built HTML). */
+export function downloadText(filename: string, text: string, type = "text/html"): void {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

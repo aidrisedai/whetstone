@@ -67,3 +67,18 @@ export interface ExportResult {
   builderUrl: string;
   webhook: "sent" | "skipped" | "failed";
 }
+
+/** A coaching card delivered after each build step — the learning-while-building. */
+export interface CoachNote {
+  whatChanged: string;
+  concept: string;
+  proTip: string;
+}
+
+/** One step in the build loop (initial build or an iteration). */
+export interface BuildStep {
+  id: string;
+  request: string; // "Initial build" or the change request
+  note: CoachNote | null;
+  noteLoading: boolean;
+}

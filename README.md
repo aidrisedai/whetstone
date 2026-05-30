@@ -11,8 +11,13 @@ builder**, and the session ends with **one transferable lesson** you can carry t
 the next thing you build.
 
 ```
-pitch  →  pushback (dialogue)  →  live scoreboard  →  cross the bar  →  auto‑export  →  one lesson
+pitch  →  sharpen (a few rounds)  →  build it live (Whetstone's own builder)  →  iterate + learn while building  →  one lesson
 ```
+
+Whetstone has two halves: a **prompt‑sharpening** phase (a sharp advisor + a live
+scoreboard) and a **building** phase (Whetstone generates a real, working app you
+can use and iterate on). You don't have to keep prompting — after a round or two
+you can jump straight into building.
 
 ---
 
@@ -91,6 +96,28 @@ suggestion — the nudges that drive the dialogue forward.
 
 ---
 
+## Building it (Whetstone's own builder)
+
+Once there's a refined prompt — even after a single sharpening round — a **Build
+it** button appears. It opens a build workspace where Whetstone generates the app
+*itself* (no hand‑off required):
+
+- **Watch it build.** The builder (Sonnet 4.6) streams a complete, self‑contained
+  HTML app — inline CSS + vanilla JS, **no external dependencies** — that runs
+  instantly in a sandboxed `<iframe>`. It ships the smallest useful v1 first.
+- **Iterate by talking to it.** "Add a leaderboard", "make it mobile‑friendly" —
+  each request rebuilds the app, keeping everything else working.
+- **Learn while building.** After every build step a **coach card** (Opus 4.8)
+  teaches one transferable concept and a concrete pro‑tip — feedback during the
+  build, not just at the end.
+- **Keep it.** Download the `.html`, or still open the prompt in an external
+  builder. End with the single transferable lesson.
+
+The build target is deliberately a single self‑contained file: instant, safe
+(the iframe runs with `allow-scripts` only), portable, and genuinely *yours*.
+
+---
+
 ## Configuration
 
 All optional — see [`.env.example`](./.env.example).
@@ -102,6 +129,8 @@ All optional — see [`.env.example`](./.env.example).
 | `WHETSTONE_ADVISOR_MODEL` | `claude-sonnet-4-6`| Fast, responsive model for the live conversation (try `claude-haiku-4-5`). |
 | `WHETSTONE_SCORING_MODEL` | `claude-opus-4-8`  | Deliberate model for scoring + prompt synthesis (runs each turn). |
 | `WHETSTONE_LESSON_MODEL`  | `claude-opus-4-8`  | Deliberate model for the one-shot closing lesson.              |
+| `WHETSTONE_BUILDER_MODEL` | `claude-sonnet-4-6`| Fast, streamed code model that generates the app.              |
+| `WHETSTONE_COACH_MODEL`   | `claude-opus-4-8`  | Deliberate model that teaches a concept after each build step. |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
 | `BUILDER_WEBHOOK_URL`     | _(unset)_          | Server‑to‑server hand‑off: the refined prompt is POSTed here.  |
@@ -123,8 +152,11 @@ app/
     score/route.ts      # structured assessment (json_schema output)
     lesson/route.ts     # structured transferable lesson
     export/route.ts     # builder deep link + optional webhook hand‑off
+    build/route.ts      # streams the generated self‑contained app
+    coach/route.ts      # structured teaching card after each build step
 components/             # WhetstoneApp orchestrator, Composer, Conversation,
-                        # ScorePanel/Ring/DimensionBar, ExportCard, LessonCard…
+                        # ScorePanel/Ring/DimensionBar, ExportCard, LessonCard,
+                        # BuildWorkspace (preview + code + coach rail)…
 hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis (voice out)
 lib/                   # prompts, scoring (threshold logic), builders, demo, types…
 ```
