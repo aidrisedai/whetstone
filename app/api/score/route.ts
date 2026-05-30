@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
 import { criteriaReuseMessage, toAnthropicMessages } from "@/lib/messages";
 import { SCORE_SCHEMA, SCORE_SYSTEM } from "@/lib/prompts";
-import { DEFAULT_THRESHOLD, finalizeAssessment } from "@/lib/scoring";
+import { DEFAULT_THRESHOLD, finalizeAssessment, normalizeDynamicCriteria } from "@/lib/scoring";
 import { demoAssessment } from "@/lib/demo";
 import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 import type { Assessment, ChatMessage, CriterionSpec } from "@/lib/types";
@@ -58,7 +58,7 @@ export async function POST(req: Request): Promise<Response> {
         projectType: raw.projectType,
         clarity: raw.clarity,
         conciseness: raw.conciseness,
-        dynamicCriteria: raw.dynamicCriteria ?? [],
+        dynamicCriteria: normalizeDynamicCriteria(raw.dynamicCriteria, priorCriteria),
         refinedPrompt: raw.refinedPrompt,
       },
       threshold,

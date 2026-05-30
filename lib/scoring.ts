@@ -1,4 +1,4 @@
-import type { Assessment, Dimension, DynamicCriterion } from "./types";
+import type { Assessment, CriterionSpec, Dimension, DynamicCriterion } from "./types";
 
 /** Overall score the idea must reach before it auto-exports to the builder. */
 export const DEFAULT_THRESHOLD = clampInt(process.env.WHETSTONE_THRESHOLD, 80);
@@ -58,6 +58,39 @@ export function finalizeAssessment(
     ready: isReady(overall, scores, threshold),
     threshold,
   };
+}
+
+/**
+ * Make the dynamic dimensions safe and stable: dedupe by key (the model can
+ * echo the reused set, producing duplicates), and — once criteria are fixed for
+ * the session — lock the result to exactly that set, in order, pulling each
+ * one's latest score/rationale/suggestion. On the first assessment, cap to 3.
+ */
+export function normalizeDynamicCriteria(
+  items: DynamicCriterion[] | undefined,
+  prior: CriterionSpec[] | null,
+): DynamicCriterion[] {
+  const list = Array.isArray(items) ? items.filter((it) => it && typeof it.key === "string") : [];
+  const byKey = new Map<string, DynamicCriterion>();
+  for (const it of list) {
+    if (!byKey.has(it.key)) byKey.set(it.key, it);
+  }
+  const deduped = [...byKey.values()];
+
+  if (prior && prior.length > 0) {
+    return prior.map((spec, i) => {
+      const match = byKey.get(spec.key) ?? deduped[i];
+      return {
+        key: spec.key,
+        label: spec.label,
+        bestPractice: spec.bestPractice,
+        score: clamp(match?.score ?? 0),
+        rationale: match?.rationale ?? "",
+        suggestion: match?.suggestion ?? "",
+      };
+    });
+  }
+  return deduped.slice(0, 3);
 }
 
 function clampInt(value: string | undefined, fallback: number): number {
