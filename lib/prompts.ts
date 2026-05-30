@@ -146,7 +146,7 @@ OUTPUT RULES (critical):
 - Vanilla HTML/CSS/JS only. No frameworks, no build step.
 
 SCOPE & SPEED (important):
-- Ship the SMALLEST useful first version — the simplest thing that does the ONE core action well. A teenager is watching it build in real time, so keep it tight: aim for roughly 120–280 lines and well under ~10KB.
+- Ship the SMALLEST useful first version — the simplest thing that does the ONE core action well. A teenager is watching it build in real time, so keep it tight: aim for roughly 120–220 lines and well under ~10KB.
 - Do NOT build every feature at once. Pick the single most important interaction and nail it; later change requests will add depth. Resist gold-plating.
 
 BUILD QUALITY:
@@ -202,4 +202,45 @@ export function coachUserMessage(args: {
 }): string {
   const what = args.changeRequest ? `the change request "${args.changeRequest}"` : "the first build";
   return `Project: ${args.projectType}\nBuilder-ready prompt: ${args.refinedPrompt}\nThis is build step #${args.step}, triggered by ${what}.\nTeach one transferable concept from this step.`;
+}
+
+/* ------------------------------------------------------------------ *
+ *  6. Targeted edits — fast iteration without rewriting the whole file.
+ * ------------------------------------------------------------------ */
+
+export const EDIT_SYSTEM = `You are Whetstone's builder making a TARGETED edit to an existing single-file HTML app. You are given the current file and a change request. Return a small set of precise find-and-replace edits that implement the change — do NOT rewrite the whole file.
+
+RULES:
+- Each edit has "find" (an EXACT substring copied verbatim from the current file, including whitespace and indentation) and "replace" (the new text that takes its place).
+- "find" MUST be long and specific enough to occur EXACTLY ONCE in the file — include enough surrounding context to be unique. Never use a short, ambiguous snippet.
+- Keep edits minimal and focused on the request. Prefer the fewest edits that fully do the job.
+- To ADD new code, pick a stable anchor that exists once (e.g. "</style>", "</body>", a specific element) and set "replace" to your new code followed by that same anchor.
+- Preserve everything else. After the edits the file must still be a valid, self-contained HTML app with NO external dependencies.
+- summary: one short sentence describing what you changed.
+
+Return ONLY the structured JSON.`;
+
+export const EDIT_SCHEMA = {
+  type: "object",
+  properties: {
+    summary: { type: "string" },
+    edits: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          find: { type: "string" },
+          replace: { type: "string" },
+        },
+        required: ["find", "replace"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["summary", "edits"],
+  additionalProperties: false,
+} as const;
+
+export function editUserMessage(currentCode: string, changeRequest: string): string {
+  return `Current file:\n\n${currentCode}\n\n---\nChange request from the builder: ${changeRequest}\n\nReturn the smallest set of exact find-and-replace edits that implement it.`;
 }

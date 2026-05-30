@@ -105,8 +105,10 @@ it** button appears. It opens a build workspace where Whetstone generates the ap
 - **Watch it build.** The builder (Sonnet 4.6) streams a complete, self‑contained
   HTML app — inline CSS + vanilla JS, **no external dependencies** — that runs
   instantly in a sandboxed `<iframe>`. It ships the smallest useful v1 first.
-- **Iterate by talking to it.** "Add a leaderboard", "make it mobile‑friendly" —
-  each request rebuilds the app, keeping everything else working.
+- **Iterate by talking to it (fast).** "Add a leaderboard", "make it mobile‑friendly" —
+  each request is applied as a few targeted find‑and‑replace edits (much faster
+  than regenerating the file, and it can't clobber working code), with an
+  automatic fallback to a full rebuild if an edit doesn't apply cleanly.
 - **Learn while building.** After every build step a **coach card** (Opus 4.8)
   teaches one transferable concept and a concrete pro‑tip — feedback during the
   build, not just at the end.
@@ -152,7 +154,8 @@ app/
     score/route.ts      # structured assessment (json_schema output)
     lesson/route.ts     # structured transferable lesson
     export/route.ts     # builder deep link + optional webhook hand‑off
-    build/route.ts      # streams the generated self‑contained app
+    build/route.ts      # streams the generated self‑contained app (first build)
+    edit/route.ts       # targeted find‑and‑replace edits for fast iteration
     coach/route.ts      # structured teaching card after each build step
 components/             # WhetstoneApp orchestrator, Composer, Conversation,
                         # ScorePanel/Ring/DimensionBar, ExportCard, LessonCard,

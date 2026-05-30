@@ -82,3 +82,14 @@ export interface BuildStep {
   note: CoachNote | null;
   noteLoading: boolean;
 }
+
+/** A single find-and-replace edit applied to the current app for fast iteration. */
+export interface EditOp {
+  find: string;
+  replace: string;
+}
+
+export interface EditResult {
+  summary: string;
+  edits: EditOp[];
+}

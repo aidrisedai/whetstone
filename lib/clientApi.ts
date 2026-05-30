@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   CoachNote,
   CriterionSpec,
+  EditResult,
   ExportResult,
   Lesson,
 } from "./types";
@@ -119,4 +120,23 @@ export async function fetchCoach(payload: {
     throw new Error(body.error || `Coach failed (${res.status})`);
   }
   return (await res.json()) as CoachNote;
+}
+
+/** Fetch targeted find-and-replace edits for a fast iteration. */
+export async function fetchEdits(payload: {
+  refinedPrompt: string;
+  projectType: string;
+  currentCode: string;
+  changeRequest: string;
+}): Promise<EditResult> {
+  const res = await fetch("/api/edit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Edit failed (${res.status})`);
+  }
+  return (await res.json()) as EditResult;
 }

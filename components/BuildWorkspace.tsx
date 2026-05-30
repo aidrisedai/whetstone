@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BuildStep, ChatMessage, Lesson } from "@/lib/types";
-import { fetchCoach, fetchLesson, requestExport, streamBuild } from "@/lib/clientApi";
-import { cleanGeneratedHtml, downloadText, uid } from "@/lib/format";
+import { fetchCoach, fetchEdits, fetchLesson, requestExport, streamBuild } from "@/lib/clientApi";
+import { applyEdits, cleanGeneratedHtml, downloadText, uid } from "@/lib/format";
 import { LessonCard } from "./LessonCard";
 import { ArrowIcon, SendIcon, SparkIcon } from "./icons";
 
@@ -60,6 +60,7 @@ export function BuildWorkspace({
   const [code, setCode] = useState("");
   const [liveCode, setLiveCode] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [view, setView] = useState<"preview" | "code">("code");
   const [steps, setSteps] = useState<BuildStep[]>([]);
   const [input, setInput] = useState("");
@@ -77,20 +78,13 @@ export function BuildWorkspace({
     codeRef.current = code;
   }, [code]);
 
-  const runBuild = useCallback(
-    async (request: string) => {
-      setError(null);
+  // Full-file generation, streamed — used for the first build and as the
+  // fallback when a targeted edit doesn't apply cleanly. Returns success.
+  const streamFullBuild = useCallback(
+    async (request: string): Promise<boolean> => {
       setStreaming(true);
       setView("code");
       setLiveCode("");
-      stepCountRef.current += 1;
-      const stepNum = stepCountRef.current;
-      const stepId = uid("step");
-      setSteps((prev) => [
-        ...prev,
-        { id: stepId, request: request || "Initial build", note: null, noteLoading: true },
-      ]);
-
       let acc = "";
       try {
         await streamBuild(
@@ -108,21 +102,63 @@ export function BuildWorkspace({
       } catch (err) {
         setError(err instanceof Error ? err.message : "Build failed");
         setStreaming(false);
-        setSteps((prev) => prev.map((s) => (s.id === stepId ? { ...s, noteLoading: false } : s)));
-        return;
+        return false;
       }
-
       const cleaned = cleanGeneratedHtml(acc);
       if (!cleaned || cleaned.startsWith("⚠️") || !cleaned.includes("<")) {
         setError(cleaned || "The builder returned nothing usable. Try again.");
         setStreaming(false);
-        setSteps((prev) => prev.map((s) => (s.id === stepId ? { ...s, noteLoading: false } : s)));
-        return;
+        return false;
       }
-
       setCode(cleaned);
       setStreaming(false);
       setView("preview");
+      return true;
+    },
+    [refinedPrompt, projectType],
+  );
+
+  const runBuild = useCallback(
+    async (request: string) => {
+      setError(null);
+      stepCountRef.current += 1;
+      const stepNum = stepCountRef.current;
+      const stepId = uid("step");
+      setSteps((prev) => [
+        ...prev,
+        { id: stepId, request: request || "Initial build", note: null, noteLoading: true },
+      ]);
+
+      let ok = false;
+      if (!request) {
+        ok = await streamFullBuild(""); // first build: full file, streamed
+      } else {
+        // Fast path: targeted find-and-replace edits applied to the current app.
+        setApplying(true);
+        try {
+          const res = await fetchEdits({
+            refinedPrompt,
+            projectType,
+            currentCode: codeRef.current,
+            changeRequest: request,
+          });
+          const { code: next, applied } = applyEdits(codeRef.current, res.edits);
+          if (applied > 0) {
+            setCode(next);
+            setView("preview");
+            ok = true;
+          }
+        } catch {
+          /* fall back to a full rebuild below */
+        }
+        setApplying(false);
+        if (!ok) ok = await streamFullBuild(request); // no edit landed → full rebuild
+      }
+
+      if (!ok) {
+        setSteps((prev) => prev.map((s) => (s.id === stepId ? { ...s, noteLoading: false } : s)));
+        return;
+      }
 
       try {
         const note = await fetchCoach({ refinedPrompt, projectType, step: stepNum, changeRequest: request });
@@ -131,7 +167,7 @@ export function BuildWorkspace({
         setSteps((prev) => prev.map((s) => (s.id === stepId ? { ...s, noteLoading: false } : s)));
       }
     },
-    [refinedPrompt, projectType],
+    [refinedPrompt, projectType, streamFullBuild],
   );
 
   useEffect(() => {
@@ -145,7 +181,7 @@ export function BuildWorkspace({
 
   const submit = () => {
     const r = input.trim();
-    if (!r || streaming) return;
+    if (!r || streaming || applying) return;
     setInput("");
     void runBuild(r);
   };
@@ -225,20 +261,20 @@ export function BuildWorkspace({
             <span
               className={[
                 "flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest",
-                streaming ? "text-amber" : code ? "text-good" : "text-muted",
+                streaming || applying ? "text-amber" : code ? "text-good" : "text-muted",
               ].join(" ")}
             >
               <span
                 className={[
                   "h-1.5 w-1.5 rounded-full",
-                  streaming ? "animate-pulse bg-amber" : code ? "bg-good" : "bg-muted",
+                  streaming || applying ? "animate-pulse bg-amber" : code ? "bg-good" : "bg-muted",
                 ].join(" ")}
               />
-              {streaming ? "building" : code ? "live" : "idle"}
+              {streaming ? "building" : applying ? "editing" : code ? "live" : "idle"}
             </span>
           </div>
 
-          <div className="h-[60vh] overflow-hidden rounded-xl border border-line">
+          <div className="relative h-[60vh] overflow-hidden rounded-xl border border-line">
             {view === "preview" ? (
               code ? (
                 <iframe
@@ -258,6 +294,14 @@ export function BuildWorkspace({
                 {streaming && <span className="animate-pulse">▌</span>}
               </pre>
             )}
+            {applying && (
+              <div className="absolute inset-0 grid place-items-center bg-base/70 backdrop-blur-sm">
+                <div className="flex items-center gap-2 rounded-xl border border-line bg-panel px-4 py-2.5 text-sm text-ink">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-amber" />
+                  Applying your change…
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -271,7 +315,7 @@ export function BuildWorkspace({
             <div className="flex items-end gap-2">
               <textarea
                 value={input}
-                disabled={streaming}
+                disabled={streaming || applying}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -280,13 +324,15 @@ export function BuildWorkspace({
                   }
                 }}
                 rows={1}
-                placeholder={streaming ? "Building…" : "Tell the builder what to change…"}
+                placeholder={
+                  streaming ? "Building…" : applying ? "Applying…" : "Tell the builder what to change…"
+                }
                 className="min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-ink placeholder:text-muted/70 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={submit}
-                disabled={streaming || !input.trim()}
+                disabled={streaming || applying || !input.trim()}
                 className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep text-base shadow-glow transition-transform hover:scale-105 disabled:from-line disabled:to-line disabled:text-muted disabled:shadow-none disabled:hover:scale-100"
                 aria-label="Send change"
               >
@@ -298,7 +344,7 @@ export function BuildWorkspace({
                 <button
                   key={c}
                   type="button"
-                  disabled={streaming}
+                  disabled={streaming || applying}
                   onClick={() => setInput(c)}
                   className="rounded-full border border-line px-2.5 py-1 text-xs text-muted transition-colors hover:border-ember/40 hover:text-ink disabled:opacity-40"
                 >

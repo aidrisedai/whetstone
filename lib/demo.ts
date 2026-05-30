@@ -1,4 +1,11 @@
-import type { Assessment, ChatMessage, CoachNote, CriterionSpec, Lesson } from "./types";
+import type {
+  Assessment,
+  ChatMessage,
+  CoachNote,
+  CriterionSpec,
+  EditResult,
+  Lesson,
+} from "./types";
 import { finalizeAssessment } from "./scoring";
 
 /**
@@ -277,5 +284,20 @@ export function demoCoach(step: number, changeRequest: string): CoachNote {
     concept:
       "Every change request is a tiny spec — the more concretely you say what you want, the closer the build lands on the first try.",
     proTip: "Ask for one specific change at a time so you can see exactly what each one does.",
+  };
+}
+
+export function demoEdits(changeRequest: string): EditResult {
+  const note = escapeHtml(changeRequest || "your change");
+  return {
+    summary: `Applied: ${changeRequest}`,
+    edits: [
+      {
+        find: "</body>",
+        replace:
+          `<div style="position:fixed;left:8px;right:8px;bottom:8px;background:#1b1f26;border:1px solid #262b33;` +
+          `color:#ffb020;padding:8px 12px;border-radius:8px;font:13px system-ui">Demo edit · ${note}</div>\n</body>`,
+      },
+    ],
   };
 }
