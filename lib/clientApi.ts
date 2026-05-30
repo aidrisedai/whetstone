@@ -1,0 +1,67 @@
+import type { Assessment, ChatMessage, CriterionSpec, ExportResult, Lesson } from "./types";
+
+/** Stream the advisor's reply, invoking `onChunk` with each text delta. */
+export async function streamAdvisor(
+  history: ChatMessage[],
+  closing: boolean,
+  onChunk: (text: string) => void,
+): Promise<void> {
+  const res = await fetch("/api/advisor", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ history, phase: closing ? "closing" : "dialogue" }),
+  });
+  if (!res.ok || !res.body) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(msg || `Advisor request failed (${res.status})`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) onChunk(decoder.decode(value, { stream: true }));
+  }
+}
+
+export async function fetchScore(
+  history: ChatMessage[],
+  priorCriteria: CriterionSpec[] | null,
+): Promise<Assessment> {
+  const res = await fetch("/api/score", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ history, priorCriteria }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Scoring failed (${res.status})`);
+  }
+  return (await res.json()) as Assessment;
+}
+
+export async function fetchLesson(history: ChatMessage[]): Promise<Lesson> {
+  const res = await fetch("/api/lesson", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ history }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Lesson failed (${res.status})`);
+  }
+  return (await res.json()) as Lesson;
+}
+
+export async function requestExport(refinedPrompt: string): Promise<ExportResult> {
+  const res = await fetch("/api/export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refinedPrompt }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Export failed (${res.status})`);
+  }
+  return (await res.json()) as ExportResult;
+}

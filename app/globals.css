@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces — cool industrial charcoal */
+  --color-base: #0b0d10;
+  --color-panel: #14171c;
+  --color-panel2: #1b1f26;
+  --color-line: #262b33;
+
+  /* Text */
+  --color-ink: #eaedf2;
+  --color-muted: #9ba3af;
+
+  /* Ember — the spark of the whetstone */
+  --color-ember: #ff6b35;
+  --color-ember-soft: #ff8a5b;
+  --color-ember-deep: #e24e1b;
+  --color-amber: #ffb020;
+
+  /* Cool steel accent + status */
+  --color-steel: #4cc9e6;
+  --color-good: #41d49a;
+  --color-warn: #f2545b;
+
+  /* Type */
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Effects */
+  --shadow-glow: 0 0 26px -6px rgba(255, 107, 53, 0.55);
+  --animate-typing: typing 1.2s infinite ease-in-out;
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes typing {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  html {
+    scrollbar-color: var(--color-line) transparent;
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(1100px 620px at 50% -12%, rgba(255, 107, 53, 0.1), transparent 60%),
+      radial-gradient(820px 520px at 100% 0%, rgba(76, 201, 230, 0.06), transparent 55%),
+      var(--color-base);
+    color: var(--color-ink);
+  }
+
+  ::selection {
+    background: rgba(255, 107, 53, 0.3);
+    color: var(--color-ink);
+  }
+
+  /* Tidy scrollbars inside panels and code blocks */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-line);
+    border-radius: 9999px;
+  }
+}
