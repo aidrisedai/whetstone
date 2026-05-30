@@ -267,7 +267,22 @@ export function Whiteboard({
               <SparkIcon className="h-5 w-5" />
             </span>
             <div>
-              <div className="font-display text-sm font-bold text-ink">Coach Spark</div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-display text-sm font-bold text-ink">Coach Spark</span>
+                {teacher.hdAvailable === true && (
+                  <span className="rounded-full border border-good/40 bg-good/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-good">
+                    HD voice
+                  </span>
+                )}
+                {teacher.hdAvailable === false && (
+                  <span
+                    title="Set GOOGLE_TTS_API_KEY in .env.local for the natural HD voice"
+                    className="rounded-full border border-amber/40 bg-amber/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-amber"
+                  >
+                    basic voice
+                  </span>
+                )}
+              </div>
               <div className="text-[11px] text-muted">{teacher.speaking ? "speaking…" : "your teacher"}</div>
             </div>
           </div>

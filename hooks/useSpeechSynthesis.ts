@@ -1,21 +1,56 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+/** Prefer natural-sounding system voices over the old robotic defaults. */
+const PREFERRED = [
+  "Google US English",
+  "Samantha",
+  "Ava",
+  "Allison",
+  "Serena",
+  "Microsoft Aria",
+  "Microsoft Jenny",
+  "Karen",
+  "Moira",
+];
+
+function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  if (!voices.length) return null;
+  const en = voices.filter((v) => v.lang?.toLowerCase().startsWith("en"));
+  const pool = en.length ? en : voices;
+  for (const name of PREFERRED) {
+    const hit = pool.find((v) => v.name.toLowerCase().includes(name.toLowerCase()));
+    if (hit) return hit;
+  }
+  // Avoid known low-quality fallbacks; prefer a local en-US voice.
+  const enUS = pool.find((v) => v.lang === "en-US" && v.localService) || pool.find((v) => v.lang === "en-US");
+  return enUS || pool[0];
+}
 
 /**
- * Wrapper around the browser SpeechSynthesis API so the advisor can speak its
- * replies aloud. Reports `supported: false` where unavailable.
+ * Browser SpeechSynthesis fallback — used only when Google Cloud TTS isn't
+ * available. Picks the best natural voice the OS offers instead of the default
+ * robotic one.
  */
 export function useSpeechSynthesis() {
   const [supported, setSupported] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
-    setSupported(typeof window !== "undefined" && "speechSynthesis" in window);
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    setSupported(true);
+    const synth = window.speechSynthesis;
+    const load = () => {
+      voiceRef.current = pickVoice(synth.getVoices());
+    };
+    load();
+    // Voices load asynchronously on most browsers.
+    synth.addEventListener?.("voiceschanged", load);
     return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
+      synth.removeEventListener?.("voiceschanged", load);
+      synth.cancel();
     };
   }, []);
 
@@ -24,8 +59,10 @@ export function useSpeechSynthesis() {
     const synth = window.speechSynthesis;
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.04;
-    utterance.pitch = 0.95;
+    if (!voiceRef.current) voiceRef.current = pickVoice(synth.getVoices());
+    if (voiceRef.current) utterance.voice = voiceRef.current;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
     utterance.onstart = () => setSpeaking(true);
     utterance.onend = () => setSpeaking(false);
     utterance.onerror = () => setSpeaking(false);

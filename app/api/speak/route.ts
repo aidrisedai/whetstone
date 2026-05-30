@@ -21,6 +21,11 @@ export function googleTtsConfigured(): boolean {
   return !!(process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_TTS_ACCESS_TOKEN);
 }
 
+/** Lets the client know whether the natural "HD" voice is available. */
+export function GET(): Response {
+  return Response.json({ configured: googleTtsConfigured() });
+}
+
 export async function POST(req: Request): Promise<Response> {
   let body: { text?: string };
   try {
