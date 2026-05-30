@@ -1,5 +1,6 @@
 import type {
   Assessment,
+  BuildPart,
   ChatMessage,
   CoachNote,
   CriterionSpec,
@@ -297,6 +298,47 @@ export function demoEdits(changeRequest: string): EditResult {
         replace:
           `<div style="position:fixed;left:8px;right:8px;bottom:8px;background:#1b1f26;border:1px solid #262b33;` +
           `color:#ffb020;padding:8px 12px;border-radius:8px;font:13px system-ui">Demo edit · ${note}</div>\n</body>`,
+      },
+    ],
+  };
+}
+
+export function demoPlan(
+  projectType: string,
+  _refinedPrompt: string,
+  name: string,
+  favoriteGame: string,
+): { projectName: string; bigPicture: string; parts: Omit<BuildPart, "id">[] } {
+  const who = name ? `${name}, ` : "";
+  const gameBit = favoriteGame
+    ? ` Think of it like ${favoriteGame}: start simple, then stack on power-ups.`
+    : "";
+  return {
+    projectName: projectType ? `${projectType} Quest` : "Your App Quest",
+    bigPicture: `${who}we're building your ${(projectType || "app").toLowerCase()} one piece at a time — and you'll get every single part.${gameBit}`,
+    parts: [
+      {
+        title: "🏗️ The Stage",
+        whatItIs: "The main screen with your app's name on it — the empty stage before the show starts.",
+        why: "Every app needs a home base first. We build the stage, then put stuff on it.",
+        concept: "The screen",
+        buildSpec:
+          "Create the basic HTML page shell with a styled header showing the app title and an empty main area.",
+      },
+      {
+        title: "✍️ Add Stuff",
+        whatItIs: "A box where you type something and a button that pops it onto a list on the screen.",
+        why: "An app is boring if you can't DO anything — this is the first thing the user actually controls.",
+        concept: "User input",
+        buildSpec:
+          "Add a text input + 'Add' button that appends the typed item to a visible list; Enter key also adds.",
+      },
+      {
+        title: "🗄️ The Memory Box",
+        whatItIs: "Your app remembers your stuff even after you close it. Actual magic.",
+        why: "Real apps don't forget. We save the list so it's still there tomorrow.",
+        concept: "Saving data",
+        buildSpec: "Persist the list to localStorage, reload it on page load, and allow deleting items.",
       },
     ],
   };

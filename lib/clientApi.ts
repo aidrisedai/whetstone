@@ -1,5 +1,8 @@
+import { uid } from "./format";
 import type {
   Assessment,
+  BuildPart,
+  BuildPlan,
   ChatMessage,
   CoachNote,
   CriterionSpec,
@@ -120,6 +123,35 @@ export async function fetchCoach(payload: {
     throw new Error(body.error || `Coach failed (${res.status})`);
   }
   return (await res.json()) as CoachNote;
+}
+
+/** Fetch the coach's build plan (parts taught before any code), adding stable ids. */
+export async function fetchPlan(payload: {
+  refinedPrompt: string;
+  projectType: string;
+  name: string;
+  favoriteGame: string;
+  knownConcepts: string[];
+}): Promise<BuildPlan> {
+  const res = await fetch("/api/plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Plan failed (${res.status})`);
+  }
+  const raw = (await res.json()) as {
+    projectName: string;
+    bigPicture: string;
+    parts: Omit<BuildPart, "id">[];
+  };
+  return {
+    projectName: raw.projectName,
+    bigPicture: raw.bigPicture,
+    parts: (raw.parts || []).slice(0, 5).map((p) => ({ ...p, id: uid("part") })),
+  };
 }
 
 /** Fetch targeted find-and-replace edits for a fast iteration. */

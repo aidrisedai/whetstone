@@ -93,3 +93,31 @@ export interface EditResult {
   summary: string;
   edits: EditOp[];
 }
+
+/** One buildable piece of the project, taught before any code is written. */
+export interface BuildPart {
+  id: string;
+  title: string; // fun, kid-facing, with one emoji
+  whatItIs: string; // plain kid language
+  why: string; // the engineering-manager reasoning
+  concept: string; // short label of the thing they learn
+  buildSpec: string; // technical one-liner the builder uses to code it
+}
+
+/** The coach's plan, presented and approved part-by-part before coding. */
+export interface BuildPlan {
+  projectName: string;
+  bigPicture: string;
+  parts: BuildPart[];
+}
+
+/** A persistent, growing profile for the young builder (stored client-side). */
+export interface BuilderProfile {
+  name: string;
+  favoriteGame: string;
+  xp: number;
+  conceptsLearned: string[];
+  partsBuilt: number;
+  projectsBuilt: number;
+  createdAt: number;
+}

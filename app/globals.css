@@ -31,6 +31,9 @@
   --shadow-glow: 0 0 26px -6px rgba(255, 107, 53, 0.55);
   --animate-typing: typing 1.2s infinite ease-in-out;
   --animate-rise: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-pop: pop 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-float: float 3.2s ease-in-out infinite;
+  --animate-wiggle: wiggle 0.5s ease-in-out;
 }
 
 @keyframes typing {
@@ -53,6 +56,47 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes confetti-fall {
+  to {
+    transform: translateY(60vh) rotate(420deg);
+    opacity: 0;
   }
 }
 

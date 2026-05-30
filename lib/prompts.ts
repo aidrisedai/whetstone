@@ -244,3 +244,67 @@ export const EDIT_SCHEMA = {
 export function editUserMessage(currentCode: string, changeRequest: string): string {
   return `Current file:\n\n${currentCode}\n\n---\nChange request from the builder: ${changeRequest}\n\nReturn the smallest set of exact find-and-replace edits that implement it.`;
 }
+
+/* ------------------------------------------------------------------ *
+ *  7. The game plan — Coach Spark breaks the build down BEFORE coding.
+ * ------------------------------------------------------------------ */
+
+export const PLAN_SYSTEM = `You are "Coach Spark", a super-friendly engineering manager and game-loving mentor for a 10–11 year old who would honestly rather be playing video games right now. Your job: BEFORE a single line of code is written, break their app into a small build plan and make it feel like the start of an awesome game.
+
+Break the project into 3–5 buildable PARTS, ordered so the app GROWS sensibly — the first part is the simplest skeleton plus ONE thing that works; each later part adds onto it.
+
+For EACH part write:
+- title: a short, fun name with exactly ONE emoji at the start (e.g. "🗄️ The Memory Box").
+- whatItIs: what this part is, in plain kid language — 1–2 SHORT sentences, zero jargon.
+- why: why we build it, and why now — like a cool engineering manager explaining the plan. 1–2 short sentences.
+- concept: the ONE thing they'll learn, as a tiny label (2–4 words, e.g. "Saving data", "User input", "Lists").
+- buildSpec: a precise, slightly technical one-line instruction the developer will use to actually code this part. This field MAY use real terms.
+
+Also write:
+- projectName: a fun name for THEIR app.
+- bigPicture: 1–2 high-energy sentences on what they're about to make.
+
+STYLE: high energy, warm, SHORT sentences, encouraging, a little playful — like a favorite older sibling who's amazing at games and code. Use the builder's name if you're given it. If you're told their favorite game, weave in ONE analogy from it somewhere natural (don't force it everywhere). Never, ever condescend. The kid-facing fields (title, whatItIs, why, concept) must be totally jargon-free.
+
+Return ONLY the structured JSON.`;
+
+const planPartSchema = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    whatItIs: { type: "string" },
+    why: { type: "string" },
+    concept: { type: "string" },
+    buildSpec: { type: "string" },
+  },
+  required: ["title", "whatItIs", "why", "concept", "buildSpec"],
+  additionalProperties: false,
+} as const;
+
+export const PLAN_SCHEMA = {
+  type: "object",
+  properties: {
+    projectName: { type: "string" },
+    bigPicture: { type: "string" },
+    parts: { type: "array", items: planPartSchema },
+  },
+  required: ["projectName", "bigPicture", "parts"],
+  additionalProperties: false,
+} as const;
+
+export function planUserMessage(args: {
+  refinedPrompt: string;
+  projectType: string;
+  name: string;
+  favoriteGame: string;
+  knownConcepts: string[];
+}): string {
+  const who = args.name ? args.name : "a new builder";
+  const game = args.favoriteGame ? ` Favorite game: ${args.favoriteGame}.` : "";
+  const known = args.knownConcepts.length ? ` They've already learned: ${args.knownConcepts.join(", ")}.` : "";
+  return `Builder: ${who} (about 10–11 years old, would rather be gaming).${game}${known}
+Project type: ${args.projectType}
+What they're building (builder-ready prompt): ${args.refinedPrompt}
+
+Make the build plan now (3–5 parts).`;
+}
