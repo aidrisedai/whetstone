@@ -1,4 +1,4 @@
-import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
+import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { ADVISOR_SYSTEM, advisorClosingNote } from "@/lib/prompts";
 import { demoAdvisorReply } from "@/lib/demo";
@@ -56,9 +56,9 @@ export async function POST(req: Request): Promise<Response> {
           model: MODELS.advisor,
           max_tokens: 2048,
           system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-          thinking: { type: "adaptive" },
-          output_config: { effort: "medium" },
           messages: toAnthropicMessages(history),
+          // Lean reasoning keeps the conversation snappy (a sharp model needs little).
+          ...reasoning(MODELS.advisor, "low"),
         });
 
         for await (const event of messageStream) {

@@ -1,4 +1,4 @@
-import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
+import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { criteriaReuseMessage, toAnthropicMessages } from "@/lib/messages";
 import { SCORE_SCHEMA, SCORE_SYSTEM } from "@/lib/prompts";
 import { DEFAULT_THRESHOLD, finalizeAssessment, normalizeDynamicCriteria } from "@/lib/scoring";
@@ -37,16 +37,15 @@ export async function POST(req: Request): Promise<Response> {
       messages.push(criteriaReuseMessage(priorCriteria));
     }
 
+    // Deliberate judgment for scoring; effort/thinking only on models that support them.
+    const tune = reasoning(MODELS.scoring, "medium");
     const resp = await getClient().messages.create({
       model: MODELS.scoring,
       max_tokens: 3000,
       system: [{ type: "text", text: SCORE_SYSTEM, cache_control: { type: "ephemeral" } }],
-      thinking: { type: "adaptive" },
-      output_config: {
-        effort: "low",
-        format: { type: "json_schema", schema: SCORE_SCHEMA },
-      },
       messages,
+      ...(tune.thinking ? { thinking: tune.thinking } : {}),
+      output_config: { format: { type: "json_schema", schema: SCORE_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
     const textBlock = resp.content.find((b) => b.type === "text");

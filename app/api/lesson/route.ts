@@ -1,4 +1,4 @@
-import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
+import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { LESSON_SCHEMA, LESSON_SYSTEM } from "@/lib/prompts";
 import { demoLesson } from "@/lib/demo";
@@ -26,16 +26,14 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
+    const tune = reasoning(MODELS.lesson, "medium");
     const resp = await getClient().messages.create({
       model: MODELS.lesson,
       max_tokens: 1500,
       system: [{ type: "text", text: LESSON_SYSTEM, cache_control: { type: "ephemeral" } }],
-      thinking: { type: "adaptive" },
-      output_config: {
-        effort: "medium",
-        format: { type: "json_schema", schema: LESSON_SCHEMA },
-      },
       messages: toAnthropicMessages(history),
+      ...(tune.thinking ? { thinking: tune.thinking } : {}),
+      output_config: { format: { type: "json_schema", schema: LESSON_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
     const textBlock = resp.content.find((b) => b.type === "text");

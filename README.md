@@ -99,9 +99,9 @@ All optional — see [`.env.example`](./.env.example).
 | ------------------------- | ------------------ | -------------------------------------------------------------- |
 | `ANTHROPIC_API_KEY`       | _(unset → demo)_   | Enables the real Claude advisor, scoring, and lesson.          |
 | `WHETSTONE_DEMO`          | _(unset)_          | `1` forces demo mode even with a key.                          |
-| `WHETSTONE_ADVISOR_MODEL` | `claude-opus-4-8`  | Model for the conversational advisor.                          |
-| `WHETSTONE_SCORING_MODEL` | `claude-opus-4-8`  | Model for scoring (runs each turn — drop to Haiku for speed).  |
-| `WHETSTONE_LESSON_MODEL`  | `claude-opus-4-8`  | Model for the closing lesson.                                  |
+| `WHETSTONE_ADVISOR_MODEL` | `claude-sonnet-4-6`| Fast, responsive model for the live conversation (try `claude-haiku-4-5`). |
+| `WHETSTONE_SCORING_MODEL` | `claude-opus-4-8`  | Deliberate model for scoring + prompt synthesis (runs each turn). |
+| `WHETSTONE_LESSON_MODEL`  | `claude-opus-4-8`  | Deliberate model for the one-shot closing lesson.              |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
 | `BUILDER_WEBHOOK_URL`     | _(unset)_          | Server‑to‑server hand‑off: the refined prompt is POSTed here.  |
@@ -129,10 +129,14 @@ hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis (
 lib/                   # prompts, scoring (threshold logic), builders, demo, types…
 ```
 
-**Claude usage.** The advisor streams with adaptive thinking; scoring and the
-lesson use **structured outputs** (`output_config.format` with a JSON schema) so
-results are always valid and parseable; system prompts are cached. Defaults to
-`claude-opus-4-8` throughout (configurable above).
+**Claude usage — two models by design.** A fast, responsive model
+(**Sonnet 4.6**) streams the advisor to keep the conversation flowing; a more
+deliberate model (**Opus 4.8**) handles scoring and the lesson, where judgment
+matters. The two run in parallel each turn, so scoring never blocks the chat.
+Scoring and the lesson use **structured outputs** (`output_config.format` with a
+JSON schema) so results are always valid; system prompts are cached. Adaptive
+thinking and `effort` are applied only on models that support them (Opus 4.5+ /
+Sonnet 4.6), so swapping in a faster model like Haiku 4.5 stays valid.
 
 **Multimodal.** Voice in/out uses the browser Web Speech API (no extra keys;
 gracefully hidden where unsupported). Images you share are sent to Claude's vision

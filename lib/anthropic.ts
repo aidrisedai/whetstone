@@ -1,15 +1,43 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 /**
- * Whetstone talks to Claude through three jobs — the conversational advisor,
- * the scoring engine, and the closing lesson. Each model is configurable so an
- * operator can trade quality for cost/latency without touching code.
+ * Whetstone talks to Claude through three jobs. They split across two models by
+ * design: a fast, responsive model keeps the *conversation* flowing, while a
+ * more deliberate model handles the *judgment* work (scoring and the lesson).
+ * Each is overridable via env so an operator can re-tune the speed/depth/cost
+ * trade-off without touching code.
  */
 export const MODELS = {
-  advisor: process.env.WHETSTONE_ADVISOR_MODEL || "claude-opus-4-8",
+  // Fast + responsive, but still sharp — drives the live dialogue.
+  advisor: process.env.WHETSTONE_ADVISOR_MODEL || "claude-sonnet-4-6",
+  // Deliberate judgment — picks criteria, grades honestly, writes the prompt.
   scoring: process.env.WHETSTONE_SCORING_MODEL || "claude-opus-4-8",
+  // One-shot at the end — quality over speed.
   lesson: process.env.WHETSTONE_LESSON_MODEL || "claude-opus-4-8",
 } as const;
+
+export type Effort = "low" | "medium" | "high";
+
+interface Reasoning {
+  thinking?: { type: "adaptive" };
+  output_config?: { effort: Effort };
+}
+
+/**
+ * Adaptive thinking and the `effort` parameter are supported on Opus 4.5+ and
+ * Sonnet 4.6, but ERROR on Sonnet 4.5 / Haiku 4.5. So derive the reasoning
+ * config from the model: capable models get adaptive thinking + effort; faster
+ * models (e.g. Haiku) run lean with neither, which keeps any model swap valid.
+ */
+export function reasoning(model: string, effort: Effort): Reasoning {
+  return supportsAdaptiveEffort(model)
+    ? { thinking: { type: "adaptive" }, output_config: { effort } }
+    : {};
+}
+
+function supportsAdaptiveEffort(model: string): boolean {
+  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+}
 
 /**
  * Demo mode lets the whole experience run with zero configuration: if there is
