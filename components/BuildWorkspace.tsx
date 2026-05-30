@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BuildPlan, BuilderProfile, ChatMessage, Lesson } from "@/lib/types";
-import { fetchBuildLesson, fetchEdits, fetchLesson, fetchPlan, requestExport } from "@/lib/clientApi";
-import { applyEdits, downloadText } from "@/lib/format";
+import type { BuildPlan, BuildPart, BuilderProfile, ChatMessage, Checkpoint, Lesson } from "@/lib/types";
+import {
+  fetchBuildLesson,
+  fetchExtendPart,
+  fetchLesson,
+  fetchPlan,
+  fetchQuiz,
+  requestExport,
+} from "@/lib/clientApi";
+import { downloadText } from "@/lib/format";
 import {
   addConcept,
   defaultProfile,
@@ -12,14 +19,16 @@ import {
   loadProfile,
   saveProfile,
   xpPerPart,
+  XP_PER_CORRECT,
 } from "@/lib/profile";
+import { CheckpointQuiz } from "./CheckpointQuiz";
 import { CodeLesson } from "./CodeLesson";
+import { CodeViewer } from "./CodeViewer";
 import { LessonCard } from "./LessonCard";
-import { ArrowIcon, CheckIcon, SendIcon, SparkIcon } from "./icons";
+import { ArrowIcon, CheckIcon, CloseIcon, SendIcon, SparkIcon } from "./icons";
 
 const CONFETTI_COLORS = ["#ff6b35", "#ffb020", "#4cc9e6", "#41d49a", "#ff8a5b"];
 
-// Playful, rotating status while the code lesson is being prepared (~45-60s).
 const LOAD_LINES = [
   "Sketching out the code…",
   "Choosing the perfect pieces to teach you…",
@@ -38,7 +47,7 @@ interface BuildWorkspaceProps {
   onBack: () => void;
 }
 
-type Stage = "profile" | "planning" | "walkthrough" | "lesson" | "done";
+type Stage = "profile" | "planning" | "walkthrough" | "lesson" | "checkpoint" | "done";
 
 /* ----------------------------- small parts ----------------------------- */
 
@@ -133,6 +142,10 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   const [activeLesson, setActiveLesson] = useState<Awaited<ReturnType<typeof fetchBuildLesson>> | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(false);
 
+  const [checkpoint, setCheckpoint] = useState<Checkpoint | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [pendingPart, setPendingPart] = useState<BuildPart | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [builderUrl, setBuilderUrl] = useState<string | null>(null);
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -140,8 +153,11 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   const [celebrate, setCelebrate] = useState(false);
   const [xpToast, setXpToast] = useState<string | null>(null);
   const [voiceOn, setVoiceOn] = useState(false);
-  const [input, setInput] = useState("");
-  const [applying, setApplying] = useState(false);
+
+  // "keep building" + code viewer
+  const [extendInput, setExtendInput] = useState("");
+  const [extending, setExtending] = useState(false);
+  const [showCode, setShowCode] = useState(false);
 
   const [nameField, setNameField] = useState("");
   const [gameField, setGameField] = useState("");
@@ -153,13 +169,20 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     codeRef.current = code;
   }, [code]);
 
-  // Rotate playful status lines while the code lesson is being prepared.
   useEffect(() => {
     if (!loadingLesson) return;
     setLoadMsg(0);
     const id = setInterval(() => setLoadMsg((m) => m + 1), 2600);
     return () => clearInterval(id);
   }, [loadingLesson]);
+
+  const awardXp = useCallback((delta: number, patch?: Partial<BuilderProfile>) => {
+    setProfile((prev) => {
+      const np: BuilderProfile = { ...prev, ...patch, xp: prev.xp + delta };
+      saveProfile(np);
+      return np;
+    });
+  }, []);
 
   const makePlan = useCallback(
     async (p: BuilderProfile) => {
@@ -206,7 +229,6 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     void makePlan(p);
   };
 
-  // Approve the current part → fetch the narrated code lesson → enter lesson stage.
   const startLesson = useCallback(async () => {
     if (!plan) return;
     const part = plan.parts[partIndex];
@@ -219,12 +241,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
         projectType,
         partNumber: partIndex + 1,
         totalParts: plan.parts.length,
-        part: {
-          title: part.title,
-          whatItIs: part.whatItIs,
-          concept: part.concept,
-          buildSpec: part.buildSpec,
-        },
+        part: { title: part.title, whatItIs: part.whatItIs, concept: part.concept, buildSpec: part.buildSpec },
         currentCode: codeRef.current,
         favoriteGame: profile.favoriteGame,
         name: profile.name,
@@ -239,9 +256,9 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     }
   }, [plan, partIndex, projectType, profile.favoriteGame, profile.name]);
 
-  // Lesson finished → commit the code, award XP, advance or finish.
+  // Lesson finished → commit code, award build XP, then go to the checkpoint quiz.
   const completeLesson = useCallback(
-    async (finalCode: string) => {
+    async (finalCode: string, newCode: string) => {
       if (!plan) return;
       const part = plan.parts[partIndex];
       setCode(finalCode);
@@ -249,25 +266,53 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
       setCelebrate(true);
       setXpToast(`+${xpPerPart} XP · ${part.concept}`);
-      setProfile((prev) => {
-        const np: BuilderProfile = {
-          ...prev,
-          xp: prev.xp + xpPerPart,
-          conceptsLearned: addConcept(prev.conceptsLearned, part.concept),
-          partsBuilt: prev.partsBuilt + 1,
-        };
-        saveProfile(np);
-        return np;
+      awardXp(xpPerPart, {
+        conceptsLearned: addConcept(profile.conceptsLearned, part.concept),
+        partsBuilt: profile.partsBuilt + 1,
       });
-      setTimeout(() => setCelebrate(false), 1600);
-      setTimeout(() => setXpToast(null), 2400);
+      setTimeout(() => setCelebrate(false), 1500);
+      setTimeout(() => setXpToast(null), 2300);
 
-      if (partIndex >= plan.parts.length - 1) {
-        setProfile((prev) => {
-          const np = { ...prev, projectsBuilt: prev.projectsBuilt + 1 };
-          saveProfile(np);
-          return np;
+      // Build the grounded checkpoint quiz from the code just written.
+      setStage("checkpoint");
+      setCheckpoint(null);
+      setQuizLoading(true);
+      try {
+        const cp = await fetchQuiz({
+          projectName: plan.projectName,
+          refinedPrompt,
+          partTitle: part.title,
+          concept: part.concept,
+          newCode: newCode || finalCode,
+          name: profile.name,
         });
+        setCheckpoint(cp.questions.length > 0 ? cp : null);
+      } catch {
+        setCheckpoint(null); // non-fatal: allow continuing without a quiz
+      } finally {
+        setQuizLoading(false);
+      }
+    },
+    [plan, partIndex, refinedPrompt, profile.name, profile.conceptsLearned, profile.partsBuilt, awardXp],
+  );
+
+  // After the quiz → award bonus XP, then advance to next part or finish.
+  const afterCheckpoint = useCallback(
+    async (correct: number, total: number) => {
+      const bonus = correct * XP_PER_CORRECT;
+      if (bonus > 0) {
+        setXpToast(`+${bonus} XP · ${correct}/${total} correct`);
+        setCelebrate(true);
+        setTimeout(() => setCelebrate(false), 1400);
+        setTimeout(() => setXpToast(null), 2300);
+      }
+      const aced = total > 0 && correct === total;
+      awardXp(bonus, aced ? { quizzesAced: profile.quizzesAced + 1 } : undefined);
+      setCheckpoint(null);
+
+      if (!plan) return;
+      if (partIndex >= plan.parts.length - 1) {
+        awardXp(0, { projectsBuilt: profile.projectsBuilt + 1 });
         setStage("done");
         setLessonLoading(true);
         try {
@@ -282,33 +327,33 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
         setStage("walkthrough");
       }
     },
-    [plan, partIndex, messages],
+    [plan, partIndex, messages, profile.quizzesAced, profile.projectsBuilt, awardXp],
   );
 
-  const freeChange = async () => {
-    const r = input.trim();
-    if (!r || !plan || applying) return;
-    setInput("");
+  // "Keep building": turn a request into a new part, append it, and teach it.
+  const keepBuilding = async () => {
+    const req = extendInput.trim();
+    if (!req || !plan || extending) return;
+    setExtending(true);
     setError(null);
-    setApplying(true);
-    let ok = false;
     try {
-      const res = await fetchEdits({
-        refinedPrompt: plan.bigPicture,
-        projectType,
+      const part = await fetchExtendPart({
+        projectName: plan.projectName,
+        refinedPrompt,
+        request: req,
         currentCode: codeRef.current,
-        changeRequest: r,
+        knownConcepts: profile.conceptsLearned,
       });
-      const { code: next, applied } = applyEdits(codeRef.current, res.edits);
-      if (applied > 0) {
-        setCode(next);
-        ok = true;
-      }
-    } catch {
-      /* ignore */
+      const newIndex = plan.parts.length;
+      setPlan({ ...plan, parts: [...plan.parts, part] });
+      setPartIndex(newIndex);
+      setExtendInput("");
+      setStage("walkthrough");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't add that — try describing it differently.");
+    } finally {
+      setExtending(false);
     }
-    setApplying(false);
-    if (!ok) setError("Hmm, I couldn't make that one — try saying it a different way.");
   };
 
   const currentPart = plan?.parts[partIndex];
@@ -318,6 +363,26 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   return (
     <div className="relative flex flex-col gap-5">
       {celebrate && <Confetti />}
+
+      {/* Code viewer modal */}
+      {showCode && code && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-base/80 p-4 backdrop-blur" onClick={() => setShowCode(false)}>
+          <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="font-display text-lg font-bold text-ink">Your full code</h3>
+              <button
+                type="button"
+                onClick={() => setShowCode(false)}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-line text-muted hover:text-ink"
+                aria-label="Close"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            </div>
+            <CodeViewer code={code} filename="my-app.html" maxHeightClass="max-h-[72vh]" />
+          </div>
+        </div>
+      )}
 
       {/* Top bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -338,13 +403,22 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
             </span>
           )}
           {code && (
-            <button
-              type="button"
-              onClick={() => downloadText("my-app.html", code)}
-              className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ember/40"
-            >
-              ↓ Save
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShowCode(true)}
+                className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ember/40"
+              >
+                {"</>"} See code
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadText("my-app.html", code)}
+                className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-ember/40"
+              >
+                ↓ Save
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -421,7 +495,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
         </div>
       )}
 
-      {/* WALKTHROUGH — teach the part, then approve to enter the code lesson */}
+      {/* WALKTHROUGH */}
       {stage === "walkthrough" && plan && currentPart && (
         <div className="flex flex-col gap-4">
           <div>
@@ -450,9 +524,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
             {loadingLesson ? (
               <div className="mt-5 rounded-xl border border-ember/30 bg-base/40 p-5 text-center">
                 <div className="mb-2 animate-float text-3xl">{LOAD_EMOJI[loadMsg % LOAD_EMOJI.length]}</div>
-                <p className="font-display text-base font-bold text-ink">
-                  {LOAD_LINES[loadMsg % LOAD_LINES.length]}
-                </p>
+                <p className="font-display text-base font-bold text-ink">{LOAD_LINES[loadMsg % LOAD_LINES.length]}</p>
                 <div className="mx-auto mt-3 h-1.5 w-44 overflow-hidden rounded-full bg-panel2">
                   <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-amber to-ember" />
                 </div>
@@ -479,7 +551,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
         </div>
       )}
 
-      {/* LESSON — the learning session while the code is written */}
+      {/* LESSON */}
       {stage === "lesson" && plan && activeLesson && (
         <div className="flex flex-col gap-3">
           <PlanMap plan={plan} partIndex={partIndex} />
@@ -494,6 +566,54 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
         </div>
       )}
 
+      {/* CHECKPOINT QUIZ */}
+      {stage === "checkpoint" && plan && (
+        <div className="flex flex-col gap-4">
+          <PlanMap plan={plan} partIndex={partIndex} />
+          <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,420px)]">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[11px] uppercase tracking-widest text-muted">your app so far</span>
+                <span className="font-mono text-[11px] text-good">▶ live</span>
+              </div>
+              <iframe
+                title="App so far"
+                sandbox="allow-scripts"
+                srcDoc={code}
+                className="h-[52vh] w-full rounded-xl border border-line bg-white"
+              />
+            </div>
+
+            <div>
+              {quizLoading ? (
+                <div className="grid h-full min-h-[40vh] place-items-center rounded-2xl border border-steel/30 bg-panel/40 text-center">
+                  <div>
+                    <div className="mb-2 animate-float text-4xl">🧪</div>
+                    <p className="font-display text-base font-bold text-ink">Cooking up a quick challenge…</p>
+                    <p className="mt-1 text-xs text-muted">about the code you just wrote</p>
+                  </div>
+                </div>
+              ) : checkpoint ? (
+                <CheckpointQuiz checkpoint={checkpoint} onDone={afterCheckpoint} />
+              ) : (
+                <div className="grid h-full min-h-[40vh] place-items-center rounded-2xl border border-line bg-panel/40 text-center">
+                  <div>
+                    <p className="text-ink">No quiz this round — onward!</p>
+                    <button
+                      type="button"
+                      onClick={() => void afterCheckpoint(0, 0)}
+                      className="mt-4 rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep px-5 py-2.5 font-semibold text-base shadow-glow"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DONE */}
       {stage === "done" && plan && (
         <div className="flex flex-col gap-5">
@@ -501,7 +621,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
             <div className="text-4xl">🎉</div>
             <h2 className="mt-1 font-display text-2xl font-bold text-ink">You built {plan.projectName}!</h2>
             {profile.conceptsLearned.length > 0 && (
-              <p className="mt-1 text-sm text-muted">You learned: {profile.conceptsLearned.slice(-6).join(" · ")}</p>
+              <p className="mt-1 text-sm text-muted">You learned: {profile.conceptsLearned.slice(-8).join(" · ")}</p>
             )}
           </div>
 
@@ -509,43 +629,47 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
             <div className="overflow-hidden rounded-xl border border-line">
               <div className="flex items-center justify-between border-b border-line/70 px-4 py-2 font-mono text-[11px] text-muted">
                 <span>your app — running</span>
-                <span className="text-good">▶ live</span>
+                <button type="button" onClick={() => setShowCode(true)} className="text-steel hover:text-ink">
+                  {"</>"} see the code
+                </button>
               </div>
-              <iframe
-                title="Final app"
-                sandbox="allow-scripts"
-                srcDoc={code}
-                className="h-[58vh] w-full bg-white"
-              />
+              <iframe title="Final app" sandbox="allow-scripts" srcDoc={code} className="h-[58vh] w-full bg-white" />
             </div>
+
             <div className="flex flex-col gap-4">
               <LessonCard lesson={lesson} loading={lessonLoading} />
 
-              <div className="rounded-2xl border border-line bg-panel/80 p-2.5">
-                <div className="mb-1 px-1 text-xs font-semibold text-muted">Want to change anything?</div>
+              {/* KEEP BUILDING */}
+              <div className="rounded-2xl border border-ember/30 bg-gradient-to-b from-ember/10 to-panel/40 p-4">
+                <div className="mb-1.5 flex items-center gap-1.5 font-display text-base font-bold text-ink">
+                  <SparkIcon className="h-4 w-4 text-ember" /> Keep building
+                </div>
+                <p className="mb-2 text-xs text-muted">
+                  Add a new feature — Coach Spark plans it, teaches it, and you build it (and earn more XP).
+                </p>
                 <div className="flex items-end gap-2">
                   <textarea
-                    value={input}
-                    disabled={applying}
-                    onChange={(e) => setInput(e.target.value)}
+                    value={extendInput}
+                    disabled={extending}
+                    onChange={(e) => setExtendInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        void freeChange();
+                        void keepBuilding();
                       }
                     }}
                     rows={1}
-                    placeholder={applying ? "Working…" : "Tell Coach Spark…"}
-                    className="min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-ink placeholder:text-muted/70 focus:outline-none"
+                    placeholder={extending ? "Planning it…" : "e.g. add a search bar, add sound, add a dark mode toggle…"}
+                    className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-base/50 px-3 py-2 text-[15px] text-ink placeholder:text-muted/70 focus:border-ember focus:outline-none"
                   />
                   <button
                     type="button"
-                    onClick={() => void freeChange()}
-                    disabled={applying || !input.trim()}
+                    onClick={() => void keepBuilding()}
+                    disabled={extending || !extendInput.trim()}
                     className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep text-base shadow-glow transition-transform hover:scale-105 disabled:from-line disabled:to-line disabled:text-muted disabled:shadow-none disabled:hover:scale-100"
-                    aria-label="Send change"
+                    aria-label="Add feature"
                   >
-                    <SendIcon className="h-5 w-5" />
+                    {extending ? <span className="h-2 w-2 animate-pulse rounded-full bg-base" /> : <SendIcon className="h-5 w-5" />}
                   </button>
                 </div>
               </div>

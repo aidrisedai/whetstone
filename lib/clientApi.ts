@@ -5,6 +5,7 @@ import type {
   BuildPart,
   BuildPlan,
   ChatMessage,
+  Checkpoint,
   CoachNote,
   CriterionSpec,
   EditResult,
@@ -177,6 +178,47 @@ export async function fetchBuildLesson(payload: {
     throw new Error(body.error || `Build lesson failed (${res.status})`);
   }
   return (await res.json()) as BuildLesson;
+}
+
+/** Fetch a checkpoint quiz grounded in the code just written + the prompt. */
+export async function fetchQuiz(payload: {
+  projectName: string;
+  refinedPrompt: string;
+  partTitle: string;
+  concept: string;
+  newCode: string;
+  name: string;
+}): Promise<Checkpoint> {
+  const res = await fetch("/api/quiz", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Quiz failed (${res.status})`);
+  }
+  return (await res.json()) as Checkpoint;
+}
+
+/** Turn a "keep building" request into a new build part. */
+export async function fetchExtendPart(payload: {
+  projectName: string;
+  refinedPrompt: string;
+  request: string;
+  currentCode: string;
+  knownConcepts: string[];
+}): Promise<BuildPart> {
+  const res = await fetch("/api/extend", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Couldn't add that (${res.status})`);
+  }
+  return (await res.json()) as BuildPart;
 }
 
 /** Fetch targeted find-and-replace edits for a fast iteration. */

@@ -3,6 +3,7 @@ import type {
   BuildLesson,
   BuildPart,
   ChatMessage,
+  Checkpoint,
   CoachNote,
   CodeBeat,
   CriterionSpec,
@@ -442,5 +443,52 @@ export function demoBuildLesson(args: {
     ],
     outro: `Nice — ${args.part.title} is in, and the rest still works. ${args.part.concept ? "You practiced: " + args.part.concept + "." : ""}`,
     concept: args.part.concept || "Building incrementally",
+  };
+}
+
+/* ---- Demo checkpoint quiz (offline stand-in) ---- */
+export function demoQuiz(partTitle: string, concept: string): Checkpoint {
+  return {
+    partTitle,
+    intro: "Quick checkpoint! Let's see what stuck. 🎯",
+    questions: [
+      {
+        id: "demo-q1",
+        question: "When the code calls document.getElementById('list'), what is it doing?",
+        codeRef: "const list = document.getElementById('list');",
+        options: [
+          "Grabbing the element on the page whose id is 'list', so code can control it",
+          "Creating a brand-new list element from scratch",
+          "Deleting the list from the page",
+        ],
+        correctIndex: 0,
+        explainCorrect: "getElementById finds the existing element by its id so you can read or change it.",
+        explainWrong: "Easy mix-up: getElementById finds something already there — it doesn't create or delete it.",
+      },
+      {
+        id: "demo-q2",
+        question: "Why do we keep the data in one array and have a single render() draw it?",
+        options: [
+          "So the screen always matches the data — change the data, re-render, done",
+          "Because arrays are the only way to store text",
+          "To make the app run slower on purpose",
+        ],
+        correctIndex: 0,
+        explainCorrect: "One source of truth + one render keeps the UI in sync with your data — a pro habit.",
+        explainWrong: "Not quite — arrays aren't the only storage; the point is keeping screen and data in sync.",
+      },
+    ],
+  };
+}
+
+/* ---- Demo "keep building" part (offline stand-in) ---- */
+export function demoExtendPart(request: string): Omit<BuildPart, "id"> {
+  const r = request.trim();
+  return {
+    title: "✨ Your New Feature",
+    whatItIs: `The thing you asked for: "${r}". We'll snap it onto your app.`,
+    why: "Great builders never stop at v1 — you spotted something to add, and that instinct is the whole game.",
+    concept: "Adding a feature",
+    buildSpec: `Add the following to the existing app, wired into the current state and render(): ${r}`,
   };
 }

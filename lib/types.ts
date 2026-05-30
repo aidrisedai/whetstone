@@ -129,6 +129,25 @@ export interface BuildLesson {
   concept: string; // short technical concept label
 }
 
+/** One multiple-choice checkpoint question, generated from the real code + prompt. */
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  /** A short, exact snippet from THIS app's code the question is about (optional). */
+  codeRef?: string;
+  options: string[]; // 3-4 options
+  correctIndex: number;
+  explainCorrect: string; // why the right answer is right
+  explainWrong: string; // the common misconception, addressed kindly
+}
+
+/** The checkpoint quiz after a build part — tests understanding of what was built. */
+export interface Checkpoint {
+  partTitle: string;
+  intro: string; // playful lead-in
+  questions: QuizQuestion[];
+}
+
 /** A persistent, growing profile for the young builder (stored client-side). */
 export interface BuilderProfile {
   name: string;
@@ -137,5 +156,6 @@ export interface BuilderProfile {
   conceptsLearned: string[];
   partsBuilt: number;
   projectsBuilt: number;
+  quizzesAced: number;
   createdAt: number;
 }

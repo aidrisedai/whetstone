@@ -54,7 +54,8 @@ interface CodeLessonProps {
   totalParts: number;
   voiceOn: boolean;
   onToggleVoice: () => void;
-  onComplete: (finalCode: string) => void;
+  /** finalCode = whole file; newCode = just this part's new beats (for the quiz). */
+  onComplete: (finalCode: string, newCode: string) => void;
 }
 
 /**
@@ -106,7 +107,11 @@ export function CodeLesson({
   const next = () => {
     cancel();
     if (i >= beats.length) {
-      onComplete(fullCode);
+      const newCode = beats
+        .filter((b) => b.isNew)
+        .map((b) => b.code)
+        .join("\n");
+      onComplete(fullCode, newCode);
       return;
     }
     setI((v) => v + 1);
