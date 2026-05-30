@@ -1,8 +1,10 @@
 import type {
   Assessment,
+  BuildLesson,
   BuildPart,
   ChatMessage,
   CoachNote,
+  CodeBeat,
   CriterionSpec,
   EditResult,
   Lesson,
@@ -341,5 +343,104 @@ export function demoPlan(
         buildSpec: "Persist the list to localStorage, reload it on page load, and allow deleting items.",
       },
     ],
+  };
+}
+
+/* ---- Demo build lesson: real narrated beats that grow a tiny app ---- */
+
+function beat(label: string, lang: CodeBeat["lang"], code: string, say: string, isNew: boolean): CodeBeat {
+  return { label, lang, code, say, isNew };
+}
+
+// Part 1 beats: a complete minimal HTML file showing a list.
+function demoPart1Beats(title: string): CodeBeat[] {
+  return [
+    beat(
+      "🏗️ The page skeleton",
+      "html",
+      `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${title}</title>\n`,
+      "Every web page starts the same way. `<!DOCTYPE html>` tells the browser \"this is modern HTML\", and the `<head>` is backstage — the `<title>` is the name on the browser tab. The `viewport` line is the secret to it looking right on a phone.",
+      true,
+    ),
+    beat(
+      "🎨 The look",
+      "css",
+      `<style>\n  body{font-family:system-ui;background:#10131a;color:#eee;max-width:480px;margin:0 auto;padding:20px}\n  h1{font-size:1.4rem}\n  li{background:#1b2030;margin:6px 0;padding:10px;border-radius:8px;list-style:none}\n</style>\n</head>\n`,
+      "This `<style>` block is the paint. Each rule picks a tag — `body`, `h1`, `li` — and restyles it. `max-width:480px` + `margin:0 auto` is the trick that centers everything in a neat column instead of stretching across the whole screen.",
+      true,
+    ),
+    beat(
+      "📦 The list on screen",
+      "html",
+      `<body>\n<h1>${title}</h1>\n<ul id="list"></ul>\n`,
+      "Now the visible stuff. `<h1>` is the big heading. That `<ul id=\"list\">` is an empty box with a name tag (`id=\"list\"`) — empty for now, but our code is about to find it by that name and fill it up.",
+      true,
+    ),
+    beat(
+      "🧠 Giving it data",
+      "js",
+      `<script>\n  const items = ["First thing","Second thing"];\n  const list = document.getElementById("list");\n`,
+      "Here's where it comes alive. `items` is an array — think of it like an inventory slot list holding our data. `document.getElementById(\"list\")` reaches into the page and grabs that `<ul>` by its name so we can control it from code.",
+      true,
+    ),
+    beat(
+      "🔁 Drawing every item",
+      "js",
+      `  items.forEach(function(text){\n    const li = document.createElement("li");\n    li.textContent = text;\n    list.appendChild(li);\n  });\n</script>\n</body>\n</html>`,
+      "`forEach` runs the same code once for every item — a loop. For each one we `createElement(\"li\")` (make a new row), set its text, and `appendChild` to drop it into the list. Two items in the array means two rows appear. Change the array, change the screen!",
+      true,
+    ),
+  ];
+}
+
+export function demoBuildLesson(args: {
+  part: { title: string; whatItIs: string; concept: string; buildSpec: string };
+  partNumber: number;
+  currentCode: string;
+  projectName: string;
+}): BuildLesson {
+  const title = escapeHtml(args.projectName || "My App");
+
+  if (args.partNumber <= 1 || !args.currentCode.trim()) {
+    return {
+      partTitle: args.part.title,
+      intro: "Alright — let's write the very first code and get something on the screen! 🚀",
+      beats: demoPart1Beats(title),
+      outro: "Boom — your app shows a list! You just learned how an array of data becomes rows on a screen with a loop.",
+      concept: args.part.concept || "Loops & the DOM",
+    };
+  }
+
+  // Later parts in demo mode: show the existing file as one carried-over beat,
+  // then a new beat that injects a small feature before </body> (always valid).
+  const code = args.currentCode;
+  const splitAt = code.lastIndexOf("</body>");
+  const head = splitAt >= 0 ? code.slice(0, splitAt) : code;
+  const tail = splitAt >= 0 ? code.slice(splitAt) : "";
+  const featureLabel = escapeHtml(args.part.title);
+  const newCode = `<div style="margin-top:14px;padding:10px;background:#26203a;border-radius:8px">✨ ${featureLabel} — wired up in demo mode</div>\n`;
+
+  return {
+    partTitle: args.part.title,
+    intro: `Time to add ${args.part.title}! We'll keep everything you already built and snap a new piece on top.`,
+    beats: [
+      beat(
+        "🧱 What we have so far",
+        "html",
+        head,
+        "Here's everything from the earlier parts — untouched. Great code doesn't get thrown away; we build ON it. We're going to slip the new piece in right at the end.",
+        false,
+      ),
+      beat(
+        "✨ The new piece",
+        "html",
+        newCode,
+        `This new block is ${args.part.title}. In the real (API-key) version Coach Spark writes the actual working code here and explains every line — this is the demo stand-in so you can see the flow.`,
+        true,
+      ),
+      beat("🔚 Closing it up", "html", tail, "We close the tags so the page is valid again. Every tag we open has to close — like brackets in a save file.", false),
+    ],
+    outro: `Nice — ${args.part.title} is in, and the rest still works. ${args.part.concept ? "You practiced: " + args.part.concept + "." : ""}`,
+    concept: args.part.concept || "Building incrementally",
   };
 }

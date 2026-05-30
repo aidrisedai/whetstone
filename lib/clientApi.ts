@@ -1,6 +1,7 @@
 import { uid } from "./format";
 import type {
   Assessment,
+  BuildLesson,
   BuildPart,
   BuildPlan,
   ChatMessage,
@@ -152,6 +153,30 @@ export async function fetchPlan(payload: {
     bigPicture: raw.bigPicture,
     parts: (raw.parts || []).slice(0, 5).map((p) => ({ ...p, id: uid("part") })),
   };
+}
+
+/** Fetch the narrated, code-by-code build lesson for one part. */
+export async function fetchBuildLesson(payload: {
+  projectName: string;
+  bigPicture: string;
+  projectType: string;
+  partNumber: number;
+  totalParts: number;
+  part: { title: string; whatItIs: string; concept: string; buildSpec: string };
+  currentCode: string;
+  favoriteGame: string;
+  name: string;
+}): Promise<BuildLesson> {
+  const res = await fetch("/api/lesson-build", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Build lesson failed (${res.status})`);
+  }
+  return (await res.json()) as BuildLesson;
 }
 
 /** Fetch targeted find-and-replace edits for a fast iteration. */

@@ -1,10 +1,34 @@
-import type { ImageAttachment } from "./types";
+import type { CodeBeat, ImageAttachment } from "./types";
 
 let counter = 0;
 /** Small unique id for messages (stable within a session). */
 export function uid(prefix = "m"): string {
   counter += 1;
   return `${prefix}_${Date.now().toString(36)}_${counter.toString(36)}`;
+}
+
+/** Concatenate beats (in order) into the full source file. */
+export function assembleBeats(beats: CodeBeat[]): string {
+  return beats.map((b) => b.code).join("");
+}
+
+/** Assemble only the beats up to and including `index` — the file "so far". */
+export function assembleBeatsUpTo(beats: CodeBeat[], index: number): string {
+  return beats
+    .slice(0, index + 1)
+    .map((b) => b.code)
+    .join("");
+}
+
+/** A reassembled beat lesson is usable only if it forms a real HTML document. */
+export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
+  const full = assembleBeats(beats).trim();
+  return (
+    full.length > 0 &&
+    /<!DOCTYPE html/i.test(full.slice(0, 200)) &&
+    /<\/html>\s*$/i.test(full) &&
+    full.includes("<body")
+  );
 }
 
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */

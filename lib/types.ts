@@ -111,6 +111,24 @@ export interface BuildPlan {
   parts: BuildPart[];
 }
 
+/** One teachable chunk of real code, narrated during the build lesson. */
+export interface CodeBeat {
+  label: string; // short, kid-facing, one emoji (e.g. "🧠 The memory")
+  lang: "html" | "css" | "js";
+  code: string; // EXACT chunk; beats concatenated in order === the full file
+  say: string; // exciting, technical-but-clear narration — the learning
+  isNew: boolean; // true = part of THIS part's new code (spotlighted)
+}
+
+/** A full "watch me write the code" lesson for one build part. */
+export interface BuildLesson {
+  partTitle: string;
+  intro: string; // hype to kick off this part
+  beats: CodeBeat[];
+  outro: string; // what they can now do + the concept they nailed
+  concept: string; // short technical concept label
+}
+
 /** A persistent, growing profile for the young builder (stored client-side). */
 export interface BuilderProfile {
   name: string;
