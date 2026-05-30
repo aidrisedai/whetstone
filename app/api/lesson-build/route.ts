@@ -51,8 +51,8 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
-    // The builder model writes the code; medium effort keeps the chunking + narration sharp.
-    const tune = reasoning(MODELS.builder, "medium");
+    // The builder writes a small file + narration; low effort keeps it fast and snappy.
+    const tune = reasoning(MODELS.builder, "low");
     const resp = await getClient().messages.create({
       model: MODELS.builder,
       max_tokens: 16000,

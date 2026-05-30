@@ -19,6 +19,17 @@ import { ArrowIcon, CheckIcon, SendIcon, SparkIcon } from "./icons";
 
 const CONFETTI_COLORS = ["#ff6b35", "#ffb020", "#4cc9e6", "#41d49a", "#ff8a5b"];
 
+// Playful, rotating status while the code lesson is being prepared (~45-60s).
+const LOAD_LINES = [
+  "Sketching out the code…",
+  "Choosing the perfect pieces to teach you…",
+  "Breaking it into bite-size chunks…",
+  "Writing real, working code…",
+  "Adding the explanations…",
+  "Almost ready — this part's gonna be good…",
+];
+const LOAD_EMOJI = ["✏️", "🧩", "🍪", "⌨️", "💬", "✨"];
+
 interface BuildWorkspaceProps {
   refinedPrompt: string;
   projectType: string;
@@ -134,12 +145,21 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
   const [nameField, setNameField] = useState("");
   const [gameField, setGameField] = useState("");
+  const [loadMsg, setLoadMsg] = useState(0);
 
   const startedRef = useRef(false);
   const codeRef = useRef("");
   useEffect(() => {
     codeRef.current = code;
   }, [code]);
+
+  // Rotate playful status lines while the code lesson is being prepared.
+  useEffect(() => {
+    if (!loadingLesson) return;
+    setLoadMsg(0);
+    const id = setInterval(() => setLoadMsg((m) => m + 1), 2600);
+    return () => clearInterval(id);
+  }, [loadingLesson]);
 
   const makePlan = useCallback(
     async (p: BuilderProfile) => {
@@ -427,24 +447,33 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
               You&apos;ll learn: {currentPart.concept}
             </div>
 
-            <button
-              type="button"
-              onClick={() => void startLesson()}
-              disabled={loadingLesson}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep px-5 py-3.5 font-display text-lg font-bold text-base shadow-glow transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100"
-            >
-              {loadingLesson ? (
-                <>
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-base" />
-                  Coach Spark is getting the code ready…
-                </>
-              ) : (
-                <>Let&apos;s write the code! ⌨️</>
-              )}
-            </button>
-            <p className="mt-2 text-center text-xs text-muted">
-              We&apos;ll write it together, one piece at a time — you&apos;ll see exactly what each line does.
-            </p>
+            {loadingLesson ? (
+              <div className="mt-5 rounded-xl border border-ember/30 bg-base/40 p-5 text-center">
+                <div className="mb-2 animate-float text-3xl">{LOAD_EMOJI[loadMsg % LOAD_EMOJI.length]}</div>
+                <p className="font-display text-base font-bold text-ink">
+                  {LOAD_LINES[loadMsg % LOAD_LINES.length]}
+                </p>
+                <div className="mx-auto mt-3 h-1.5 w-44 overflow-hidden rounded-full bg-panel2">
+                  <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-amber to-ember" />
+                </div>
+                <p className="mt-2 text-xs text-muted">
+                  Coach Spark is writing real code for <span className="text-ink">{currentPart.title}</span>…
+                </p>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void startLesson()}
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep px-5 py-3.5 font-display text-lg font-bold text-base shadow-glow transition-transform hover:scale-[1.02]"
+                >
+                  Let&apos;s write the code! ⌨️
+                </button>
+                <p className="mt-2 text-center text-xs text-muted">
+                  We&apos;ll write it together, one piece at a time — you&apos;ll see exactly what each line does.
+                </p>
+              </>
+            )}
             {error && <p className="mt-2 text-center text-sm text-warn">{error}</p>}
           </div>
         </div>
