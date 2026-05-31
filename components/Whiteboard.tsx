@@ -104,6 +104,7 @@ export function Whiteboard({
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [done, setDone] = useState(false);
+  const [started, setStarted] = useState(false);
 
   const teacher = useTeacherVoice();
   const mic = useSpeechRecognition();
@@ -129,13 +130,20 @@ export function Whiteboard({
     });
   }, [board.steps, teacher]);
 
-  // Kick off the first step on mount.
+  // Seed the welcome line on mount, but DON'T auto-speak — browsers block audio
+  // that isn't tied to a click. The student presses "Start lesson", which both
+  // primes audio and speaks the first step inside that user gesture.
   useEffect(() => {
     setChat([{ who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together. ✏️` }]);
-    const id = setTimeout(revealNext, 350);
-    return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Begin the lesson from a real click (satisfies autoplay policy).
+  const beginLesson = useCallback(() => {
+    teacher.prime();
+    setStarted(true);
+    revealNext();
+  }, [teacher, revealNext]);
 
   useEffect(() => {
     boardScrollRef.current?.scrollTo({ top: boardScrollRef.current.scrollHeight, behavior: "smooth" });
@@ -200,7 +208,26 @@ export function Whiteboard({
           </span>
         </div>
 
-        <div ref={boardScrollRef} className="board-grid h-[56vh] overflow-auto p-5">
+        <div ref={boardScrollRef} className="board-grid relative h-[56vh] overflow-auto p-5">
+          {!started && (
+            <div className="absolute inset-0 z-10 grid place-items-center bg-[#0e1622]/85 backdrop-blur-sm">
+              <div className="animate-pop text-center">
+                <div className="mb-3 text-5xl">🖍️</div>
+                <h3 className="font-display text-xl font-bold text-ink">{board.boardTitle}</h3>
+                <p className="mt-1 max-w-xs text-sm text-muted">
+                  Coach Spark will walk you through it on the board — out loud.
+                </p>
+                <button
+                  type="button"
+                  onClick={beginLesson}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep px-6 py-3 font-display text-lg font-bold text-base shadow-glow transition-transform hover:scale-[1.03]"
+                >
+                  ▶ Start lesson
+                </button>
+                <p className="mt-2 text-[11px] text-muted">(tap to let the teacher talk)</p>
+              </div>
+            </div>
+          )}
           <div className="mb-4 border-b border-steel/20 pb-2 text-center font-display text-xl font-bold text-steel">
             {board.boardTitle}
           </div>
@@ -286,16 +313,29 @@ export function Whiteboard({
               <div className="text-[11px] text-muted">{teacher.speaking ? "speaking…" : "your teacher"}</div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onToggleVoice}
-            title={voiceOn ? "Voice on" : "Voice off"}
-            className={`grid h-9 w-9 place-items-center rounded-lg border transition-colors ${
-              voiceOn ? "border-ember/40 bg-ember/15 text-ember" : "border-line text-muted hover:text-ink"
-            }`}
-          >
-            {voiceOn ? <SoundIcon className="h-5 w-5" /> : <MuteIcon className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                teacher.prime();
+                teacher.speak("Hi! This is your teacher voice. If I sound natural, the HD voice is working.");
+              }}
+              title="Hear the teacher voice"
+              className="rounded-lg border border-line px-2.5 py-1.5 font-mono text-[11px] text-muted transition-colors hover:border-ember/40 hover:text-ink"
+            >
+              🔊 Test
+            </button>
+            <button
+              type="button"
+              onClick={onToggleVoice}
+              title={voiceOn ? "Voice on" : "Voice off"}
+              className={`grid h-9 w-9 place-items-center rounded-lg border transition-colors ${
+                voiceOn ? "border-ember/40 bg-ember/15 text-ember" : "border-line text-muted hover:text-ink"
+              }`}
+            >
+              {voiceOn ? <SoundIcon className="h-5 w-5" /> : <MuteIcon className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {/* chat transcript */}
