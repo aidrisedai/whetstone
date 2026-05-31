@@ -277,22 +277,22 @@ export function Whiteboard({
               <div className="marker mb-4 text-center text-2xl font-bold text-[color:var(--ink-soft)]">
                 {board.boardTitle}
               </div>
-              {/* Items flow in a natural two-column-ish wrap, like a real board */}
-              <div className="flex flex-col gap-3.5">
-                {board.steps.slice(0, revealed).map((step, si) => (
-                  <div key={si} className="flex flex-col gap-2.5">
-                    {step.items.map((item, ii) => (
-                      <BoardItemView key={`${si}-${ii}`} item={item} />
-                    ))}
+              {/* True masonry: all revealed items flow left-to-right across columns,
+                  filling the board like a real teacher's sketch (the reference). */}
+              <div className="board-columns">
+                {board.steps
+                  .slice(0, revealed)
+                  .flatMap((step, si) => step.items.map((item, ii) => ({ item, key: `${si}-${ii}` })))
+                  .map(({ item, key }) => (
+                    <div key={key} className="board-cell">
+                      <BoardItemView item={item} />
+                    </div>
+                  ))}
+                {extraItems.map((item, i) => (
+                  <div key={`x-${i}`} className="board-cell">
+                    <BoardItemView item={item} />
                   </div>
                 ))}
-                {extraItems.length > 0 && (
-                  <div className="mt-1 flex flex-col gap-2.5 border-t border-dashed border-black/10 pt-3">
-                    {extraItems.map((item, i) => (
-                      <BoardItemView key={`x-${i}`} item={item} />
-                    ))}
-                  </div>
-                )}
               </div>
             </>
           )}

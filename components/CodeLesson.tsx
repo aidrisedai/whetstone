@@ -75,6 +75,7 @@ export function CodeLesson({
   // -1 = intro screen; 0..n-1 = beats; n = done (outro)
   const [i, setI] = useState(-1);
   const [typed, setTyped] = useState(false); // user tapped "skip typing"
+  const [tab, setTab] = useState<"code" | "browser">("code");
   const codeScrollRef = useRef<HTMLDivElement>(null);
   const beatRef = useRef<HTMLDivElement>(null);
   const { supported: ttsSupported, speak, stop: cancel } = useTeacherVoice();
@@ -97,12 +98,14 @@ export function CodeLesson({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i, voiceOn]);
 
-  // Keep the newest code in view.
+  // Keep the newest code in view; flip to the running app on the final recap.
   useEffect(() => {
     codeScrollRef.current?.scrollTo({ top: codeScrollRef.current.scrollHeight, behavior: "smooth" });
     beatRef.current?.scrollIntoView({ block: "nearest" });
     setTyped(false);
-  }, [i]);
+    if (i >= beats.length && beats.length > 0) setTab("browser");
+    else setTab("code");
+  }, [i, beats.length]);
 
   const next = () => {
     cancel();
@@ -123,66 +126,95 @@ export function CodeLesson({
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      {/* LEFT: the code, written beat by beat */}
+      {/* LEFT: editor + browser, as switchable tabs (browser is the output panel) */}
       <div className="flex flex-col overflow-hidden rounded-2xl border border-line bg-[#0c0f15]">
-        <div className="flex items-center justify-between border-b border-line/70 px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-warn/70" />
-            <span className="h-2.5 w-2.5 rounded-full bg-amber/70" />
-            <span className="h-2.5 w-2.5 rounded-full bg-good/70" />
-            <span className="ml-2 font-mono text-xs text-muted">app.html</span>
+        {/* tab bar */}
+        <div className="flex items-center justify-between border-b border-line/70 px-3 py-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setTab("code")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-mono text-xs transition-colors ${
+                tab === "code" ? "bg-panel2 text-ink" : "text-muted hover:text-ink"
+              }`}
+            >
+              <span className="text-[13px]">{"</>"}</span> app.html
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("browser")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-mono text-xs transition-colors ${
+                tab === "browser" ? "bg-panel2 text-ink" : "text-muted hover:text-ink"
+              }`}
+            >
+              ▶ Browser
+            </button>
           </div>
           <span className="font-mono text-[11px] text-muted">
             {onOutro ? "complete" : onIntro ? "ready" : `beat ${i + 1}/${beats.length}`}
           </span>
         </div>
 
-        <div ref={codeScrollRef} className="h-[54vh] overflow-auto p-4">
-          {onIntro ? (
-            <div className="grid h-full place-items-center text-center">
-              <div className="animate-pop">
-                <div className="mb-2 text-4xl">⌨️</div>
-                <p className="font-mono text-sm text-muted">The code shows up here, one piece at a time…</p>
+        {tab === "code" ? (
+          <div ref={codeScrollRef} className="h-[60vh] overflow-auto p-4">
+            {onIntro ? (
+              <div className="grid h-full place-items-center text-center">
+                <div className="animate-pop">
+                  <div className="mb-2 text-4xl">⌨️</div>
+                  <p className="font-mono text-sm text-muted">The code shows up here, one piece at a time…</p>
+                </div>
+              </div>
+            ) : (
+              <pre className="font-mono text-[12.5px] leading-relaxed">
+                {beats.slice(0, i + 1).map((b, idx) => {
+                  const active = idx === i;
+                  return (
+                    <div
+                      key={idx}
+                      ref={active ? beatRef : undefined}
+                      className={[
+                        "-mx-2 rounded-md px-2 py-0.5 transition-colors",
+                        active ? "animate-rise bg-ember/10 ring-1 ring-ember/30" : b.isNew ? "" : "opacity-45",
+                      ].join(" ")}
+                    >
+                      <code
+                        className="tk"
+                        // eslint-disable-next-line react/no-danger
+                        dangerouslySetInnerHTML={{ __html: tint(b.code) }}
+                      />
+                    </div>
+                  );
+                })}
+              </pre>
+            )}
+          </div>
+        ) : (
+          /* Browser output panel — chrome bar + address bar, like a real browser */
+          <div className="flex h-[60vh] flex-col bg-[#0c0f15]">
+            <div className="flex items-center gap-2 border-b border-line/70 px-3 py-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-warn/70" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber/70" />
+              <span className="h-2.5 w-2.5 rounded-full bg-good/70" />
+              <div className="ml-2 flex flex-1 items-center gap-1.5 rounded-md bg-base/60 px-3 py-1">
+                <span className="text-good">🔒</span>
+                <span className="font-mono text-[11px] text-muted">localhost · your app</span>
+                <span className="ml-auto font-mono text-[10px] text-good">▶ live</span>
               </div>
             </div>
-          ) : (
-            <pre className="font-mono text-[12.5px] leading-relaxed">
-              {beats.slice(0, i + 1).map((b, idx) => {
-                const active = idx === i;
-                return (
-                  <div
-                    key={idx}
-                    ref={active ? beatRef : undefined}
-                    className={[
-                      "-mx-2 rounded-md px-2 py-0.5 transition-colors",
-                      active ? "animate-rise bg-ember/10 ring-1 ring-ember/30" : b.isNew ? "" : "opacity-45",
-                    ].join(" ")}
-                  >
-                    <code
-                      className="tk"
-                      // eslint-disable-next-line react/no-danger
-                      dangerouslySetInnerHTML={{ __html: tint(b.code) }}
-                    />
-                  </div>
-                );
-              })}
-            </pre>
-          )}
-        </div>
-
-        {/* live preview strip */}
-        <div className="border-t border-line/70">
-          <div className="flex items-center justify-between px-4 py-1.5">
-            <span className="font-mono text-[11px] uppercase tracking-widest text-muted">live preview</span>
-            <span className="font-mono text-[11px] text-good">▶ running</span>
+            {codeSoFar ? (
+              <iframe
+                title="App preview"
+                sandbox="allow-scripts"
+                srcDoc={codeSoFar}
+                className="flex-1 w-full bg-white"
+              />
+            ) : (
+              <div className="grid flex-1 place-items-center text-center text-sm text-muted">
+                Your app runs here as we write it.
+              </div>
+            )}
           </div>
-          <iframe
-            title="Live preview"
-            sandbox="allow-scripts"
-            srcDoc={codeSoFar || "<!doctype html><body style='margin:0;background:#fff'></body>"}
-            className="h-[22vh] w-full bg-white"
-          />
-        </div>
+        )}
       </div>
 
       {/* RIGHT: Coach Spark teaching */}
@@ -217,19 +249,31 @@ export function CodeLesson({
                 </div>
               </div>
             </div>
-            {ttsSupported && (
-              <button
-                type="button"
-                onClick={onToggleVoice}
-                title={voiceOn ? "Voice on" : "Voice off"}
-                className={[
-                  "grid h-8 w-8 place-items-center rounded-lg border transition-colors",
-                  voiceOn ? "border-ember/40 bg-ember/15 text-ember" : "border-line text-muted hover:text-ink",
-                ].join(" ")}
-              >
-                {voiceOn ? <SoundIcon className="h-4 w-4" /> : <MuteIcon className="h-4 w-4" />}
-              </button>
-            )}
+            <div className="flex items-center gap-1.5">
+              {!onIntro && (
+                <button
+                  type="button"
+                  onClick={() => setTab((v) => (v === "code" ? "browser" : "code"))}
+                  title="Peek at the running app"
+                  className="rounded-lg border border-line px-2 py-1 font-mono text-[11px] text-muted transition-colors hover:border-ember/40 hover:text-ink"
+                >
+                  {tab === "code" ? "▶ run" : "</> code"}
+                </button>
+              )}
+              {ttsSupported && (
+                <button
+                  type="button"
+                  onClick={onToggleVoice}
+                  title={voiceOn ? "Voice on" : "Voice off"}
+                  className={[
+                    "grid h-8 w-8 place-items-center rounded-lg border transition-colors",
+                    voiceOn ? "border-ember/40 bg-ember/15 text-ember" : "border-line text-muted hover:text-ink",
+                  ].join(" ")}
+                >
+                  {voiceOn ? <SoundIcon className="h-4 w-4" /> : <MuteIcon className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
           </div>
 
           {current && (
