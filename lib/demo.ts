@@ -550,3 +550,17 @@ export function demoBoardChat(studentSaid: string): { reply: string; boardItem: 
     boardItem: null,
   };
 }
+
+/* ---- Demo: student raises hand during the code lesson ---- */
+export function demoCodeAsk(studentSaid: string, beatCode: string): { reply: string; highlightHint: string | null } {
+  const firstToken = (beatCode.match(/[A-Za-z_]\w{3,}/) || [])[0] || null;
+  const s = studentSaid.toLowerCase();
+  if (s.includes("?") || s.startsWith("what") || s.startsWith("why") || s.startsWith("how")) {
+    return {
+      reply:
+        "Good question! This line is doing exactly one job — and once you see it run, it'll click. In the real version I'd explain it line by line. Okay, back to it!",
+      highlightHint: firstToken,
+    };
+  }
+  return { reply: "Love that you're thinking about it! Keep that going. Okay, back to the code!", highlightHint: null };
+}

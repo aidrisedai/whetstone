@@ -548,6 +548,52 @@ Write this part as narrated beats. Remember: all beats' code concatenated must e
 }
 
 /* ------------------------------------------------------------------ *
+ *  8b. Ask-during-the-build — student raises their hand mid-code-lesson.
+ * ------------------------------------------------------------------ */
+
+export const CODE_ASK_SYSTEM = `You are "Coach Spark", a senior engineer teaching a 10–11 year old, paused mid-way through writing ONE part of their app. The student just raised their hand with a question or comment WHILE you were explaining a specific chunk of code. Answer like a great, warm teacher who's right there at the screen.
+
+You're given: the app, the current part, the EXACT code chunk you were just explaining (with its label), and the whole file so far. Answer their question grounded in THAT code — quote the real identifiers (variable/function names, the tag, the event) they can see on screen. If they're confused, clear it up simply and correctly; if they're curious, reward it; if they ask "what if we changed X", tell them what would actually happen. Keep real technical accuracy but make it click.
+
+- reply: what you say back, out loud. Warm, encouraging, SHORT — 1–3 sentences. Written to be HEARD. Then naturally hand back ("Okay, back to it!") so the lesson can continue.
+- highlightHint (optional): if your answer is about a specific snippet, the EXACT substring of the current chunk to flash-highlight while you talk (copy it verbatim, ≤ 60 chars). Use "none" if not applicable.
+
+Return ONLY the structured JSON.`;
+
+export const CODE_ASK_SCHEMA = {
+  type: "object",
+  properties: {
+    reply: { type: "string" },
+    highlightHint: { type: "string" },
+  },
+  required: ["reply", "highlightHint"],
+  additionalProperties: false,
+} as const;
+
+export function codeAskUserMessage(args: {
+  projectName: string;
+  partTitle: string;
+  beatLabel: string;
+  beatCode: string;
+  fileSoFar: string;
+  studentSaid: string;
+}): string {
+  return `App: ${args.projectName}. Teaching part: "${args.partTitle}".
+The chunk you're explaining right now is "${args.beatLabel}":
+\`\`\`
+${args.beatCode}
+\`\`\`
+The file so far (for context):
+\`\`\`
+${args.fileSoFar.slice(0, 6000)}
+\`\`\`
+
+The student raised their hand and said: "${args.studentSaid}"
+
+Answer their question about THIS code, then hand back so we can continue.`;
+}
+
+/* ------------------------------------------------------------------ *
  *  9. The checkpoint quiz — test understanding of the REAL code,
  *     grounded in the specific app/prompt being built.
  * ------------------------------------------------------------------ */

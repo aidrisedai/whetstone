@@ -223,3 +223,16 @@
   break-inside: avoid;
   margin-bottom: 1rem;
 }
+
+/* Flash-highlight a snippet when the teacher answers a question about it */
+mark.flash {
+  background: rgba(255, 176, 32, 0.4);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+  animation: flashfade 2.4s ease-out forwards;
+}
+@keyframes flashfade {
+  0%, 60% { background: rgba(255, 176, 32, 0.45); }
+  100% { background: rgba(255, 176, 32, 0); }
+}

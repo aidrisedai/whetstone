@@ -224,6 +224,27 @@ export async function fetchBuildLesson(payload: {
   return (await res.json()) as BuildLesson;
 }
 
+/** Ask the teacher a question mid code-lesson, about the chunk on screen. */
+export async function askDuringCode(payload: {
+  projectName: string;
+  partTitle: string;
+  beatLabel: string;
+  beatCode: string;
+  fileSoFar: string;
+  studentSaid: string;
+}): Promise<{ reply: string; highlightHint: string | null }> {
+  const res = await fetch("/api/code-ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Ask failed (${res.status})`);
+  }
+  return (await res.json()) as { reply: string; highlightHint: string | null };
+}
+
 /** Fetch a checkpoint quiz grounded in the code just written + the prompt. */
 export async function fetchQuiz(payload: {
   projectName: string;

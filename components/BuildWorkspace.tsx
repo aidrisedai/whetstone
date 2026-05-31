@@ -619,6 +619,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
           <PlanMap plan={plan} partIndex={partIndex} />
           <CodeLesson
             lesson={activeLesson}
+            projectName={plan.projectName}
             partNumber={partIndex + 1}
             totalParts={plan.parts.length}
             voiceOn={voiceOn}
