@@ -98,3 +98,37 @@ export function CloseIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function PauseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M8 5v14M16 5v14" />
+    </svg>
+  );
+}
+
+export function PlayIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M7 5l12 7-12 7z" />
+    </svg>
+  );
+}
+
+export function KeyboardIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="2.5" y="6" width="19" height="12" rx="2" />
+      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
+    </svg>
+  );
+}
+
+export function BookIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z" />
+      <path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}

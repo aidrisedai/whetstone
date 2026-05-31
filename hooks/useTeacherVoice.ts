@@ -45,6 +45,8 @@ export function useTeacherVoice() {
   const [activeKind, setActiveKind] = useState<VoiceKind>("none");
   const [hdAvailable, setHdAvailable] = useState<boolean | null>(null);
   const [status, setStatus] = useState<string>("");
+  // 0..1 progress through the line currently being spoken — drives captions.
+  const [progress, setProgress] = useState(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const silentUrlRef = useRef<string | null>(null);
@@ -137,6 +139,7 @@ export function useTeacherVoice() {
       const t = (text ?? "").trim();
       if (!t) return;
       stop();
+      setProgress(0);
       const myId = ++reqIdRef.current;
 
       try {
@@ -166,7 +169,15 @@ export function useTeacherVoice() {
             setActiveKind("hd");
             setStatus(`🔊 HD voice playing (${Math.round(blob.size / 1024)}KB)`);
           };
-          audio.onended = () => setSpeaking(false);
+          audio.ontimeupdate = () => {
+            if (audio.duration && isFinite(audio.duration)) {
+              setProgress(Math.min(1, audio.currentTime / audio.duration));
+            }
+          };
+          audio.onended = () => {
+            setSpeaking(false);
+            setProgress(1);
+          };
           audio.onerror = () => setStatus("⚠️ audio element error decoding HD clip");
           try {
             await audio.play();
@@ -187,6 +198,18 @@ export function useTeacherVoice() {
         setStatus(`⚠️ network error reaching /api/speak — using browser voice`);
       }
       if (myId === reqIdRef.current) {
+        // Estimate caption progress from typical speaking speed (~13 chars/sec).
+        const durMs = Math.max(1200, (t.length / 13) * 1000);
+        const startedAt = Date.now();
+        const tick = setInterval(() => {
+          if (myId !== reqIdRef.current) {
+            clearInterval(tick);
+            return;
+          }
+          const p = Math.min(1, (Date.now() - startedAt) / durMs);
+          setProgress(p);
+          if (p >= 1) clearInterval(tick);
+        }, 80);
         browser.speak(t);
         setActiveKind("browser");
       }
@@ -194,5 +217,23 @@ export function useTeacherVoice() {
     [browser, stop],
   );
 
-  return { supported: true, speaking, speak, stop, prime, activeKind, hdAvailable, status };
+  const pause = useCallback(() => {
+    const a = audioRef.current;
+    if (a && !a.paused) a.pause();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.pause();
+    setSpeaking(false);
+  }, []);
+
+  const resume = useCallback(() => {
+    const a = audioRef.current;
+    if (a && a.src && a.paused && a.currentTime > 0 && !a.ended) {
+      void a.play().catch(() => {});
+      setSpeaking(true);
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.resume();
+    }
+  }, []);
+
+  return { supported: true, speaking, speak, stop, pause, resume, prime, activeKind, hdAvailable, status, progress };
 }

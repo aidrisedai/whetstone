@@ -71,7 +71,11 @@ export async function POST(req: Request): Promise<Response> {
       boardTitle: parsed.boardTitle,
       steps: (parsed.steps || []).filter((s) => s && s.say).map((s) => ({
         say: s.say,
-        items: Array.isArray(s.items) ? s.items : [],
+        items: (Array.isArray(s.items) ? s.items : []).map((it) => ({
+          ...it,
+          // The schema allows "none"; drop it so it doesn't become a CSS class.
+          color: it.color && it.color !== ("none" as typeof it.color) ? it.color : undefined,
+        })),
         ask: s.ask && s.ask.trim() ? s.ask.trim() : undefined,
       })),
       closing: parsed.closing,

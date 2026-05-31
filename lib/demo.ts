@@ -502,26 +502,29 @@ export function demoBoardLesson(
 ): BoardLesson {
   return {
     partTitle: part.title,
-    boardTitle: `${part.title} — the plan`,
+    boardTitle: `${part.title}`,
     steps: [
       {
         say: `Okay! Before we touch any code, let's sketch out ${part.title} so it totally makes sense. Picture this part of ${projectName} like a little machine.`,
         items: [
-          { kind: "title", text: part.title, emphasis: true },
-          { kind: "bullet", text: part.whatItIs },
+          { kind: "title", text: part.title, color: "blue", emphasis: true },
+          { kind: "fact", text: `${part.concept}: the superpower this part adds`, color: "teal" },
         ],
       },
       {
-        say: `The big idea here is "${part.concept}". That's the superpower this part gives your app.`,
-        items: [{ kind: "callout", text: part.concept, emphasis: true }],
+        say: `The big idea here is "${part.concept}". Let's see it with a quick example before the rule.`,
+        items: [
+          { kind: "equation", text: "input -> store it -> show it", color: "yellow" },
+          { kind: "callout", text: part.concept, emphasis: true },
+        ],
         ask: "Why do you think that idea matters for your app?",
       },
       {
         say: "Here's the flow: something happens, and the app reacts. Inputs go in, the screen updates.",
         items: [
-          { kind: "box", text: "user does something" },
-          { kind: "arrow", text: "action -> app updates" },
-          { kind: "box", text: "screen shows the change" },
+          { kind: "box", text: "user does something", color: "pink" },
+          { kind: "arrow", text: "action -> app updates", color: "red" },
+          { kind: "box", text: "screen shows the change", color: "green" },
         ],
       },
       {

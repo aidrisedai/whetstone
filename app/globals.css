@@ -26,6 +26,19 @@
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-hand: "Kalam", "Comic Sans MS", ui-rounded, cursive;
+  --font-marker: "Caveat", "Kalam", cursive;
+
+  /* Whiteboard ink palette (matches the hand-drawn reference) */
+  --ink: #2b2f38;
+  --ink-soft: #4a5160;
+  --hl-blue: #bfe3f2;
+  --hl-pink: #fbd5e0;
+  --hl-yellow: #fde8a6;
+  --hl-green: #c7ecc9;
+  --pen-teal: #2bb6c9;
+  --pen-red: #ef5a6f;
+  --pen-amber: #f4b740;
 
   /* Effects */
   --shadow-glow: 0 0 26px -6px rgba(255, 107, 53, 0.55);
@@ -148,3 +161,53 @@
   background-image: radial-gradient(rgba(76, 201, 230, 0.10) 1px, transparent 1px);
   background-size: 22px 22px;
 }
+
+/* ─── Hand-drawn whiteboard theme (matches the reference image) ─────────── */
+.hand { font-family: var(--font-hand); color: var(--ink); }
+.marker { font-family: var(--font-marker); }
+
+/* Warm paper gradient like the reference (pink → cream → blue) */
+.paper {
+  background:
+    radial-gradient(1200px 500px at 12% 0%, rgba(251, 213, 224, 0.55), transparent 55%),
+    radial-gradient(1000px 600px at 92% 8%, rgba(191, 227, 242, 0.5), transparent 55%),
+    radial-gradient(900px 700px at 50% 110%, rgba(199, 236, 201, 0.35), transparent 60%),
+    #fbf8f3;
+}
+
+/* Highlighter swipe behind text (underlined-marker look) */
+.hl {
+  background-repeat: no-repeat;
+  background-position: 0 78%;
+  background-size: 100% 52%;
+  padding: 0 0.1em;
+  border-radius: 2px;
+}
+.hl-blue { background-image: linear-gradient(var(--hl-blue), var(--hl-blue)); }
+.hl-pink { background-image: linear-gradient(var(--hl-pink), var(--hl-pink)); }
+.hl-yellow { background-image: linear-gradient(var(--hl-yellow), var(--hl-yellow)); }
+.hl-green { background-image: linear-gradient(var(--hl-green), var(--hl-green)); }
+
+/* Hand-circled number (ellipse pen ring) */
+.circled {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.9em;
+  height: 1.7em;
+  padding: 0 0.35em;
+  border: 2.5px solid var(--pen-teal);
+  border-radius: 50%;
+  transform: rotate(-3deg);
+}
+.circled-red { border-color: var(--pen-red); }
+.circled-amber { border-color: var(--pen-amber); }
+
+/* Karaoke caption: spoken word currently highlighted */
+.cap-spoken { color: var(--ink); font-weight: 700; }
+.cap-rest { color: #9aa1ad; }
+
+@keyframes draw-underline {
+  from { background-size: 0% 52%; }
+  to { background-size: 100% 52%; }
+}
+.underline-draw { animation: draw-underline 0.6s ease-out both; }

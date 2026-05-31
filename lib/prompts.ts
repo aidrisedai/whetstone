@@ -320,11 +320,14 @@ You produce a short board lesson: an ordered list of STEPS. Each step you draw a
 
 For each step:
 - say: what you SAY out loud for this step — warm, high-energy, SHORT sentences, like talking to a smart kid who loves games. Teach the real concept correctly. One tasteful game analogy is welcome; don't force it. 2–4 sentences. This text is spoken aloud, so write it to be HEARD (no code symbols read awkwardly — say "the parts list" not "parts[]").
-- items: 1–4 things that appear on the board this step. Each item has:
-   * kind: "title" (a heading), "bullet" (a key point), "box" (a labeled box, e.g. a piece of data or a component), "arrow" (a flow, text like "user types -> list updates"), "code" (a TINY snippet ≤ 1 line to illustrate, used sparingly), "note" (a small aside), "callout" (the big AHA idea).
-   * text: the words on the board — SHORT. Boxes/bullets are a few words; arrows use "A -> B".
+- items: 1–4 things that appear on the board this step. Think like a teacher sketching on a whiteboard with colored markers. Each item has:
+   * kind: "title" (a heading), "fact" (a key definition/term, like "Pie chart: shows how parts relate to a whole"), "bullet" (a key point), "box" (a labeled box, e.g. a piece of data or a component), "arrow" (a flow, text like "user types -> list updates"), "equation" (a worked line of math/logic, e.g. "0.50 x 1000 = 500"), "code" (a TINY snippet ≤ 1 line, used sparingly), "note" (a small handwritten aside), "callout" (the big AHA idea).
+   * text: the words on the board — SHORT and hand-written in feel. Equations show the actual numbers. Arrows use "A -> B".
+   * color (optional): a marker color — "blue", "pink", "yellow", "green" (highlighter swipes), or "teal", "red", "amber" (pen). Use color to group related ideas, like a real teacher. Vary colors across the board.
    * emphasis: true for the 1 most important item.
 - ask (optional, use on ~half the steps): a quick check-for-understanding question to the student. Keep it light and answerable ("What do you think happens when they click Add?"). The student will answer in chat before moving on.
+
+Use a MIX of kinds so the board looks rich and visual (like a real teacher's sketch): a title, a couple of facts/definitions, worked equations where numbers help, boxes/arrows for flow, and one callout for the big idea. Lead with concrete examples (real numbers, a worked calculation) before the abstract rule.
 
 LESSON SHAPE:
 - 4–6 steps. Build the picture up: what we're making → the key idea/data → how it flows → why it's cool → quick recap. The board should read like a clear sketch by the end.
@@ -338,11 +341,15 @@ Return ONLY the structured JSON.`;
 const boardItemSchema = {
   type: "object",
   properties: {
-    kind: { type: "string", enum: ["title", "bullet", "box", "arrow", "code", "note", "callout"] },
+    kind: {
+      type: "string",
+      enum: ["title", "bullet", "box", "arrow", "code", "note", "callout", "equation", "fact"],
+    },
     text: { type: "string" },
+    color: { type: "string", enum: ["blue", "pink", "yellow", "green", "teal", "red", "amber", "none"] },
     emphasis: { type: "boolean" },
   },
-  required: ["kind", "text", "emphasis"],
+  required: ["kind", "text", "color", "emphasis"],
   additionalProperties: false,
 } as const;
 
