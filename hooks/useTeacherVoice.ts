@@ -5,9 +5,8 @@ import { useSpeechSynthesis } from "./useSpeechSynthesis";
 
 type VoiceKind = "hd" | "browser" | "none";
 
-/** Build a tiny (0.1s) valid silent WAV blob URL used to "unlock" audio. */
+/** Build a tiny valid silent WAV blob URL used to "unlock" audio on a gesture. */
 function makeSilentUrl(): string {
-  const sampleRate = 8000;
   const numSamples = 800;
   const buffer = new ArrayBuffer(44 + numSamples);
   const view = new DataView(buffer);
@@ -19,52 +18,58 @@ function makeSilentUrl(): string {
   w(8, "WAVE");
   w(12, "fmt ");
   view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); // PCM
-  view.setUint16(22, 1, true); // mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 8000, true);
+  view.setUint32(28, 8000, true);
   view.setUint16(32, 1, true);
   view.setUint16(34, 8, true);
   w(36, "data");
   view.setUint32(40, numSamples, true);
-  for (let i = 0; i < numSamples; i++) view.setUint8(44 + i, 128); // 8-bit silence
+  for (let i = 0; i < numSamples; i++) view.setUint8(44 + i, 128);
   return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
 }
 
 /**
- * The teacher's voice. Prefers server-side Google Cloud TTS (natural "HD"
- * voice); falls back to the browser voice only when Google TTS isn't configured
- * or genuinely fails.
+ * The teacher's voice. Prefers server-side Google Cloud TTS ("HD"); falls back
+ * to the browser voice only when HD isn't configured or genuinely fails.
  *
- * The hard part is the browser autoplay policy: programmatic audio is blocked
- * until a real user gesture has played something on the SAME element. We solve
- * it by reusing ONE <audio> element and "priming" it with a silent clip the
- * first time the user interacts (or clicks Start). After that, HD audio plays
- * for the rest of the session without dropping to the robotic voice.
+ * Uses ONE real <audio> element attached to the DOM (more reliable across
+ * browsers than a detached `new Audio()`), primed with a silent clip on the
+ * first user gesture to satisfy autoplay policy. Exposes a human-readable
+ * `status` so the UI can show exactly what happened (HD playing / fell back / why).
  */
 export function useTeacherVoice() {
   const browser = useSpeechSynthesis();
   const [speaking, setSpeaking] = useState(false);
   const [activeKind, setActiveKind] = useState<VoiceKind>("none");
   const [hdAvailable, setHdAvailable] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<string>("");
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const silentUrlRef = useRef<string | null>(null);
+  const lastBlobUrlRef = useRef<string | null>(null);
   const reqIdRef = useRef(0);
   const primedRef = useRef(false);
 
-  // Create the single reusable audio element + the silent primer once.
+  // One DOM-attached <audio> element + the silent primer, created once.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    audioRef.current = new Audio();
-    audioRef.current.preload = "auto";
+    const el = document.createElement("audio");
+    el.setAttribute("playsinline", "");
+    el.preload = "auto";
+    el.style.display = "none";
+    document.body.appendChild(el);
+    audioRef.current = el;
     silentUrlRef.current = makeSilentUrl();
     return () => {
+      el.remove();
       if (silentUrlRef.current) URL.revokeObjectURL(silentUrlRef.current);
+      if (lastBlobUrlRef.current) URL.revokeObjectURL(lastBlobUrlRef.current);
     };
   }, []);
 
-  // Ask the server once whether Google HD voice is configured.
+  // Learn whether Google HD voice is configured on the server.
   useEffect(() => {
     let alive = true;
     fetch("/api/speak", { method: "GET" })
@@ -76,12 +81,10 @@ export function useTeacherVoice() {
     };
   }, []);
 
-  /** Play a silent clip on the shared element to satisfy autoplay policy. */
   const prime = useCallback(() => {
-    if (primedRef.current) return;
     const a = audioRef.current;
     const url = silentUrlRef.current;
-    if (!a || !url) return;
+    if (!a || !url || primedRef.current) return;
     a.src = url;
     a.muted = false;
     a.play()
@@ -95,11 +98,10 @@ export function useTeacherVoice() {
         }
       })
       .catch(() => {
-        /* will retry on the next gesture */
+        /* retried on next gesture */
       });
   }, []);
 
-  // Prime on the first interaction anywhere, as a safety net.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onGesture = () => prime();
@@ -149,38 +151,40 @@ export function useTeacherVoice() {
           setHdAvailable(true);
           const blob = await res.blob();
           if (myId !== reqIdRef.current) return;
+          if (lastBlobUrlRef.current) URL.revokeObjectURL(lastBlobUrlRef.current);
           const url = URL.createObjectURL(blob);
-          const audio = audioRef.current ?? new Audio();
-          audioRef.current = audio;
+          lastBlobUrlRef.current = url;
+          const audio = audioRef.current;
+          if (!audio) {
+            setStatus("⚠️ no audio element");
+            return;
+          }
           audio.src = url;
           audio.muted = false;
           audio.onplay = () => {
             setSpeaking(true);
             setActiveKind("hd");
+            setStatus(`🔊 HD voice playing (${Math.round(blob.size / 1024)}KB)`);
           };
-          audio.onended = () => {
-            setSpeaking(false);
-            URL.revokeObjectURL(url);
-          };
-          audio.onerror = () => {
-            setSpeaking(false);
-            URL.revokeObjectURL(url);
-          };
+          audio.onended = () => setSpeaking(false);
+          audio.onerror = () => setStatus("⚠️ audio element error decoding HD clip");
           try {
             await audio.play();
-            return; // HD voice playing — never fall back to the robotic voice
-          } catch {
-            // Autoplay still blocked (no gesture yet this session). Skip this
-            // line's audio rather than speaking it robotically; once the user
-            // clicks anything, HD audio works for every following line.
-            URL.revokeObjectURL(url);
-            return;
+            return; // HD playing — never fall back to the robotic voice
+          } catch (e) {
+            setStatus(`⚠️ play() blocked: ${e instanceof Error ? e.name : "unknown"} — click ▶/🔊 first`);
+            return; // do NOT speak this line robotically
           }
         }
 
-        if (res.status === 204) setHdAvailable(false); // Google TTS not configured
-      } catch {
-        /* network error → browser fallback below */
+        if (res.status === 204) {
+          setHdAvailable(false);
+          setStatus("⚠️ server returned 204 (Google TTS not returning audio) — using browser voice");
+        } else {
+          setStatus(`⚠️ /api/speak HTTP ${res.status} — using browser voice`);
+        }
+      } catch (e) {
+        setStatus(`⚠️ network error reaching /api/speak — using browser voice`);
       }
       if (myId === reqIdRef.current) {
         browser.speak(t);
@@ -190,5 +194,5 @@ export function useTeacherVoice() {
     [browser, stop],
   );
 
-  return { supported: true, speaking, speak, stop, prime, activeKind, hdAvailable };
+  return { supported: true, speaking, speak, stop, prime, activeKind, hdAvailable, status };
 }

@@ -338,6 +338,13 @@ export function Whiteboard({
           </div>
         </div>
 
+        {/* Voice status — tells you exactly which voice played and why */}
+        {teacher.status && (
+          <div className="rounded-lg border border-line bg-base/50 px-3 py-1.5 font-mono text-[11px] text-muted">
+            {teacher.status}
+          </div>
+        )}
+
         {/* chat transcript */}
         <div className="flex-1 space-y-2.5 overflow-auto rounded-2xl border border-line bg-panel/40 p-3" style={{ maxHeight: "44vh" }}>
           {chat.map((m, i) => (

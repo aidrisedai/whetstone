@@ -46,13 +46,16 @@ export async function POST(req: Request): Promise<Response> {
   const token = process.env.GOOGLE_TTS_ACCESS_TOKEN;
   const url = apiKey ? `${TTS_ENDPOINT}?key=${encodeURIComponent(apiKey)}` : TTS_ENDPOINT;
 
+  // LINEAR16 @ 44.1kHz = a standard WAV that every browser decodes reliably.
+  // (Chirp3-HD's default MP3 is MPEG-2 @ 24kHz, which some Chromium builds —
+  // e.g. Dia/Arc — fail to play, causing a fallback to the robotic voice.)
   const payload = {
     input: { text },
     voice: {
       languageCode: process.env.GOOGLE_TTS_LANG || "en-US",
       name: process.env.GOOGLE_TTS_VOICE || "en-US-Chirp3-HD-Charon",
     },
-    audioConfig: { audioEncoding: "MP3", speakingRate: 1.03, pitch: 0 },
+    audioConfig: { audioEncoding: "LINEAR16", sampleRateHertz: 44100, speakingRate: 1.03 },
   };
 
   try {
@@ -82,10 +85,11 @@ export async function POST(req: Request): Promise<Response> {
     const data = (await res.json()) as { audioContent?: string };
     if (!data.audioContent) return new Response(null, { status: 204, headers: { "X-TTS-Fallback": "no-audio" } });
 
+    // LINEAR16 comes back as a complete WAV container (RIFF header included).
     const audio = Buffer.from(data.audioContent, "base64");
     return new Response(audio, {
       status: 200,
-      headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
+      headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store" },
     });
   } catch (err) {
     console.warn("[speak] Google TTS request threw; falling back to browser voice.", err);
