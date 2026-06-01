@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 const TTS_ENDPOINT = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
-export function googleTtsConfigured(): boolean {
+function googleTtsConfigured(): boolean {
   return !!(process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_TTS_ACCESS_TOKEN);
 }
 
