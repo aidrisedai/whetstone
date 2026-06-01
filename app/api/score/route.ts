@@ -33,7 +33,7 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     const messages = toAnthropicMessages(history);
-    if (priorCriteria && priorCriteria.length > 0) {
+    if (Array.isArray(priorCriteria) && priorCriteria.length > 0) {
       messages.push(criteriaReuseMessage(priorCriteria));
     }
 
