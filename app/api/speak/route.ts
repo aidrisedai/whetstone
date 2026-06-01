@@ -59,14 +59,22 @@ export async function POST(req: Request): Promise<Response> {
   };
 
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 15_000);
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+        signal: abort.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (!res.ok) {
       // Surface WHY (the route still falls back to the browser voice so the

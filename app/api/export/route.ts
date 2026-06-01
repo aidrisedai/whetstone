@@ -22,6 +22,9 @@ export async function POST(req: Request): Promise<Response> {
   if (!refinedPrompt) {
     return jsonError("`refinedPrompt` is required");
   }
+  if (refinedPrompt.length > 8000) {
+    return jsonError("`refinedPrompt` exceeds maximum length");
+  }
 
   const builder = activeBuilder();
   const builderUrl = builder.buildUrl(refinedPrompt);
@@ -29,15 +32,31 @@ export async function POST(req: Request): Promise<Response> {
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
+    // Validate that the webhook is an absolute HTTPS URL to prevent SSRF.
+    let hookUrl: URL;
     try {
-      const r = await fetch(hook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
-      });
-      webhook = r.ok ? "sent" : "failed";
+      hookUrl = new URL(hook);
     } catch {
-      webhook = "failed";
+      hookUrl = null as unknown as URL;
+    }
+    if (!hookUrl || hookUrl.protocol !== "https:") {
+      console.warn("[export] BUILDER_WEBHOOK_URL is not a valid HTTPS URL; skipping webhook.");
+    } else {
+      const abort = new AbortController();
+      const timer = setTimeout(() => abort.abort(), 10_000);
+      try {
+        const r = await fetch(hook, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+          signal: abort.signal,
+        });
+        webhook = r.ok ? "sent" : "failed";
+      } catch {
+        webhook = "failed";
+      } finally {
+        clearTimeout(timer);
+      }
     }
   }
 
