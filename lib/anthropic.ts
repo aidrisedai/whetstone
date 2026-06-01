@@ -40,7 +40,15 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  const m = model.match(/^claude-([a-z]+)-(\d+)-(\d+)/);
+  if (!m) return false;
+  const [, family, major, minor] = m;
+  const maj = Number(major);
+  const min = Number(minor);
+  // Opus 4.5+ and Sonnet 4.6+ support adaptive thinking + effort.
+  if (family === "opus" && maj === 4 && min >= 5) return true;
+  if (family === "sonnet" && maj === 4 && min >= 6) return true;
+  return false;
 }
 
 /**
