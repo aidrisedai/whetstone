@@ -1,4 +1,47 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { ChatMessage } from "./types";
+
+/** Max characters allowed in a single user message. */
+const MAX_MSG_CHARS = 8_000;
+/** Max total messages in a history payload. */
+const MAX_HISTORY_LEN = 50;
+/** Max characters for a prompt/code field. */
+const MAX_PROMPT_CHARS = 4_000;
+/** Max bytes for currentCode (the full generated HTML file). */
+const MAX_CODE_BYTES = 200_000;
+
+/** Returns a 400 response if the history array is oversized, otherwise null. */
+export function guardHistory(history: ChatMessage[]): Response | null {
+  if (history.length > MAX_HISTORY_LEN) {
+    return jsonError(`history must not exceed ${MAX_HISTORY_LEN} messages`);
+  }
+  for (const m of history) {
+    if (typeof m.content === "string" && m.content.length > MAX_MSG_CHARS) {
+      return jsonError(`each message must not exceed ${MAX_MSG_CHARS} characters`);
+    }
+  }
+  return null;
+}
+
+/** Returns a 400 response if `text` exceeds `max` characters, otherwise null. */
+export function guardLength(
+  field: string,
+  text: string,
+  max: number = MAX_PROMPT_CHARS,
+): Response | null {
+  if (text.length > max) {
+    return jsonError(`\`${field}\` must not exceed ${max} characters`);
+  }
+  return null;
+}
+
+/** Returns a 400 response if `code` exceeds the code-size limit, otherwise null. */
+export function guardCode(code: string): Response | null {
+  if (Buffer.byteLength(code, "utf8") > MAX_CODE_BYTES) {
+    return jsonError(`\`currentCode\` must not exceed ${MAX_CODE_BYTES / 1000}KB`);
+  }
+  return null;
+}
 
 /** Turn an unknown error into a short, builder-friendly message. */
 export function getErrorMessage(err: unknown): string {
