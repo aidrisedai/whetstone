@@ -1,20 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { copyToClipboard, downloadText } from "@/lib/format";
+import { copyToClipboard, downloadText, tintCode } from "@/lib/format";
 import { CheckIcon, CopyIcon } from "./icons";
-
-/** Tiny dependency-free syntax tint, escaped first. Shared shape with CodeLesson. */
-function tint(code: string): string {
-  let h = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  h = h.replace(/(&quot;|&#39;|"|')(.*?)\1/g, '<span class="tk-str">$1$2$1</span>');
-  h = h.replace(
-    /\b(const|let|var|function|return|for|forEach|map|filter|if|else|new|document|localStorage|addEventListener|try|catch|JSON)\b/g,
-    '<span class="tk-kw">$1</span>',
-  );
-  h = h.replace(/(&lt;\/?)([a-zA-Z0-9]+)/g, '$1<span class="tk-tag">$2</span>');
-  return h;
-}
 
 /**
  * Full-file code viewer with line numbers, light syntax tint, and copy/download.
@@ -78,7 +66,7 @@ export function CodeViewer({
                   {i + 1}
                 </td>
                 <td className="whitespace-pre-wrap break-words px-2 py-0">
-                  <code className="tk" dangerouslySetInnerHTML={{ __html: tint(ln) || "&nbsp;" }} />
+                  <code className="tk" dangerouslySetInnerHTML={{ __html: tintCode(ln) || "&nbsp;" }} />
                 </td>
               </tr>
             ))}

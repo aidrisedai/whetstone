@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BuildLesson, CodeBeat } from "@/lib/types";
-import { assembleBeats, assembleBeatsUpTo } from "@/lib/format";
+import { assembleBeats, assembleBeatsUpTo, tintCode } from "@/lib/format";
 import { askDuringCode } from "@/lib/clientApi";
 import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
@@ -14,18 +14,6 @@ const LANG_BADGE: Record<CodeBeat["lang"], { label: string; cls: string }> = {
   css: { label: "CSS", cls: "border-steel/40 bg-steel/10 text-steel" },
   js: { label: "JS", cls: "border-amber/40 bg-amber/10 text-amber" },
 };
-
-/** Small dependency-free syntax tint for tags / strings / keywords. */
-function tint(code: string): string {
-  let h = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  h = h.replace(/(&quot;|&#39;|"|')(.*?)\1/g, '<span class="tk-str">$1$2$1</span>');
-  h = h.replace(
-    /\b(const|let|var|function|return|for|forEach|map|filter|if|else|new|document|localStorage|addEventListener|try|catch|JSON)\b/g,
-    '<span class="tk-kw">$1</span>',
-  );
-  h = h.replace(/(&lt;\/?)([a-zA-Z0-9]+)/g, '$1<span class="tk-tag">$2</span>');
-  return h;
-}
 
 interface CodeLessonProps {
   lesson: BuildLesson;
@@ -244,9 +232,9 @@ export function CodeLesson({
                       {lines.map((ln, li) => {
                         lineNo += 1;
                         const n = lineNo;
-                        let html = tint(ln);
+                        let html = tintCode(ln);
                         if (active && flash && ln.includes(flash)) {
-                          // wrap the flashed substring (best-effort, escaped already by tint)
+                          // wrap the flashed substring (best-effort, escaped already by tintCode)
                           const safe = flash.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
                           html = html.replace(safe, `<mark class="flash">${safe}</mark>`);
                         }
