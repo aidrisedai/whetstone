@@ -139,15 +139,18 @@ export function WhetstoneApp({
       setScoring(true);
       setBusy(true);
 
-      const [, result] = await Promise.all([
-        runAdvisor(nextHistory, false, advisorMsg.id),
-        runScore(nextHistory),
-      ]);
+      try {
+        const [, result] = await Promise.all([
+          runAdvisor(nextHistory, false, advisorMsg.id),
+          runScore(nextHistory),
+        ]);
 
-      if (result && result.ready && !exportedRef.current) {
-        await triggerExport(nextHistory, result);
+        if (result && result.ready && !exportedRef.current) {
+          await triggerExport(nextHistory, result);
+        }
+      } finally {
+        setBusy(false);
       }
-      setBusy(false);
     },
     [busy, runAdvisor, runScore, triggerExport],
   );
