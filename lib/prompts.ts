@@ -700,8 +700,8 @@ export function extendUserMessage(args: {
 ${known}
 The builder wants to add: "${args.request}"
 
-Current app file:
-${args.currentCode}
+Current app file (excerpt):
+${args.currentCode.slice(0, 8000)}
 
 Turn their request into ONE new buildable part that fits this app.`;
 }
