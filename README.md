@@ -116,9 +116,8 @@ tuned for a 10–11‑year‑old who'd rather be gaming:
   they'll learn. Favorite‑game analogies are woven in.
 - **Teach → approve → build, part by part.** For each part the kid sees the
   explanation, then taps **"Build it!"** — only *then* is the code generated. The
-  first part is a full, streamed file (Sonnet 4.6); each later part is added to the
-  **same app** via fast targeted edits (with a full‑rebuild fallback), so the app
-  visibly **grows** one accepted piece at a time.
+  first part is a full file; each later part adds on top of the existing code via the
+  lesson‑build route (Opus 4.8), so the app visibly **grows** one accepted piece at a time.
 - **Delightful feedback.** Each accepted part fires confetti, **+XP**, a level
   bar, and a quest‑map stepper — learning that feels like leveling up.
 - **Keep it.** Download the `.html`, ask for free‑form changes at the end, or open
@@ -141,7 +140,7 @@ All optional — see [`.env.example`](./.env.example).
 | `WHETSTONE_ADVISOR_MODEL` | `claude-sonnet-4-6`| Fast, responsive model for the live conversation (try `claude-haiku-4-5`). |
 | `WHETSTONE_SCORING_MODEL` | `claude-opus-4-8`  | Deliberate model for scoring + prompt synthesis (runs each turn). |
 | `WHETSTONE_LESSON_MODEL`  | `claude-opus-4-8`  | Deliberate model for the one-shot closing lesson.              |
-| `WHETSTONE_BUILDER_MODEL` | `claude-sonnet-4-6`| Fast, streamed code model that generates the app.              |
+| `WHETSTONE_BUILDER_MODEL` | `claude-opus-4-8`  | Code model that generates the lesson beats and the built app.  |
 | `WHETSTONE_COACH_MODEL`   | `claude-opus-4-8`  | Coach Spark — the build plan and per‑step teaching.            |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
