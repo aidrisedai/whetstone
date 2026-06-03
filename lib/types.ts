@@ -134,7 +134,7 @@ export interface BoardItem {
   kind: "title" | "bullet" | "box" | "arrow" | "code" | "note" | "callout" | "equation" | "fact";
   text: string;
   /** Highlighter/pen color hint for a hand-drawn look. */
-  color?: "blue" | "pink" | "yellow" | "green" | "teal" | "red" | "amber";
+  color?: "blue" | "pink" | "yellow" | "green" | "teal" | "red" | "amber" | "none";
   /** For arrow: optional label already in text. Visual emphasis hint. */
   emphasis?: boolean;
 }
