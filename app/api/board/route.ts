@@ -74,7 +74,7 @@ export async function POST(req: Request): Promise<Response> {
         items: (Array.isArray(s.items) ? s.items : []).map((it) => ({
           ...it,
           // The schema allows "none"; drop it so it doesn't become a CSS class.
-          color: it.color && it.color !== ("none" as typeof it.color) ? it.color : undefined,
+          color: it.color && it.color !== "none" ? it.color : undefined,
         })),
         ask: s.ask && s.ask.trim() ? s.ask.trim() : undefined,
       })),
