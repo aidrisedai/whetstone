@@ -131,11 +131,10 @@ export interface BuildLesson {
 
 /** One item drawn on the whiteboard during the teaching stage. */
 export interface BoardItem {
-  kind: "title" | "bullet" | "box" | "arrow" | "code" | "note" | "callout" | "equation" | "fact";
+  kind: "title" | "bullet" | "box" | "arrow" | "code" | "note" | "callout" | "equation" | "fact" | "none";
   text: string;
-  /** Highlighter/pen color hint for a hand-drawn look. */
-  color?: "blue" | "pink" | "yellow" | "green" | "teal" | "red" | "amber";
-  /** For arrow: optional label already in text. Visual emphasis hint. */
+  /** Highlighter/pen color hint for a hand-drawn look. "none" means uncolored. */
+  color?: "blue" | "pink" | "yellow" | "green" | "teal" | "red" | "amber" | "none";
   emphasis?: boolean;
 }
 

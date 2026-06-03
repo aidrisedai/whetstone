@@ -177,8 +177,7 @@ export function Whiteboard({
 
   useEffect(() => {
     setChat([{ who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` }]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // intentional: run once on mount only
 
   const beginLesson = useCallback(() => {
     teacher.prime();
