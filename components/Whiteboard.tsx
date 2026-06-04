@@ -250,6 +250,7 @@ export function Whiteboard({
             type="button"
             onClick={() => setShowType((v) => !v)}
             title="Notes"
+            aria-label="Notes"
             className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/70 text-[color:var(--ink-soft)] shadow ring-1 ring-black/5 hover:text-[color:var(--ink)]"
           >
             <BookIcon className="h-4 w-4" />
@@ -315,6 +316,7 @@ export function Whiteboard({
                 type="button"
                 onClick={togglePause}
                 title={paused ? "Resume" : "Pause"}
+                aria-label={paused ? "Resume" : "Pause"}
                 className="grid h-9 w-9 place-items-center rounded-full bg-panel2/10 text-[color:var(--ink-soft)] ring-1 ring-black/10 hover:text-[color:var(--ink)]"
               >
                 {paused ? <PlayIcon className="h-4 w-4" /> : <PauseIcon className="h-4 w-4" />}
@@ -336,6 +338,7 @@ export function Whiteboard({
                 type="button"
                 onClick={() => setShowType((v) => !v)}
                 title="Type to your teacher"
+                aria-label="Type to your teacher"
                 className={`grid h-10 w-10 place-items-center rounded-full ring-1 ring-black/10 transition-colors ${
                   showType ? "bg-ember/15 text-ember" : "bg-white text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]"
                 }`}
@@ -350,6 +353,7 @@ export function Whiteboard({
                     mic.listening ? mic.stop() : mic.start(input);
                   }}
                   title={mic.listening ? "Stop" : "Talk to your teacher"}
+                  aria-label={mic.listening ? "Stop" : "Talk to your teacher"}
                   className={`relative grid h-11 w-11 place-items-center rounded-full shadow transition-colors ${
                     mic.listening ? "bg-ember text-white" : "bg-white text-[color:var(--ink)] ring-1 ring-black/10"
                   }`}

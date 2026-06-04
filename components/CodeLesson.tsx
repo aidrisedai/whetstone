@@ -297,6 +297,7 @@ export function CodeLesson({
             type="button"
             onClick={togglePause}
             title={paused ? "Resume" : "Pause"}
+            aria-label={paused ? "Resume" : "Pause"}
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted ring-1 ring-line hover:text-ink"
           >
             {paused ? <PlayIcon className="h-4 w-4" /> : <PauseIcon className="h-4 w-4" />}

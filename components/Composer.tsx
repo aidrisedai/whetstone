@@ -149,6 +149,7 @@ export function Composer({
             onClick={() => fileRef.current?.click()}
             disabled={disabled}
             title="Attach an image (sketch, mockup, screenshot)"
+            aria-label="Attach an image (sketch, mockup, screenshot)"
             className="grid h-10 w-10 place-items-center rounded-xl text-muted transition-colors hover:bg-panel2 hover:text-ink disabled:opacity-40"
           >
             <ImageIcon className="h-5 w-5" />
@@ -160,6 +161,7 @@ export function Composer({
               onClick={toggleMic}
               disabled={disabled}
               title={listening ? "Stop voice input" : "Speak your idea"}
+              aria-label={listening ? "Stop voice input" : "Speak your idea"}
               className={[
                 "relative grid h-10 w-10 place-items-center rounded-xl transition-colors disabled:opacity-40",
                 listening ? "bg-ember text-base" : "text-muted hover:bg-panel2 hover:text-ink",
