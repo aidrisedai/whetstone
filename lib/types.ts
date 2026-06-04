@@ -157,7 +157,6 @@ export interface BoardLesson {
 
 /** One multiple-choice checkpoint question, generated from the real code + prompt. */
 export interface QuizQuestion {
-  id: string;
   question: string;
   /** A short, exact snippet from THIS app's code the question is about (optional). */
   codeRef?: string;

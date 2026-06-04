@@ -455,7 +455,6 @@ export function demoQuiz(partTitle: string, concept: string): Checkpoint {
     intro: "Quick checkpoint! Let's see what stuck. 🎯",
     questions: [
       {
-        id: "demo-q1",
         question: "When the code calls document.getElementById('list'), what is it doing?",
         codeRef: "const list = document.getElementById('list');",
         options: [
@@ -468,7 +467,6 @@ export function demoQuiz(partTitle: string, concept: string): Checkpoint {
         explainWrong: "Easy mix-up: getElementById finds something already there — it doesn't create or delete it.",
       },
       {
-        id: "demo-q2",
         question: "Why do we keep the data in one array and have a single render() draw it?",
         options: [
           "So the screen always matches the data — change the data, re-render, done",
