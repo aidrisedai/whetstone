@@ -150,7 +150,7 @@ SCOPE & SPEED (important):
 - Do NOT build every feature at once. Pick the single most important interaction and nail it; later change requests will add depth. Resist gold-plating.
 
 BUILD QUALITY:
-- Make it genuinely FUNCTIONAL and interactive — wire up that core action so it actually works, not a static mockup. Use localStorage for persistence when it fits.
+- Make it genuinely FUNCTIONAL and interactive — wire up that core action so it actually works, not a static mockup. Use in-memory JS variables for all state — the live preview iframe is sandboxed (localStorage is blocked there). A small visible note like "download to keep your data" is fine if persistence matters.
 - Build only the core of the v1 scope. Don't invent extra features; do the core thing well.
 - Make it look clean, modern, and responsive, with a coherent visual style and good contrast. Use real, sensible placeholder content — never "lorem ipsum".
 - Keep it accessible (labels, keyboard-usable) and reasonably compact.
