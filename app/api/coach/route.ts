@@ -17,7 +17,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const refinedPrompt = (body.refinedPrompt ?? "").trim();
   const projectType = (body.projectType ?? "App").trim();
-  const step = typeof body.step === "number" ? body.step : 1;
+  const step = typeof body.step === "number" ? Math.max(1, Math.min(999, Math.round(body.step))) : 1;
   const changeRequest = (body.changeRequest ?? "").trim();
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
 

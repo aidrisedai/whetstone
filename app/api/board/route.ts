@@ -31,7 +31,9 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const part = body.part;
-  if (!part || !part.title) return jsonError("`part` is required");
+  if (!part || !part.title || !part.concept || !part.buildSpec) {
+    return jsonError("`part` must include title, concept, and buildSpec");
+  }
   const partNumber = typeof body.partNumber === "number" ? body.partNumber : 1;
   const totalParts = typeof body.totalParts === "number" ? body.totalParts : 1;
 

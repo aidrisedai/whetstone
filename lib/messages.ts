@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { ChatMessage, CriterionSpec } from "./types";
+import type { ChatMessage, CriterionSpec, ImageMediaType } from "./types";
 
 /**
  * Convert Whetstone's chat history into Anthropic message params, mapping the
@@ -15,8 +15,7 @@ export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessagePa
       for (const img of m.images) {
         blocks.push({
           type: "image",
-          // media_type is a narrow union in the SDK types; the value is validated server-side.
-          source: { type: "base64", media_type: img.mediaType, data: img.data } as never,
+          source: { type: "base64" as const, media_type: img.mediaType as ImageMediaType, data: img.data },
         });
       }
     }
