@@ -1,5 +1,21 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+/** Reject oversized request bodies before handing them to Claude. */
+export async function withSizeLimit(
+  req: Request,
+  limitBytes: number,
+): Promise<{ body: string } | Response> {
+  const contentLength = req.headers.get("content-length");
+  if (contentLength && Number(contentLength) > limitBytes) {
+    return jsonError(`Request body too large (max ${Math.round(limitBytes / 1024)} KB)`, 413);
+  }
+  const body = await req.text();
+  if (body.length > limitBytes) {
+    return jsonError(`Request body too large (max ${Math.round(limitBytes / 1024)} KB)`, 413);
+  }
+  return { body };
+}
+
 /** Turn an unknown error into a short, builder-friendly message. */
 export function getErrorMessage(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) {

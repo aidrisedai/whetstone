@@ -2,7 +2,7 @@ import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { ADVISOR_SYSTEM, advisorClosingNote } from "@/lib/prompts";
 import { demoAdvisorReply } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, withSizeLimit } from "@/lib/serverUtils";
 import type { ChatMessage } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -14,12 +14,18 @@ const STREAM_HEADERS = {
   "X-Accel-Buffering": "no",
 };
 
+// 4 MB covers ~20 turns with a couple of moderate images attached.
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(req: Request): Promise<Response> {
+  const checked = await withSizeLimit(req, MAX_BODY_BYTES);
+  if (checked instanceof Response) return checked;
+
   let body: { history?: ChatMessage[]; phase?: string };
   try {
-    body = await req.json();
+    body = JSON.parse(checked.body) as { history?: ChatMessage[]; phase?: string };
   } catch {
     return jsonError("Invalid JSON body");
   }

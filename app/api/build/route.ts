@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
 import { BUILD_SYSTEM, buildUserMessage } from "@/lib/prompts";
 import { demoBuildHtml } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, withSizeLimit } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,9 +12,15 @@ const STREAM_HEADERS = {
   "X-Accel-Buffering": "no",
 };
 
+// 512 KB covers even large iterative builds with full currentCode attached.
+const MAX_BODY_BYTES = 512 * 1024;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(req: Request): Promise<Response> {
+  const checked = await withSizeLimit(req, MAX_BODY_BYTES);
+  if (checked instanceof Response) return checked;
+
   let body: {
     refinedPrompt?: string;
     projectType?: string;
@@ -22,7 +28,7 @@ export async function POST(req: Request): Promise<Response> {
     changeRequest?: string;
   };
   try {
-    body = await req.json();
+    body = JSON.parse(checked.body) as typeof body;
   } catch {
     return jsonError("Invalid JSON body");
   }
