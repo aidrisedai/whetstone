@@ -58,6 +58,11 @@ let client: Anthropic | null = null;
 
 /** Lazily construct the SDK client (reads ANTHROPIC_API_KEY from the environment). */
 export function getClient(): Anthropic {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error(
+      "ANTHROPIC_API_KEY is not set. Add it to your .env.local or set WHETSTONE_DEMO=1 to use demo mode.",
+    );
+  }
   if (!client) {
     client = new Anthropic();
   }

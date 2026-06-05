@@ -90,7 +90,7 @@ export function normalizeDynamicCriteria(
       };
     });
   }
-  return deduped.slice(0, 3);
+  return deduped.slice(0, 3).map((d) => ({ ...d, score: clamp(d.score) }));
 }
 
 function clampInt(value: string | undefined, fallback: number): number {
