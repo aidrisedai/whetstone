@@ -20,6 +20,9 @@ export async function POST(req: Request): Promise<Response> {
   if (!Array.isArray(history) || history.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  if (history.length > 40) {
+    return jsonError("`history` must not exceed 40 messages");
+  }
 
   if (isDemoMode()) {
     return Response.json(demoLesson(history));
