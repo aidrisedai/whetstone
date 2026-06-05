@@ -18,6 +18,7 @@ export function getErrorMessage(err: unknown): string {
 /**
  * Parse JSON that may be wrapped in code fences or surrounded by stray prose.
  * Structured outputs return clean JSON, but this keeps the path robust.
+ * Returns an empty object cast to T on any parse failure rather than throwing.
  */
 export function safeParseJson<T>(text: string): T {
   const trimmed = (text ?? "").trim();
@@ -26,7 +27,11 @@ export function safeParseJson<T>(text: string): T {
   const start = candidate.indexOf("{");
   const end = candidate.lastIndexOf("}");
   const slice = start >= 0 && end >= start ? candidate.slice(start, end + 1) : candidate;
-  return JSON.parse(slice) as T;
+  try {
+    return JSON.parse(slice) as T;
+  } catch {
+    return {} as T;
+  }
 }
 
 export function jsonError(message: string, status = 400): Response {
