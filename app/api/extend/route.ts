@@ -24,6 +24,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const request = (body.request ?? "").trim();
   if (!request) return jsonError("`request` is required");
+  const currentCode = (body.currentCode ?? "").slice(0, 200_000);
 
   if (isDemoMode()) {
     return Response.json({ ...demoExtendPart(request), id: uid("part") });
@@ -42,7 +43,7 @@ export async function POST(req: Request): Promise<Response> {
             projectName: body.projectName ?? "the app",
             refinedPrompt: body.refinedPrompt ?? "",
             request,
-            currentCode: body.currentCode ?? "",
+            currentCode,
             knownConcepts: Array.isArray(body.knownConcepts) ? body.knownConcepts : [],
           }),
         },

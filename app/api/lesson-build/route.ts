@@ -6,6 +6,7 @@ import type { BuildLesson, CodeBeat } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 interface PartInput {
   title: string;

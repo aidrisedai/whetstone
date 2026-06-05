@@ -23,6 +23,9 @@ export async function POST(req: Request): Promise<Response> {
 
   const studentSaid = (body.studentSaid ?? "").trim();
   if (!studentSaid) return jsonError("`studentSaid` is required");
+  // Cap code fields to bound token cost.
+  const beatCode = (body.beatCode ?? "").slice(0, 50_000);
+  const fileSoFar = (body.fileSoFar ?? "").slice(0, 200_000);
 
   if (isDemoMode()) {
     return Response.json(demoCodeAsk(studentSaid, body.beatCode ?? ""));
@@ -42,8 +45,8 @@ export async function POST(req: Request): Promise<Response> {
             projectName: body.projectName ?? "the app",
             partTitle: body.partTitle ?? "this part",
             beatLabel: body.beatLabel ?? "this chunk",
-            beatCode: body.beatCode ?? "",
-            fileSoFar: body.fileSoFar ?? "",
+            beatCode,
+            fileSoFar,
             studentSaid,
           }),
         },

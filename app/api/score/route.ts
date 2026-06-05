@@ -19,11 +19,12 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const history = body.history ?? [];
+  const rawHistory = body.history ?? [];
   const priorCriteria = body.priorCriteria ?? null;
-  if (!Array.isArray(history) || history.length === 0) {
+  if (!Array.isArray(rawHistory) || rawHistory.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  const history = rawHistory.slice(-40);
 
   const threshold = DEFAULT_THRESHOLD;
 

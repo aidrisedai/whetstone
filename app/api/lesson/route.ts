@@ -16,10 +16,11 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const history = body.history ?? [];
-  if (!Array.isArray(history) || history.length === 0) {
+  const raw = body.history ?? [];
+  if (!Array.isArray(raw) || raw.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  const history = raw.slice(-40);
 
   if (isDemoMode()) {
     return Response.json(demoLesson(history));

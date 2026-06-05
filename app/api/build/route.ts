@@ -5,6 +5,7 @@ import { getErrorMessage, jsonError } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const STREAM_HEADERS = {
   "Content-Type": "text/plain; charset=utf-8",
@@ -30,6 +31,8 @@ export async function POST(req: Request): Promise<Response> {
   const refinedPrompt = (body.refinedPrompt ?? "").trim();
   const projectType = (body.projectType ?? "App").trim();
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
+  // Cap existing code to 200 KB to bound token cost on iterative edits.
+  const currentCode = (body.currentCode ?? "").slice(0, 200_000);
 
   const encoder = new TextEncoder();
 
@@ -52,7 +55,7 @@ export async function POST(req: Request): Promise<Response> {
   const userMessage = buildUserMessage({
     refinedPrompt,
     projectType,
-    currentCode: body.currentCode,
+    currentCode,
     changeRequest: body.changeRequest,
   });
 
