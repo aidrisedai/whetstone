@@ -18,6 +18,7 @@ export async function POST(req: Request): Promise<Response> {
   const currentCode = body.currentCode ?? "";
   const changeRequest = (body.changeRequest ?? "").trim();
   if (!currentCode) return jsonError("`currentCode` is required");
+  if (currentCode.length > 200_000) return jsonError("`currentCode` exceeds 200 KB limit");
   if (!changeRequest) return jsonError("`changeRequest` is required");
 
   if (isDemoMode()) {

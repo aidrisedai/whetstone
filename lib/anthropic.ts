@@ -40,7 +40,20 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  // Parse major.minor and compare numerically so 4.9, 5.0, etc. are handled correctly.
+  const opusMatch = model.match(/^claude-opus-(\d+)-(\d+)/);
+  if (opusMatch) {
+    const major = Number(opusMatch[1]);
+    const minor = Number(opusMatch[2]);
+    return major > 4 || (major === 4 && minor >= 5);
+  }
+  const sonnetMatch = model.match(/^claude-sonnet-(\d+)-(\d+)/);
+  if (sonnetMatch) {
+    const major = Number(sonnetMatch[1]);
+    const minor = Number(sonnetMatch[2]);
+    return major > 4 || (major === 4 && minor >= 6);
+  }
+  return false;
 }
 
 /**

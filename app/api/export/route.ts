@@ -5,6 +5,17 @@ import type { ExportResult } from "@/lib/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** Returns the URL only if it is a valid http/https URL, otherwise null. */
+function safeWebhookUrl(raw: string | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const { protocol } = new URL(raw);
+    return protocol === "http:" || protocol === "https:" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Hand the sharpened prompt off to the connected AI builder. Always returns a
  * deep link that prefills the builder; if BUILDER_WEBHOOK_URL is configured,
@@ -27,7 +38,8 @@ export async function POST(req: Request): Promise<Response> {
   const builderUrl = builder.buildUrl(refinedPrompt);
 
   let webhook: ExportResult["webhook"] = "skipped";
-  const hook = process.env.BUILDER_WEBHOOK_URL;
+  const rawHook = process.env.BUILDER_WEBHOOK_URL;
+  const hook = safeWebhookUrl(rawHook);
   if (hook) {
     try {
       const r = await fetch(hook, {
