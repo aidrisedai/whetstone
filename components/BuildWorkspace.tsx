@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   BoardLesson,
   BuildPlan,
@@ -62,29 +62,34 @@ type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "chec
 /* ----------------------------- small parts ----------------------------- */
 
 function Confetti() {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: 26 }, (_, i) => ({
+        i,
+        left: Math.random() * 100,
+        delay: Math.random() * 0.25,
+        dur: 1 + Math.random() * 0.9,
+        size: 6 + Math.random() * 9,
+      })),
+    [],
+  );
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-      {Array.from({ length: 26 }).map((_, i) => {
-        const left = Math.random() * 100;
-        const delay = Math.random() * 0.25;
-        const dur = 1 + Math.random() * 0.9;
-        const size = 6 + Math.random() * 9;
-        return (
-          <span
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: "-14px",
-              width: size,
-              height: size,
-              background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-              borderRadius: i % 2 ? "50%" : "2px",
-              animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
-            }}
-          />
-        );
-      })}
+      {pieces.map(({ i, left, delay, dur, size }) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${left}%`,
+            top: "-14px",
+            width: size,
+            height: size,
+            background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            borderRadius: i % 2 ? "50%" : "2px",
+            animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
+          }}
+        />
+      ))}
     </div>
   );
 }

@@ -144,10 +144,13 @@ export function WhetstoneApp({
         runScore(nextHistory),
       ]);
 
-      if (result && result.ready && !exportedRef.current) {
-        await triggerExport(nextHistory, result);
+      try {
+        if (result && result.ready && !exportedRef.current) {
+          await triggerExport(nextHistory, result);
+        }
+      } finally {
+        setBusy(false);
       }
-      setBusy(false);
     },
     [busy, runAdvisor, runScore, triggerExport],
   );
