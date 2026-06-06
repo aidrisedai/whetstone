@@ -31,6 +31,11 @@ export async function POST(req: Request): Promise<Response> {
   const projectType = (body.projectType ?? "App").trim();
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
 
+  const MAX_CODE_BYTES = 200_000;
+  if ((body.currentCode ?? "").length > MAX_CODE_BYTES) {
+    return jsonError("`currentCode` exceeds the 200 KB limit");
+  }
+
   const encoder = new TextEncoder();
 
   // Demo mode — stream a real, self-contained starter app line-by-line.
