@@ -2,7 +2,7 @@ import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { ADVISOR_SYSTEM, advisorClosingNote } from "@/lib/prompts";
 import { demoAdvisorReply } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { capHistory, getErrorMessage, jsonError } from "@/lib/serverUtils";
 import type { ChatMessage } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -24,11 +24,12 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const history = body.history ?? [];
+  const rawHistory = body.history ?? [];
   const closing = body.phase === "closing";
-  if (!Array.isArray(history) || history.length === 0) {
+  if (!Array.isArray(rawHistory) || rawHistory.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  const history = capHistory(rawHistory, 30);
 
   const encoder = new TextEncoder();
 

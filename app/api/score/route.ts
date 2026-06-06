@@ -3,7 +3,7 @@ import { criteriaReuseMessage, toAnthropicMessages } from "@/lib/messages";
 import { SCORE_SCHEMA, SCORE_SYSTEM } from "@/lib/prompts";
 import { DEFAULT_THRESHOLD, finalizeAssessment, normalizeDynamicCriteria } from "@/lib/scoring";
 import { demoAssessment } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { capHistory, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 import type { Assessment, ChatMessage, CriterionSpec } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -19,11 +19,12 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const history = body.history ?? [];
+  const rawHistory = body.history ?? [];
   const priorCriteria = body.priorCriteria ?? null;
-  if (!Array.isArray(history) || history.length === 0) {
+  if (!Array.isArray(rawHistory) || rawHistory.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  const history = capHistory(rawHistory, 30);
 
   const threshold = DEFAULT_THRESHOLD;
 

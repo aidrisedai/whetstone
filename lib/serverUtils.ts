@@ -35,3 +35,13 @@ export function jsonError(message: string, status = 400): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+/** Caps a string to `max` chars and trims it. */
+export function capString(s: string | undefined | null, max: number): string {
+  return (s ?? "").trim().slice(0, max);
+}
+
+/** Caps the number of messages in a history array to avoid oversized LLM calls. */
+export function capHistory<T>(history: T[], maxTurns: number): T[] {
+  return history.slice(-maxTurns);
+}
