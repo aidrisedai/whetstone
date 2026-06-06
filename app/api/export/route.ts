@@ -29,6 +29,20 @@ export async function POST(req: Request): Promise<Response> {
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
+    // Only allow http/https to prevent SSRF from a misconfigured env var.
+    let hookUrl: URL;
+    try {
+      hookUrl = new URL(hook);
+    } catch {
+      webhook = "failed";
+      const result: ExportResult = { builderName: builder.name, builderUrl, webhook };
+      return Response.json(result);
+    }
+    if (hookUrl.protocol !== "http:" && hookUrl.protocol !== "https:") {
+      webhook = "failed";
+      const result: ExportResult = { builderName: builder.name, builderUrl, webhook };
+      return Response.json(result);
+    }
     try {
       const r = await fetch(hook, {
         method: "POST",

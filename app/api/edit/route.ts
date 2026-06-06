@@ -19,6 +19,11 @@ export async function POST(req: Request): Promise<Response> {
   const changeRequest = (body.changeRequest ?? "").trim();
   if (!currentCode) return jsonError("`currentCode` is required");
   if (!changeRequest) return jsonError("`changeRequest` is required");
+  // Cap payload to prevent memory/token exhaustion from oversized apps.
+  const MAX_CODE_BYTES = 200 * 1024;
+  if (Buffer.byteLength(currentCode, "utf8") > MAX_CODE_BYTES) {
+    return jsonError("`currentCode` exceeds the 200 KB limit");
+  }
 
   if (isDemoMode()) {
     return Response.json(demoEdits(changeRequest));
