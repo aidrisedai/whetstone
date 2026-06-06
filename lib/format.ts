@@ -31,15 +31,22 @@ export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
   );
 }
 
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB — matches Anthropic's recommended limit
+
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */
 export function fileToAttachment(file: File): Promise<ImageAttachment> {
+  if (file.size > MAX_IMAGE_BYTES) {
+    return Promise.reject(new Error(`Image "${file.name}" exceeds the 5 MB limit.`));
+  }
+  const mediaType = ALLOWED_IMAGE_TYPES.has(file.type) ? file.type : "image/png";
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result);
       const comma = result.indexOf(",");
       resolve({
-        mediaType: file.type || "image/png",
+        mediaType,
         data: comma >= 0 ? result.slice(comma + 1) : result,
         name: file.name,
       });

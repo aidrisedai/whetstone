@@ -1,22 +1,33 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { ChatMessage, CriterionSpec } from "./types";
 
+type SdkImageMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+const ALLOWED_SDK_TYPES = new Set<string>(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+function toSdkMediaType(raw: string): SdkImageMediaType {
+  return ALLOWED_SDK_TYPES.has(raw) ? (raw as SdkImageMediaType) : "image/png";
+}
+
+// Keep at most this many turns to avoid blowing the context window on long sessions.
+const MAX_HISTORY_TURNS = 40;
+
 /**
  * Convert Whetstone's chat history into Anthropic message params, mapping the
  * "advisor" role to "assistant" and turning image attachments into vision
  * blocks. Only user turns may carry images (the advisor never sends any).
+ * Images are dropped from older turns to stay within context limits.
  */
 export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessageParam[] {
-  return history.map((m) => {
+  const turns = history.slice(-MAX_HISTORY_TURNS);
+  const imageDropCutoff = turns.length - 6; // only keep images in the 3 most-recent exchanges
+  return turns.map((m, i) => {
     const role: "user" | "assistant" = m.role === "advisor" ? "assistant" : "user";
     const blocks: Anthropic.ContentBlockParam[] = [];
 
-    if (role === "user" && m.images?.length) {
+    if (role === "user" && m.images?.length && i >= imageDropCutoff) {
       for (const img of m.images) {
         blocks.push({
           type: "image",
-          // media_type is a narrow union in the SDK types; the value is validated server-side.
-          source: { type: "base64", media_type: img.mediaType, data: img.data } as never,
+          source: { type: "base64", media_type: toSdkMediaType(img.mediaType), data: img.data },
         });
       }
     }

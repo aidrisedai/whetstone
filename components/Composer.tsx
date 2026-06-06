@@ -48,8 +48,13 @@ export function Composer({
 
   async function addFiles(files: FileList | File[]) {
     const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    const next = await Promise.all(accepted.map(fileToAttachment));
-    if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
+    const results = await Promise.allSettled(accepted.map(fileToAttachment));
+    const succeeded = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    const errors = results.flatMap((r) =>
+      r.status === "rejected" ? [(r.reason as Error).message ?? "Could not read file"] : [],
+    );
+    if (errors.length) alert(errors.join("\n"));
+    if (succeeded.length) setImages((prev) => [...prev, ...succeeded].slice(0, 4));
   }
 
   function submit() {
