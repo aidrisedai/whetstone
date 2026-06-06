@@ -35,3 +35,11 @@ export function jsonError(message: string, status = 400): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+/** 200 KB hard cap on generated app code sent back to the server. */
+export const MAX_CODE_BYTES = 200_000;
+
+/** Returns true when a code string exceeds the per-request cap. */
+export function exceedsCodeLimit(code: string | undefined): boolean {
+  return typeof code === "string" && code.length > MAX_CODE_BYTES;
+}
