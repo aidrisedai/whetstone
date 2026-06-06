@@ -37,6 +37,8 @@ export async function streamAdvisor(
     if (done) break;
     if (value) onChunk(decoder.decode(value, { stream: true }));
   }
+  const tail = decoder.decode();
+  if (tail) onChunk(tail);
 }
 
 export async function fetchScore(
@@ -109,6 +111,8 @@ export async function streamBuild(
     if (done) break;
     if (value) onChunk(decoder.decode(value, { stream: true }));
   }
+  const tail = decoder.decode();
+  if (tail) onChunk(tail);
 }
 
 export async function fetchCoach(payload: {
