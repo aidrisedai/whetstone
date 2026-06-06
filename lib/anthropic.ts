@@ -40,7 +40,9 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  const opusV = model.match(/^claude-opus-4-(\d+)\b/);
+  const sonnetV = model.match(/^claude-sonnet-4-(\d+)\b/);
+  return (opusV ? parseInt(opusV[1]) >= 5 : false) || (sonnetV ? parseInt(sonnetV[1]) >= 6 : false);
 }
 
 /**
