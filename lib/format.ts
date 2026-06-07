@@ -20,17 +20,6 @@ export function assembleBeatsUpTo(beats: CodeBeat[], index: number): string {
     .join("");
 }
 
-/** A reassembled beat lesson is usable only if it forms a real HTML document. */
-export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
-  const full = assembleBeats(beats).trim();
-  return (
-    full.length > 0 &&
-    /<!DOCTYPE html/i.test(full.slice(0, 200)) &&
-    /<\/html>\s*$/i.test(full) &&
-    full.includes("<body")
-  );
-}
-
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */
 export function fileToAttachment(file: File): Promise<ImageAttachment> {
   return new Promise((resolve, reject) => {
@@ -59,13 +48,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     /* falls through */
   }
   return false;
-}
-
-/** Strip any stray markdown code fences the model may have wrapped the HTML in. */
-export function cleanGeneratedHtml(text: string): string {
-  let t = (text ?? "").trim();
-  t = t.replace(/^```[a-zA-Z]*\s*/, "").replace(/\s*```$/, "");
-  return t.trim();
 }
 
 /**
