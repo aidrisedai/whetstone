@@ -72,9 +72,10 @@ export async function POST(req: Request): Promise<Response> {
       steps: (parsed.steps || []).filter((s) => s && s.say).map((s) => ({
         say: s.say,
         items: (Array.isArray(s.items) ? s.items : []).map((it) => ({
-          ...it,
-          // The schema allows "none"; drop it so it doesn't become a CSS class.
-          color: it.color && it.color !== ("none" as typeof it.color) ? it.color : undefined,
+          kind: it.kind,
+          text: it.text,
+          color: it.color,
+          emphasis: it.emphasis,
         })),
         ask: s.ask && s.ask.trim() ? s.ask.trim() : undefined,
       })),
