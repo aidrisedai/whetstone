@@ -29,6 +29,9 @@ export async function POST(req: Request): Promise<Response> {
   if (!Array.isArray(history) || history.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  if (history.length > 200) {
+    return jsonError("`history` must not exceed 200 messages");
+  }
 
   const encoder = new TextEncoder();
 
@@ -66,7 +69,6 @@ export async function POST(req: Request): Promise<Response> {
             controller.enqueue(encoder.encode(event.delta.text));
           }
         }
-        await messageStream.finalMessage();
         controller.close();
       } catch (err) {
         controller.enqueue(encoder.encode(`\n\n⚠️ ${getErrorMessage(err)}`));
