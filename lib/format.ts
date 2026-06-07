@@ -31,9 +31,15 @@ export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
   );
 }
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */
 export function fileToAttachment(file: File): Promise<ImageAttachment> {
   return new Promise((resolve, reject) => {
+    if (file.size > MAX_IMAGE_BYTES) {
+      reject(new Error(`Image too large (max 5 MB): ${file.name}`));
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result);

@@ -46,10 +46,16 @@ export function Composer({
 
   const intake = variant === "intake";
 
+  const [fileError, setFileError] = useState<string | null>(null);
+
   async function addFiles(files: FileList | File[]) {
+    setFileError(null);
     const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    const next = await Promise.all(accepted.map(fileToAttachment));
-    if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
+    const results = await Promise.allSettled(accepted.map(fileToAttachment));
+    const succeeded = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    const firstFail = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+    if (firstFail) setFileError(firstFail.reason instanceof Error ? firstFail.reason.message : "Could not attach image");
+    if (succeeded.length) setImages((prev) => [...prev, ...succeeded].slice(0, 4));
   }
 
   function submit() {
@@ -186,6 +192,9 @@ export function Composer({
 
       {listening && (
         <div className="mt-1.5 px-2 text-xs font-medium text-ember">listening… speak now</div>
+      )}
+      {fileError && (
+        <div className="mt-1.5 px-2 text-xs text-warn">{fileError}</div>
       )}
     </div>
   );
