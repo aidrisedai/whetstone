@@ -24,6 +24,9 @@ export async function POST(req: Request): Promise<Response> {
   if (!Array.isArray(history) || history.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  if (history.length > 200) {
+    return jsonError("`history` must not exceed 200 messages");
+  }
 
   const threshold = DEFAULT_THRESHOLD;
 
