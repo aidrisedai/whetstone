@@ -40,7 +40,10 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  // Adaptive thinking + effort are supported on Opus 4.5+ and Sonnet 4.6+.
+  // The regex covers all numeric minor versions >= 5 for Opus and >= 6 for Sonnet
+  // so that future model drops (4.9, 4.10, …) work without a code change.
+  return /^claude-opus-4-([5-9]|\d{2,})\b/.test(model) || /^claude-sonnet-4-([6-9]|\d{2,})\b/.test(model);
 }
 
 /**

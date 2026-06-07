@@ -34,8 +34,8 @@ export function saveProfile(p: BuilderProfile): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(KEY, JSON.stringify(p));
-  } catch {
-    /* ignore */
+  } catch (err) {
+    console.error("[whetstone] Failed to save profile to localStorage:", err);
   }
 }
 

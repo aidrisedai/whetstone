@@ -235,7 +235,12 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   }, [makePlan, refinedPrompt]);
 
   const startFromProfile = () => {
-    const p: BuilderProfile = { ...profile, name: nameField.trim(), favoriteGame: gameField.trim() };
+    const name = nameField.trim();
+    if (!name) {
+      setError("Please enter your name before starting.");
+      return;
+    }
+    const p: BuilderProfile = { ...profile, name, favoriteGame: gameField.trim() };
     setProfile(p);
     saveProfile(p);
     void makePlan(p);
