@@ -70,7 +70,9 @@ export function normalizeDynamicCriteria(
   items: DynamicCriterion[] | undefined,
   prior: CriterionSpec[] | null,
 ): DynamicCriterion[] {
-  const list = Array.isArray(items) ? items.filter((it) => it && typeof it.key === "string") : [];
+  const list = Array.isArray(items)
+    ? items.filter((it) => it && typeof it.key === "string" && /^[a-z][a-z0-9_]{0,49}$/.test(it.key))
+    : [];
   const byKey = new Map<string, DynamicCriterion>();
   for (const it of list) {
     if (!byKey.has(it.key)) byKey.set(it.key, it);

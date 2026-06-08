@@ -101,7 +101,9 @@ export function WhetstoneApp({
       setExported(true);
       setLessonLoading(true);
 
-      void requestExport(result.refinedPrompt).then(setExportResult).catch(() => {});
+      void requestExport(result.refinedPrompt)
+        .then(setExportResult)
+        .catch((err) => console.warn("[export] Failed to fetch export result:", err));
       void copyToClipboard(result.refinedPrompt).catch(() => {});
 
       const closeMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
@@ -196,6 +198,7 @@ export function WhetstoneApp({
                 type="button"
                 onClick={() => setVoiceOut((v) => !v)}
                 title={voiceOut ? "Advisor voice on" : "Advisor voice off"}
+                aria-label={voiceOut ? "Turn advisor voice off" : "Turn advisor voice on"}
                 className={[
                   "grid h-9 w-9 place-items-center rounded-lg border transition-colors",
                   voiceOut

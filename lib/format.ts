@@ -31,15 +31,27 @@ export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
   );
 }
 
+const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"] as const;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
+
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */
 export function fileToAttachment(file: File): Promise<ImageAttachment> {
+  const mediaType = file.type || "image/png";
+  if (!(ALLOWED_IMAGE_TYPES as readonly string[]).includes(mediaType)) {
+    return Promise.reject(new Error(`Unsupported image type: ${mediaType}. Use PNG, JPEG, GIF, or WebP.`));
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return Promise.reject(
+      new Error(`Image too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.`),
+    );
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result);
       const comma = result.indexOf(",");
       resolve({
-        mediaType: file.type || "image/png",
+        mediaType,
         data: comma >= 0 ? result.slice(comma + 1) : result,
         name: file.name,
       });

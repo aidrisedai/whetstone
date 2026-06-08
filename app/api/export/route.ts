@@ -2,6 +2,24 @@ import { activeBuilder } from "@/lib/builders";
 import { jsonError } from "@/lib/serverUtils";
 import type { ExportResult } from "@/lib/types";
 
+function isValidWebhookUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:") return false;
+    const h = u.hostname;
+    if (
+      h === "localhost" ||
+      /^127\./.test(h) ||
+      /^10\./.test(h) ||
+      /^192\.168\./.test(h) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(h)
+    ) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -29,15 +47,27 @@ export async function POST(req: Request): Promise<Response> {
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
-    try {
-      const r = await fetch(hook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
-      });
-      webhook = r.ok ? "sent" : "failed";
-    } catch {
+    if (!isValidWebhookUrl(hook)) {
+      console.warn("[export] BUILDER_WEBHOOK_URL rejected: must be https and not a private host");
       webhook = "failed";
+    } else {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      try {
+        const r = await fetch(hook, {
+          method: "POST",
+          signal: controller.signal,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        });
+        webhook = r.ok ? "sent" : "failed";
+        if (!r.ok) console.warn(`[export] Webhook returned ${r.status}`);
+      } catch (err) {
+        console.warn("[export] Webhook POST failed:", err instanceof Error ? err.message : err);
+        webhook = "failed";
+      } finally {
+        clearTimeout(timer);
+      }
     }
   }
 
