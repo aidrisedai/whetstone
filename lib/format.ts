@@ -31,9 +31,16 @@ export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
   );
 }
 
+/** Anthropic's per-image size limit is 5 MB. Reject slightly below to leave room for base64 overhead. */
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB
+
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */
 export function fileToAttachment(file: File): Promise<ImageAttachment> {
   return new Promise((resolve, reject) => {
+    if (file.size > MAX_IMAGE_BYTES) {
+      reject(new Error(`Image "${file.name}" is too large (max 4 MB). Please resize it first.`));
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result);
