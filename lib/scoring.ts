@@ -78,8 +78,8 @@ export function normalizeDynamicCriteria(
   const deduped = [...byKey.values()];
 
   if (prior && prior.length > 0) {
-    return prior.map((spec, i) => {
-      const match = byKey.get(spec.key) ?? deduped[i];
+    return prior.map((spec) => {
+      const match = byKey.get(spec.key);
       return {
         key: spec.key,
         label: spec.label,
