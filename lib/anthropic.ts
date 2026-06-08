@@ -51,7 +51,16 @@ function supportsAdaptiveEffort(model: string): boolean {
  */
 export function isDemoMode(): boolean {
   if (process.env.WHETSTONE_DEMO === "1") return true;
-  return !process.env.ANTHROPIC_API_KEY;
+  if (!process.env.ANTHROPIC_API_KEY) {
+    if (process.env.NODE_ENV === "production") {
+      console.warn(
+        "[whetstone] ANTHROPIC_API_KEY is not set — running in demo mode. " +
+          "Set ANTHROPIC_API_KEY to enable real Claude responses.",
+      );
+    }
+    return true;
+  }
+  return false;
 }
 
 let client: Anthropic | null = null;
