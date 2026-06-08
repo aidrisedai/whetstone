@@ -26,7 +26,12 @@ export function safeParseJson<T>(text: string): T {
   const start = candidate.indexOf("{");
   const end = candidate.lastIndexOf("}");
   const slice = start >= 0 && end >= start ? candidate.slice(start, end + 1) : candidate;
-  return JSON.parse(slice) as T;
+  try {
+    return JSON.parse(slice) as T;
+  } catch (cause) {
+    const preview = slice.length > 120 ? slice.slice(0, 120) + "…" : slice;
+    throw new Error(`JSON parse failed — model returned: ${preview}`, { cause });
+  }
 }
 
 export function jsonError(message: string, status = 400): Response {
