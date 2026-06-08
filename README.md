@@ -116,7 +116,7 @@ tuned for a 10–11‑year‑old who'd rather be gaming:
   they'll learn. Favorite‑game analogies are woven in.
 - **Teach → approve → build, part by part.** For each part the kid sees the
   explanation, then taps **"Build it!"** — only *then* is the code generated. The
-  first part is a full, streamed file (Sonnet 4.6); each later part is added to the
+  first part is a full, streamed file (Opus 4.8); each later part is added to the
   **same app** via fast targeted edits (with a full‑rebuild fallback), so the app
   visibly **grows** one accepted piece at a time.
 - **Delightful feedback.** Each accepted part fires confetti, **+XP**, a level
@@ -141,7 +141,7 @@ All optional — see [`.env.example`](./.env.example).
 | `WHETSTONE_ADVISOR_MODEL` | `claude-sonnet-4-6`| Fast, responsive model for the live conversation (try `claude-haiku-4-5`). |
 | `WHETSTONE_SCORING_MODEL` | `claude-opus-4-8`  | Deliberate model for scoring + prompt synthesis (runs each turn). |
 | `WHETSTONE_LESSON_MODEL`  | `claude-opus-4-8`  | Deliberate model for the one-shot closing lesson.              |
-| `WHETSTONE_BUILDER_MODEL` | `claude-sonnet-4-6`| Fast, streamed code model that generates the app.              |
+| `WHETSTONE_BUILDER_MODEL` | `claude-opus-4-8`  | High-quality code model that generates and edits the app.      |
 | `WHETSTONE_COACH_MODEL`   | `claude-opus-4-8`  | Coach Spark — the build plan and per‑step teaching.            |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
@@ -174,12 +174,13 @@ hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis (
 lib/                   # prompts, scoring (threshold logic), builders, demo, types…
 ```
 
-**Claude usage — two models by design.** A fast, responsive model
-(**Sonnet 4.6**) streams the advisor to keep the conversation flowing; a more
-deliberate model (**Opus 4.8**) handles scoring and the lesson, where judgment
-matters. The two run in parallel each turn, so scoring never blocks the chat.
-Scoring and the lesson use **structured outputs** (`output_config.format` with a
-JSON schema) so results are always valid; system prompts are cached. Adaptive
+**Claude usage — five models by design.** Each job is matched to its right model:
+**Sonnet 4.6** streams the advisor to keep the conversation flowing; **Opus 4.8**
+handles scoring and the lesson (deliberate judgment); **Opus 4.8** generates and
+edits the app (highest-quality code); **Opus 4.8** drives Coach Spark's plan and
+teaching. Advisor and scoring run in parallel each turn so scoring never blocks the
+chat. Scoring, lessons, and coaching use **structured outputs** (`output_config.format`
+with a JSON schema) so results are always valid; system prompts are cached. Adaptive
 thinking and `effort` are applied only on models that support them (Opus 4.5+ /
 Sonnet 4.6), so swapping in a faster model like Haiku 4.5 stays valid.
 
