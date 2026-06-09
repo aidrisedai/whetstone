@@ -1,6 +1,19 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { ChatMessage, CriterionSpec } from "./types";
 
+const ALLOWED_MEDIA_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+] as const);
+type AllowedMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+
+function normalizeMediaType(raw: string): AllowedMediaType | null {
+  const t = raw?.toLowerCase().trim();
+  return ALLOWED_MEDIA_TYPES.has(t as AllowedMediaType) ? (t as AllowedMediaType) : null;
+}
+
 /**
  * Convert Whetstone's chat history into Anthropic message params, mapping the
  * "advisor" role to "assistant" and turning image attachments into vision
@@ -13,10 +26,11 @@ export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessagePa
 
     if (role === "user" && m.images?.length) {
       for (const img of m.images) {
+        const mediaType = normalizeMediaType(img.mediaType);
+        if (!mediaType) continue; // skip unsupported image types
         blocks.push({
           type: "image",
-          // media_type is a narrow union in the SDK types; the value is validated server-side.
-          source: { type: "base64", media_type: img.mediaType, data: img.data } as never,
+          source: { type: "base64", media_type: mediaType, data: img.data },
         });
       }
     }
