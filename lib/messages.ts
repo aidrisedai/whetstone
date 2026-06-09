@@ -15,8 +15,12 @@ export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessagePa
       for (const img of m.images) {
         blocks.push({
           type: "image",
-          // media_type is a narrow union in the SDK types; the value is validated server-side.
-          source: { type: "base64", media_type: img.mediaType, data: img.data } as never,
+          source: {
+            type: "base64",
+            // The SDK expects a narrow union; we trust the browser File.type value here.
+            media_type: img.mediaType as Anthropic.Base64ImageSource["media_type"],
+            data: img.data,
+          },
         });
       }
     }
