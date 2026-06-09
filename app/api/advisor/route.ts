@@ -24,11 +24,14 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const history = body.history ?? [];
+  const rawHistory = body.history ?? [];
   const closing = body.phase === "closing";
-  if (!Array.isArray(history) || history.length === 0) {
+  if (!Array.isArray(rawHistory) || rawHistory.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  // Keep the last 40 turns (20 back-and-forths) to bound token cost while
+  // preserving enough context for the advisor to stay coherent.
+  const history = rawHistory.slice(-40);
 
   const encoder = new TextEncoder();
 
