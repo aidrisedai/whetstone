@@ -39,11 +39,15 @@ export async function POST(req: Request): Promise<Response> {
     const lines = html.split("\n");
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
-        for (const line of lines) {
-          controller.enqueue(encoder.encode(line + "\n"));
-          await sleep(9);
+        try {
+          for (const line of lines) {
+            controller.enqueue(encoder.encode(line + "\n"));
+            await sleep(9);
+          }
+          controller.close();
+        } catch {
+          // Client disconnected mid-stream — nothing to do.
         }
-        controller.close();
       },
     });
     return new Response(stream, { headers: STREAM_HEADERS });

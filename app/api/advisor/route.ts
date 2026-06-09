@@ -37,11 +37,15 @@ export async function POST(req: Request): Promise<Response> {
     const text = demoAdvisorReply(history, closing);
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
-        for (const token of text.split(/(\s+)/)) {
-          controller.enqueue(encoder.encode(token));
-          await sleep(14);
+        try {
+          for (const token of text.split(/(\s+)/)) {
+            controller.enqueue(encoder.encode(token));
+            await sleep(14);
+          }
+          controller.close();
+        } catch {
+          // Client disconnected mid-stream — nothing to do.
         }
-        controller.close();
       },
     });
     return new Response(stream, { headers: STREAM_HEADERS });
