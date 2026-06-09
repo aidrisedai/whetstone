@@ -29,15 +29,20 @@ export async function POST(req: Request): Promise<Response> {
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 5000);
     try {
       const r = await fetch(hook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        signal: ac.signal,
       });
       webhook = r.ok ? "sent" : "failed";
     } catch {
       webhook = "failed";
+    } finally {
+      clearTimeout(timer);
     }
   }
 

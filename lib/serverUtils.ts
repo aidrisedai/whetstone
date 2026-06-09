@@ -18,14 +18,41 @@ export function getErrorMessage(err: unknown): string {
 /**
  * Parse JSON that may be wrapped in code fences or surrounded by stray prose.
  * Structured outputs return clean JSON, but this keeps the path robust.
+ *
+ * Strategy: try the candidate directly first; if that fails, scan for the
+ * outermost { } pair by walking the string (handles nested braces and braces
+ * inside string values, which lastIndexOf would get wrong).
  */
 export function safeParseJson<T>(text: string): T {
   const trimmed = (text ?? "").trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced ? fenced[1] : trimmed;
+  const candidate = (fenced ? fenced[1] : trimmed).trim();
+
+  // Fast path: candidate is already valid JSON.
+  try {
+    return JSON.parse(candidate) as T;
+  } catch {
+    /* fall through to extraction */
+  }
+
+  // Walk the string to find the outermost { } correctly, skipping over string
+  // literals so a } inside a value doesn't fool us.
   const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-  const slice = start >= 0 && end >= start ? candidate.slice(start, end + 1) : candidate;
+  if (start < 0) return JSON.parse(candidate) as T; // will throw with a clear message
+  let depth = 0;
+  let inStr = false;
+  let escape = false;
+  let end = -1;
+  for (let i = start; i < candidate.length; i++) {
+    const ch = candidate[i];
+    if (escape) { escape = false; continue; }
+    if (ch === "\\" && inStr) { escape = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") { depth--; if (depth === 0) { end = i; break; } }
+  }
+  const slice = end >= 0 ? candidate.slice(start, end + 1) : candidate.slice(start);
   return JSON.parse(slice) as T;
 }
 

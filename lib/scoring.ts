@@ -94,7 +94,8 @@ export function normalizeDynamicCriteria(
 }
 
 function clampInt(value: string | undefined, fallback: number): number {
+  if (value === undefined || value === "") return fallback;
   const n = Number(value);
-  if (!value || Number.isNaN(n)) return fallback;
+  if (Number.isNaN(n)) return fallback;
   return Math.max(1, Math.min(100, Math.round(n)));
 }
