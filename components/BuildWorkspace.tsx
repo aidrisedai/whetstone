@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BoardLesson,
   BuildPlan,
-  BuildPart,
   BuilderProfile,
   ChatMessage,
   Checkpoint,
@@ -38,16 +37,6 @@ import { Whiteboard } from "./Whiteboard";
 import { ArrowIcon, CheckIcon, CloseIcon, SendIcon, SparkIcon } from "./icons";
 
 const CONFETTI_COLORS = ["#ff6b35", "#ffb020", "#4cc9e6", "#41d49a", "#ff8a5b"];
-
-const LOAD_LINES = [
-  "Sketching out the code…",
-  "Choosing the perfect pieces to teach you…",
-  "Breaking it into bite-size chunks…",
-  "Writing real, working code…",
-  "Adding the explanations…",
-  "Almost ready — this part's gonna be good…",
-];
-const LOAD_EMOJI = ["✏️", "🧩", "🍪", "⌨️", "💬", "✨"];
 
 interface BuildWorkspaceProps {
   refinedPrompt: string;
@@ -173,20 +162,12 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
   const [nameField, setNameField] = useState("");
   const [gameField, setGameField] = useState("");
-  const [loadMsg, setLoadMsg] = useState(0);
 
   const startedRef = useRef(false);
   const codeRef = useRef("");
   useEffect(() => {
     codeRef.current = code;
   }, [code]);
-
-  useEffect(() => {
-    if (!loadingLesson && !loadingBoard) return;
-    setLoadMsg(0);
-    const id = setInterval(() => setLoadMsg((m) => m + 1), 2600);
-    return () => clearInterval(id);
-  }, [loadingLesson, loadingBoard]);
 
   const awardXp = useCallback((delta: number, patch?: Partial<BuilderProfile>) => {
     setProfile((prev) => {
