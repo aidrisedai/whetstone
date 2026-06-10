@@ -12,11 +12,16 @@ export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessagePa
     const blocks: Anthropic.ContentBlockParam[] = [];
 
     if (role === "user" && m.images?.length) {
+      const ALLOWED = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
       for (const img of m.images) {
+        if (!ALLOWED.has(img.mediaType)) continue;
         blocks.push({
           type: "image",
-          // media_type is a narrow union in the SDK types; the value is validated server-side.
-          source: { type: "base64", media_type: img.mediaType, data: img.data } as never,
+          source: {
+            type: "base64",
+            media_type: img.mediaType as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+            data: img.data,
+          },
         });
       }
     }
