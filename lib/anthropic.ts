@@ -40,7 +40,14 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  // Fable 5, all Opus 4.x (4.5+), and Sonnet 4.6 support adaptive thinking + effort.
+  // Haiku 4.5 and Sonnet 4.5 do NOT — they will 400 if these params are sent.
+  // The allowlist beats a denylist because new capable models should be opted in explicitly.
+  return (
+    /^claude-fable-\d/.test(model) ||
+    /^claude-opus-4-([5-9]|\d{2,})\b/.test(model) ||
+    /^claude-sonnet-4-6\b/.test(model)
+  );
 }
 
 /**
