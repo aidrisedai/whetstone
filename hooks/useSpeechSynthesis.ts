@@ -40,7 +40,7 @@ export function useSpeechSynthesis() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    setSupported(true);
+    setSupported(true); // eslint-disable-line react-hooks/set-state-in-effect
     const synth = window.speechSynthesis;
     const load = () => {
       voiceRef.current = pickVoice(synth.getVoices());

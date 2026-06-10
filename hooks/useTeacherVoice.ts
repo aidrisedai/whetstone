@@ -116,7 +116,7 @@ export function useTeacherVoice() {
   }, [prime]);
 
   useEffect(() => {
-    setSpeaking(browser.speaking);
+    setSpeaking(browser.speaking); // eslint-disable-line react-hooks/set-state-in-effect
   }, [browser.speaking]);
 
   const stop = useCallback(() => {
@@ -194,7 +194,7 @@ export function useTeacherVoice() {
         } else {
           setStatus(`⚠️ /api/speak HTTP ${res.status} — using browser voice`);
         }
-      } catch (e) {
+      } catch {
         setStatus(`⚠️ network error reaching /api/speak — using browser voice`);
       }
       if (myId === reqIdRef.current) {

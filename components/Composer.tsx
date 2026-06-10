@@ -31,9 +31,9 @@ export function Composer({
   const { supported: micSupported, listening, transcript, start, stop, reset } =
     useSpeechRecognition();
 
-  // While the mic is live, mirror the running transcript into the text box.
+  // While the mic is live, mirror the running transcript (external browser API) into the text box.
   useEffect(() => {
-    if (listening) setInput(transcript);
+    if (listening) setInput(transcript); // eslint-disable-line react-hooks/set-state-in-effect
   }, [transcript, listening]);
 
   // Auto-grow the textarea.

@@ -176,7 +176,7 @@ export function Whiteboard({
   }, [board.steps, say]);
 
   useEffect(() => {
-    setChat([{ who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` }]);
+    setChat([{ who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` }]); // eslint-disable-line react-hooks/set-state-in-effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -191,7 +191,7 @@ export function Whiteboard({
   }, [revealed, extraItems]);
 
   useEffect(() => {
-    if (mic.listening) setInput(mic.transcript);
+    if (mic.listening) setInput(mic.transcript); // eslint-disable-line react-hooks/set-state-in-effect
   }, [mic.transcript, mic.listening]);
 
   const moreSteps = revealed < board.steps.length;
