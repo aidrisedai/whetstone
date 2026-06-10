@@ -40,7 +40,9 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  // Match all opus-4-X (X ≥ 5) and sonnet-4-6+. Using \d+ to stay valid as new
+  // minor versions ship rather than maintaining an explicit allowlist.
+  return /^claude-opus-4-\d+\b/.test(model) || /^claude-sonnet-4-[6-9]\d*\b/.test(model);
 }
 
 /**
