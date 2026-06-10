@@ -50,6 +50,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const textBlock = resp.content.find((b) => b.type === "text");
     const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
+    if (!text) throw new Error("Model returned no text content for scoring");
     const raw = safeParseJson<RawAssessment>(text);
 
     const assessment = finalizeAssessment(
