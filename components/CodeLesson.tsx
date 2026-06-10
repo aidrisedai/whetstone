@@ -7,7 +7,7 @@ import { askDuringCode } from "@/lib/clientApi";
 import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { Caption } from "./Caption";
-import { ArrowIcon, CheckIcon, KeyboardIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
+import { ArrowIcon, CheckIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
 
 const LANG_BADGE: Record<CodeBeat["lang"], { label: string; cls: string }> = {
   html: { label: "HTML", cls: "border-ember/40 bg-ember/10 text-ember" },
@@ -171,7 +171,6 @@ export function CodeLesson({
     }
   }
 
-  const progress = onIntro ? 0 : onOutro ? 100 : Math.round(((i + 1) / beats.length) * 100);
   const newCount = beats.filter((b) => b.isNew).length;
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
