@@ -163,6 +163,8 @@ export function WhetstoneApp({
     setExported(false);
     setError(null);
     setBusy(false);
+    setAdvisorTyping(false);
+    setScoring(false);
     criteriaRef.current = null;
     exportedRef.current = false;
   }, [cancelSpeech]);
