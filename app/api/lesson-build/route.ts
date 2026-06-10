@@ -38,6 +38,7 @@ export async function POST(req: Request): Promise<Response> {
   const projectType = (body.projectType ?? "App").trim();
   const partNumber = typeof body.partNumber === "number" ? body.partNumber : 1;
   const totalParts = typeof body.totalParts === "number" ? body.totalParts : 1;
+  if (body.currentCode) body.currentCode = body.currentCode.slice(0, 200_000);
 
   if (isDemoMode()) {
     return Response.json(
