@@ -39,6 +39,16 @@ import { ArrowIcon, CheckIcon, CloseIcon, SendIcon, SparkIcon } from "./icons";
 
 const CONFETTI_COLORS = ["#ff6b35", "#ffb020", "#4cc9e6", "#41d49a", "#ff8a5b"];
 
+// Computed once at module load — confetti is decorative and doesn't need to vary per mount.
+const CONFETTI_PIECES = Array.from({ length: 26 }).map((_, i) => ({
+  left: Math.random() * 100,
+  delay: Math.random() * 0.25,
+  dur: 1 + Math.random() * 0.9,
+  size: 6 + Math.random() * 9,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  round: i % 2 === 1,
+}));
+
 const LOAD_LINES = [
   "Sketching out the code…",
   "Choosing the perfect pieces to teach you…",
@@ -64,27 +74,21 @@ type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "chec
 function Confetti() {
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-      {Array.from({ length: 26 }).map((_, i) => {
-        const left = Math.random() * 100;
-        const delay = Math.random() * 0.25;
-        const dur = 1 + Math.random() * 0.9;
-        const size = 6 + Math.random() * 9;
-        return (
-          <span
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: "-14px",
-              width: size,
-              height: size,
-              background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-              borderRadius: i % 2 ? "50%" : "2px",
-              animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
-            }}
-          />
-        );
-      })}
+      {CONFETTI_PIECES.map((p, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${p.left}%`,
+            top: "-14px",
+            width: p.size,
+            height: p.size,
+            background: p.color,
+            borderRadius: p.round ? "50%" : "2px",
+            animation: `confetti-fall ${p.dur}s ${p.delay}s ease-in forwards`,
+          }}
+        />
+      ))}
     </div>
   );
 }
