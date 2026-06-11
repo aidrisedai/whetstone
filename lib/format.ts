@@ -1,4 +1,9 @@
-import type { CodeBeat, ImageAttachment } from "./types";
+import type { CodeBeat, ImageAttachment, ImageMediaType } from "./types";
+
+const ALLOWED_IMAGE_TYPES: ImageMediaType[] = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+function toImageMediaType(raw: string): ImageMediaType {
+  return (ALLOWED_IMAGE_TYPES.includes(raw as ImageMediaType) ? raw : "image/png") as ImageMediaType;
+}
 
 let counter = 0;
 /** Small unique id for messages (stable within a session). */
@@ -39,7 +44,7 @@ export function fileToAttachment(file: File): Promise<ImageAttachment> {
       const result = String(reader.result);
       const comma = result.indexOf(",");
       resolve({
-        mediaType: file.type || "image/png",
+        mediaType: toImageMediaType(file.type),
         data: comma >= 0 ? result.slice(comma + 1) : result,
         name: file.name,
       });

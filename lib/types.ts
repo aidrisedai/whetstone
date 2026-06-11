@@ -2,10 +2,11 @@
 
 export type Role = "user" | "advisor";
 
+/** MIME types accepted by the Anthropic vision API. */
+export type ImageMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+
 export interface ImageAttachment {
-  /** MIME type, e.g. "image/png" */
-  mediaType: string;
-  /** base64-encoded bytes, WITHOUT the `data:...;base64,` prefix */
+  mediaType: ImageMediaType;
   data: string;
   name?: string;
 }

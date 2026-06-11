@@ -23,24 +23,28 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("`refinedPrompt` is required");
   }
 
-  const builder = activeBuilder();
-  const builderUrl = builder.buildUrl(refinedPrompt);
+  try {
+    const builder = activeBuilder();
+    const builderUrl = builder.buildUrl(refinedPrompt);
 
-  let webhook: ExportResult["webhook"] = "skipped";
-  const hook = process.env.BUILDER_WEBHOOK_URL;
-  if (hook) {
-    try {
-      const r = await fetch(hook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
-      });
-      webhook = r.ok ? "sent" : "failed";
-    } catch {
-      webhook = "failed";
+    let webhook: ExportResult["webhook"] = "skipped";
+    const hook = process.env.BUILDER_WEBHOOK_URL;
+    if (hook) {
+      try {
+        const r = await fetch(hook, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        });
+        webhook = r.ok ? "sent" : "failed";
+      } catch {
+        webhook = "failed";
+      }
     }
-  }
 
-  const result: ExportResult = { builderName: builder.name, builderUrl, webhook };
-  return Response.json(result);
+    const result: ExportResult = { builderName: builder.name, builderUrl, webhook };
+    return Response.json(result);
+  } catch (err) {
+    return jsonError(err instanceof Error ? err.message : "Export failed", 502);
+  }
 }
