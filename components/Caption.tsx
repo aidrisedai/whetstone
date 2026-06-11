@@ -11,15 +11,22 @@ export function Caption({ text, progress }: { text: string; progress: number }) 
   const realWords = words.filter((w) => w.trim().length > 0).length;
   const spokenCount = Math.round(progress * realWords);
 
-  let seen = 0;
+  // Precompute spoken flag for each token using an immutable reduce.
+  const { flags: spokenFlags } = words.reduce(
+    (acc: { flags: boolean[]; seen: number }, w: string) => {
+      if (!w.trim()) return { flags: [...acc.flags, false], seen: acc.seen };
+      const seen = acc.seen + 1;
+      return { flags: [...acc.flags, seen <= spokenCount || progress >= 1], seen };
+    },
+    { flags: [], seen: 0 },
+  );
+
   return (
     <p className="text-center text-[17px] leading-snug sm:text-lg">
       {words.map((w, i) => {
         if (w.trim().length === 0) return <span key={i}>{w}</span>;
-        seen += 1;
-        const spoken = seen <= spokenCount || progress >= 1;
         return (
-          <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
+          <span key={i} className={spokenFlags[i] ? "cap-spoken" : "cap-rest"}>
             {w}
           </span>
         );
