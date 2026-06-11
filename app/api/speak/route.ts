@@ -86,11 +86,16 @@ export async function POST(req: Request): Promise<Response> {
     if (!data.audioContent) return new Response(null, { status: 204, headers: { "X-TTS-Fallback": "no-audio" } });
 
     // LINEAR16 comes back as a complete WAV container (RIFF header included).
-    const audio = Buffer.from(data.audioContent, "base64");
-    return new Response(audio, {
-      status: 200,
-      headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store" },
-    });
+    try {
+      const audio = Buffer.from(data.audioContent, "base64");
+      return new Response(audio, {
+        status: 200,
+        headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store" },
+      });
+    } catch {
+      console.warn("[speak] Failed to decode audio content; falling back to browser voice.");
+      return new Response(null, { status: 204, headers: { "X-TTS-Fallback": "decode-error" } });
+    }
   } catch (err) {
     console.warn("[speak] Google TTS request threw; falling back to browser voice.", err);
     return new Response(null, { status: 204, headers: { "X-TTS-Fallback": "exception" } });
