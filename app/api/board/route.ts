@@ -78,7 +78,7 @@ export async function POST(req: Request): Promise<Response> {
         })),
         ask: s.ask && s.ask.trim() ? s.ask.trim() : undefined,
       })),
-      closing: parsed.closing,
+      closing: parsed.closing ?? "",
     };
     return Response.json(lesson);
   } catch (err) {

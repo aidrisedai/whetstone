@@ -61,7 +61,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const checkpoint: Checkpoint = {
       partTitle,
-      intro: parsed.intro,
+      intro: parsed.intro ?? "",
       questions: (parsed.questions || [])
         .filter((q) => Array.isArray(q.options) && q.options.length >= 2)
         .slice(0, 3)

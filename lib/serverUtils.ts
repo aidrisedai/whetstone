@@ -26,7 +26,11 @@ export function safeParseJson<T>(text: string): T {
   const start = candidate.indexOf("{");
   const end = candidate.lastIndexOf("}");
   const slice = start >= 0 && end >= start ? candidate.slice(start, end + 1) : candidate;
-  return JSON.parse(slice) as T;
+  try {
+    return JSON.parse(slice) as T;
+  } catch {
+    throw new Error(`Model returned invalid JSON: ${slice.slice(0, 120)}`);
+  }
 }
 
 export function jsonError(message: string, status = 400): Response {

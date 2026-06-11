@@ -70,7 +70,7 @@ export function WhetstoneApp({
       } finally {
         setAdvisorTyping(false);
       }
-      if (voiceRef.current && acc && !acc.startsWith("⚠️")) speak(acc);
+      if (voiceRef.current && acc && !acc.includes("⚠️")) speak(acc);
     },
     [speak, updateMsg],
   );

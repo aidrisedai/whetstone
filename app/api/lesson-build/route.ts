@@ -86,9 +86,9 @@ export async function POST(req: Request): Promise<Response> {
     const beats: CodeBeat[] = Array.isArray(parsed.beats) ? parsed.beats : [];
     const lesson: BuildLesson = {
       partTitle: part.title,
-      intro: parsed.intro,
+      intro: parsed.intro ?? "",
       beats,
-      outro: parsed.outro,
+      outro: parsed.outro ?? "",
       concept: parsed.concept || part.concept,
     };
     return Response.json(lesson);
