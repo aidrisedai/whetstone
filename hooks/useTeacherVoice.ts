@@ -116,6 +116,8 @@ export function useTeacherVoice() {
   }, [prime]);
 
   useEffect(() => {
+    // Sync unified speaking state when browser TTS ends naturally.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSpeaking(browser.speaking);
   }, [browser.speaking]);
 

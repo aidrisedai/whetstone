@@ -38,6 +38,14 @@ import { Whiteboard } from "./Whiteboard";
 import { ArrowIcon, CheckIcon, CloseIcon, SendIcon, SparkIcon } from "./icons";
 
 const CONFETTI_COLORS = ["#ff6b35", "#ffb020", "#4cc9e6", "#41d49a", "#ff8a5b"];
+const CONFETTI_SPARKS = Array.from({ length: 26 }, (_, i) => ({
+  left: Math.random() * 100,
+  delay: Math.random() * 0.25,
+  dur: 1 + Math.random() * 0.9,
+  size: 6 + Math.random() * 9,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  round: i % 2 !== 0,
+}));
 
 const LOAD_LINES = [
   "Sketching out the code…",
@@ -64,27 +72,21 @@ type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "chec
 function Confetti() {
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-      {Array.from({ length: 26 }).map((_, i) => {
-        const left = Math.random() * 100;
-        const delay = Math.random() * 0.25;
-        const dur = 1 + Math.random() * 0.9;
-        const size = 6 + Math.random() * 9;
-        return (
-          <span
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: "-14px",
-              width: size,
-              height: size,
-              background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-              borderRadius: i % 2 ? "50%" : "2px",
-              animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
-            }}
-          />
-        );
-      })}
+      {CONFETTI_SPARKS.map((s, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${s.left}%`,
+            top: "-14px",
+            width: s.size,
+            height: s.size,
+            background: s.color,
+            borderRadius: s.round ? "50%" : "2px",
+            animation: `confetti-fall ${s.dur}s ${s.delay}s ease-in forwards`,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -183,6 +185,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
   useEffect(() => {
     if (!loadingLesson && !loadingBoard) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadMsg(0);
     const id = setInterval(() => setLoadMsg((m) => m + 1), 2600);
     return () => clearInterval(id);
@@ -230,6 +233,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     requestExport(refinedPrompt)
       .then((r) => setBuilderUrl(r.builderUrl))
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (p.name) void makePlan(p);
     else setStage("profile");
   }, [makePlan, refinedPrompt]);

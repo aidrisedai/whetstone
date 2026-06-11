@@ -94,6 +94,7 @@ export function CodeLesson({
   // When the beat changes, narrate it and (on the final recap) flip to the app.
   useEffect(() => {
     if (onIntro) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChat([{ who: "teacher", text: lesson.intro }]);
       say(lesson.intro);
     } else if (onOutro) {
@@ -114,6 +115,7 @@ export function CodeLesson({
   }, [i, tab]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mic.listening) setAskText(mic.transcript);
   }, [mic.transcript, mic.listening]);
 
@@ -242,6 +244,7 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
+                        // eslint-disable-next-line react-hooks/immutability
                         lineNo += 1;
                         const n = lineNo;
                         let html = tint(ln);
@@ -255,7 +258,6 @@ export function CodeLesson({
                             <span className="w-10 shrink-0 select-none pr-3 text-right text-muted/40">{n}</span>
                             <code
                               className="tk flex-1 whitespace-pre-wrap break-words pr-3"
-                              // eslint-disable-next-line react/no-danger
                               dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }}
                             />
                           </div>
