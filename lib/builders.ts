@@ -22,7 +22,7 @@ export const BUILDERS: Record<string, BuilderTarget> = {
     key: "v0",
     name: "v0",
     tagline: "Generative UI by Vercel",
-    buildUrl: (p) => `https://v0.app/chat?q=${encodeURIComponent(p)}`,
+    buildUrl: (p) => `https://v0.dev/chat?q=${encodeURIComponent(p)}`,
   },
   lovable: {
     key: "lovable",
