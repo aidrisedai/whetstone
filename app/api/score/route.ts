@@ -19,11 +19,20 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const history = body.history ?? [];
+  const rawHistory = body.history ?? [];
   const priorCriteria = body.priorCriteria ?? null;
-  if (!Array.isArray(history) || history.length === 0) {
+  if (!Array.isArray(rawHistory) || rawHistory.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  // Cap history and strip old image data — scoring only needs text content.
+  const HISTORY_LIMIT = 40;
+  const IMAGE_RECENCY = 4;
+  const trimmed = rawHistory.slice(-HISTORY_LIMIT);
+  const history = trimmed.map((m, i) =>
+    i < trimmed.length - IMAGE_RECENCY && m.images?.length
+      ? { ...m, images: undefined }
+      : m,
+  );
 
   const threshold = DEFAULT_THRESHOLD;
 

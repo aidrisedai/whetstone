@@ -24,11 +24,21 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const history = body.history ?? [];
+  const rawHistory = body.history ?? [];
   const closing = body.phase === "closing";
-  if (!Array.isArray(history) || history.length === 0) {
+  if (!Array.isArray(rawHistory) || rawHistory.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  // Cap to the most recent 40 messages; strip base64 image data from older entries
+  // to keep request payloads manageable (images can be hundreds of KB each).
+  const HISTORY_LIMIT = 40;
+  const IMAGE_RECENCY = 6; // keep images only on the last N messages
+  const trimmed = rawHistory.slice(-HISTORY_LIMIT);
+  const history = trimmed.map((m, i) =>
+    i < trimmed.length - IMAGE_RECENCY && m.images?.length
+      ? { ...m, images: undefined }
+      : m,
+  );
 
   const encoder = new TextEncoder();
 
