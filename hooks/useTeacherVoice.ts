@@ -115,9 +115,7 @@ export function useTeacherVoice() {
     };
   }, [prime]);
 
-  useEffect(() => {
-    setSpeaking(browser.speaking);
-  }, [browser.speaking]);
+  // browser.speaking is used directly in the return below; no sync effect needed.
 
   const stop = useCallback(() => {
     reqIdRef.current += 1;
@@ -235,5 +233,5 @@ export function useTeacherVoice() {
     }
   }, []);
 
-  return { supported: true, speaking, speak, stop, pause, resume, prime, activeKind, hdAvailable, status, progress };
+  return { supported: true, speaking: speaking || browser.speaking, speak, stop, pause, resume, prime, activeKind, hdAvailable, status, progress };
 }

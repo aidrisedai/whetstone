@@ -93,6 +93,7 @@ export function CodeLesson({
 
   // When the beat changes, narrate it and (on the final recap) flip to the app.
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (onIntro) {
       setChat([{ who: "teacher", text: lesson.intro }]);
       say(lesson.intro);
@@ -105,6 +106,7 @@ export function CodeLesson({
       say(current.say);
       setTab("code");
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
 
@@ -114,6 +116,7 @@ export function CodeLesson({
   }, [i, tab]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mic.listening) setAskText(mic.transcript);
   }, [mic.transcript, mic.listening]);
 
@@ -176,8 +179,16 @@ export function CodeLesson({
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
 
-  // Render code chunks; the active chunk is spotlighted with line numbers.
-  let lineNo = 0;
+  // Precompute starting line number for each beat to avoid mutating a variable during render.
+  const beatLineStart = useMemo(
+    () =>
+      beats.reduce<number[]>((acc, b) => {
+        acc.push(acc.length === 0 ? 0 : acc[acc.length - 1] + b.code.split("\n").length);
+        return acc;
+      }, []),
+    [beats],
+  );
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* LEFT: editor / browser */}
@@ -242,8 +253,7 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
-                        lineNo += 1;
-                        const n = lineNo;
+                        const n = beatLineStart[idx] + li + 1;
                         let html = tint(ln);
                         if (active && flash && ln.includes(flash)) {
                           // wrap the flashed substring (best-effort, escaped already by tint)
@@ -255,7 +265,6 @@ export function CodeLesson({
                             <span className="w-10 shrink-0 select-none pr-3 text-right text-muted/40">{n}</span>
                             <code
                               className="tk flex-1 whitespace-pre-wrap break-words pr-3"
-                              // eslint-disable-next-line react/no-danger
                               dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }}
                             />
                           </div>
