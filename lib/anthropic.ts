@@ -48,6 +48,11 @@ function supportsAdaptiveEffort(model: string): boolean {
  * no API key, Whetstone serves deterministic stand-in advisor replies, scores,
  * and lessons so the flow is fully explorable. Set WHETSTONE_DEMO=1 to force it
  * even when a key is present (useful for offline UI work).
+ *
+ * Note: a present but INVALID key is not caught here — the SDK will throw an
+ * AuthenticationError on the first real call, which API routes catch and return
+ * as a 502. This is intentional: we cannot validate a key without making an API
+ * call, and we do not want to do that on every request.
  */
 export function isDemoMode(): boolean {
   if (process.env.WHETSTONE_DEMO === "1") return true;
