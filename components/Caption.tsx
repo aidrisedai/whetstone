@@ -11,19 +11,26 @@ export function Caption({ text, progress }: { text: string; progress: number }) 
   const realWords = words.filter((w) => w.trim().length > 0).length;
   const spokenCount = Math.round(progress * realWords);
 
-  let seen = 0;
+  const spokenMap = useMemo(
+    () =>
+      words.reduce<{ map: boolean[]; seen: number }>(
+        (acc, w) => {
+          if (w.trim().length === 0) return { ...acc, map: [...acc.map, false] };
+          const spoken = acc.seen + 1 <= spokenCount || progress >= 1;
+          return { map: [...acc.map, spoken], seen: acc.seen + 1 };
+        },
+        { map: [], seen: 0 },
+      ).map,
+    [words, spokenCount, progress],
+  );
+
   return (
     <p className="text-center text-[17px] leading-snug sm:text-lg">
-      {words.map((w, i) => {
-        if (w.trim().length === 0) return <span key={i}>{w}</span>;
-        seen += 1;
-        const spoken = seen <= spokenCount || progress >= 1;
-        return (
-          <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
-            {w}
-          </span>
-        );
-      })}
+      {words.map((w, i) => (
+        <span key={i} className={w.trim().length === 0 ? undefined : spokenMap[i] ? "cap-spoken" : "cap-rest"}>
+          {w}
+        </span>
+      ))}
     </p>
   );
 }
