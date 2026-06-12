@@ -40,9 +40,9 @@ export async function POST(req: Request): Promise<Response> {
           role: "user",
           content: extendUserMessage({
             projectName: body.projectName ?? "the app",
-            refinedPrompt: body.refinedPrompt ?? "",
+            refinedPrompt: (body.refinedPrompt ?? "").slice(0, 4000),
             request,
-            currentCode: body.currentCode ?? "",
+            currentCode: (body.currentCode ?? "").slice(0, 120_000),
             knownConcepts: Array.isArray(body.knownConcepts) ? body.knownConcepts : [],
           }),
         },

@@ -39,12 +39,14 @@ export async function POST(req: Request): Promise<Response> {
   const partNumber = typeof body.partNumber === "number" ? body.partNumber : 1;
   const totalParts = typeof body.totalParts === "number" ? body.totalParts : 1;
 
+  const currentCode = (body.currentCode ?? "").slice(0, 120_000);
+
   if (isDemoMode()) {
     return Response.json(
       demoBuildLesson({
         part,
         partNumber,
-        currentCode: body.currentCode ?? "",
+        currentCode,
         projectName: body.projectName ?? projectType,
       }),
     );
@@ -67,7 +69,7 @@ export async function POST(req: Request): Promise<Response> {
             partNumber,
             totalParts,
             part,
-            currentCode: body.currentCode ?? "",
+            currentCode,
             favoriteGame: body.favoriteGame ?? "",
             name: body.name ?? "",
           }),

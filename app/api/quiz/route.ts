@@ -24,7 +24,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const partTitle = (body.partTitle ?? "this part").trim();
-  const newCode = (body.newCode ?? "").trim();
+  const newCode = (body.newCode ?? "").trim().slice(0, 60_000);
   if (!newCode) return jsonError("`newCode` is required to write a grounded quiz");
 
   if (isDemoMode()) {
