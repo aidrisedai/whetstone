@@ -28,10 +28,11 @@ interface Reasoning {
 }
 
 /**
- * Adaptive thinking and the `effort` parameter are supported on Opus 4.5+ and
- * Sonnet 4.6, but ERROR on Sonnet 4.5 / Haiku 4.5. So derive the reasoning
- * config from the model: capable models get adaptive thinking + effort; faster
- * models (e.g. Haiku) run lean with neither, which keeps any model swap valid.
+ * Adaptive thinking and the `effort` parameter are supported on Opus 4.5+,
+ * Sonnet 4.6+, and Fable 5+, but ERROR on Sonnet 4.5 / Haiku. So derive the
+ * reasoning config from the model: capable models get adaptive thinking +
+ * effort; faster models (e.g. Haiku) run lean with neither, keeping any model
+ * swap valid.
  */
 export function reasoning(model: string, effort: Effort): Reasoning {
   return supportsAdaptiveEffort(model)
@@ -40,7 +41,11 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  // Haiku and Sonnet 4.5 predate adaptive effort and will error if it's sent.
+  if (/^claude-haiku/.test(model)) return false;
+  if (/^claude-sonnet-4-5\b/.test(model)) return false;
+  // All other Claude models (Opus 4.5+, Sonnet 4.6+, Fable 5+, future variants) support it.
+  return /^claude-/.test(model);
 }
 
 /**
