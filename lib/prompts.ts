@@ -360,7 +360,7 @@ const boardStepSchema = {
     items: { type: "array", items: boardItemSchema },
     ask: { type: "string" },
   },
-  required: ["say", "items", "ask"],
+  required: ["say", "items"],
   additionalProperties: false,
 } as const;
 
@@ -420,7 +420,7 @@ export const BOARD_CHAT_SCHEMA = {
       properties: {
         kind: {
           type: "string",
-          enum: ["none", "title", "bullet", "box", "arrow", "code", "note", "callout"],
+          enum: ["none", "title", "bullet", "box", "arrow", "code", "note", "callout", "equation", "fact"],
         },
         text: { type: "string" },
         emphasis: { type: "boolean" },
@@ -624,7 +624,7 @@ const quizQuestionSchema = {
     explainCorrect: { type: "string" },
     explainWrong: { type: "string" },
   },
-  required: ["question", "codeRef", "options", "correctIndex", "explainCorrect", "explainWrong"],
+  required: ["question", "options", "correctIndex", "explainCorrect", "explainWrong"],
   additionalProperties: false,
 } as const;
 
