@@ -30,10 +30,16 @@ export async function POST(req: Request): Promise<Response> {
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
     try {
+      // Validate protocol to prevent SSRF via a misconfigured env var.
+      const hookUrl = new URL(hook);
+      if (!["http:", "https:"].includes(hookUrl.protocol)) {
+        throw new Error(`Webhook URL must use http or https (got ${hookUrl.protocol})`);
+      }
       const r = await fetch(hook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        signal: AbortSignal.timeout(8000),
       });
       webhook = r.ok ? "sent" : "failed";
     } catch {

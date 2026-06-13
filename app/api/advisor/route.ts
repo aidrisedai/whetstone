@@ -69,7 +69,9 @@ export async function POST(req: Request): Promise<Response> {
         await messageStream.finalMessage();
         controller.close();
       } catch (err) {
-        controller.enqueue(encoder.encode(`\n\n⚠️ ${getErrorMessage(err)}`));
+        try {
+          controller.enqueue(encoder.encode(`\n\n⚠️ ${getErrorMessage(err)}`));
+        } catch { /* client already disconnected */ }
         controller.close();
       }
     },

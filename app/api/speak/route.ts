@@ -44,7 +44,9 @@ export async function POST(req: Request): Promise<Response> {
 
   const apiKey = process.env.GOOGLE_TTS_API_KEY;
   const token = process.env.GOOGLE_TTS_ACCESS_TOKEN;
-  const url = apiKey ? `${TTS_ENDPOINT}?key=${encodeURIComponent(apiKey)}` : TTS_ENDPOINT;
+  // Always use the base URL without an API key in the query string — keys in
+  // URLs appear in access logs and proxy histories. Pass via header instead.
+  const url = TTS_ENDPOINT;
 
   // LINEAR16 @ 44.1kHz = a standard WAV that every browser decodes reliably.
   // (Chirp3-HD's default MP3 is MPEG-2 @ 24kHz, which some Chromium builds —
@@ -64,6 +66,7 @@ export async function POST(req: Request): Promise<Response> {
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(apiKey && !token ? { "X-goog-api-key": apiKey } : {}),
       },
       body: JSON.stringify(payload),
     });
