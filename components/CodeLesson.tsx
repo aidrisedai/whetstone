@@ -176,8 +176,16 @@ export function CodeLesson({
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
 
-  // Render code chunks; the active chunk is spotlighted with line numbers.
-  let lineNo = 0;
+  // Precompute line-number offsets for each beat (each beat's lines follow the previous).
+  const beatLineOffsets = useMemo(() => {
+    let count = 0;
+    return beats.slice(0, i + 1).map((b) => {
+      const offset = count;
+      count += b.code.split("\n").length;
+      return offset;
+    });
+  }, [beats, i]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* LEFT: editor / browser */}
@@ -222,6 +230,7 @@ export function CodeLesson({
                 {beats.slice(0, i + 1).map((b, idx) => {
                   const active = idx === i;
                   const lines = b.code.split("\n");
+                  const lineOffset = beatLineOffsets[idx];
                   return (
                     <div
                       key={idx}
@@ -242,8 +251,7 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
-                        lineNo += 1;
-                        const n = lineNo;
+                        const n = lineOffset + li + 1;
                         let html = tint(ln);
                         if (active && flash && ln.includes(flash)) {
                           // wrap the flashed substring (best-effort, escaped already by tint)
@@ -255,7 +263,6 @@ export function CodeLesson({
                             <span className="w-10 shrink-0 select-none pr-3 text-right text-muted/40">{n}</span>
                             <code
                               className="tk flex-1 whitespace-pre-wrap break-words pr-3"
-                              // eslint-disable-next-line react/no-danger
                               dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }}
                             />
                           </div>
