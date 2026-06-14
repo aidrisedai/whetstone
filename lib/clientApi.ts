@@ -1,4 +1,15 @@
 import { uid } from "./format";
+
+const API_TIMEOUT_MS = 30_000;
+
+function timedFetch(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  );
+}
+
 import type {
   Assessment,
   BoardItem,
@@ -21,7 +32,7 @@ export async function streamAdvisor(
   closing: boolean,
   onChunk: (text: string) => void,
 ): Promise<void> {
-  const res = await fetch("/api/advisor", {
+  const res = await timedFetch("/api/advisor", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ history, phase: closing ? "closing" : "dialogue" }),
@@ -43,7 +54,7 @@ export async function fetchScore(
   history: ChatMessage[],
   priorCriteria: CriterionSpec[] | null,
 ): Promise<Assessment> {
-  const res = await fetch("/api/score", {
+  const res = await timedFetch("/api/score", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ history, priorCriteria }),
@@ -56,7 +67,7 @@ export async function fetchScore(
 }
 
 export async function fetchLesson(history: ChatMessage[]): Promise<Lesson> {
-  const res = await fetch("/api/lesson", {
+  const res = await timedFetch("/api/lesson", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ history }),
@@ -69,7 +80,7 @@ export async function fetchLesson(history: ChatMessage[]): Promise<Lesson> {
 }
 
 export async function requestExport(refinedPrompt: string): Promise<ExportResult> {
-  const res = await fetch("/api/export", {
+  const res = await timedFetch("/api/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refinedPrompt }),
@@ -93,7 +104,7 @@ export async function streamBuild(
   payload: BuildPayload,
   onChunk: (text: string) => void,
 ): Promise<void> {
-  const res = await fetch("/api/build", {
+  const res = await timedFetch("/api/build", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -117,7 +128,7 @@ export async function fetchCoach(payload: {
   step: number;
   changeRequest: string;
 }): Promise<CoachNote> {
-  const res = await fetch("/api/coach", {
+  const res = await timedFetch("/api/coach", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -137,7 +148,7 @@ export async function fetchPlan(payload: {
   favoriteGame: string;
   knownConcepts: string[];
 }): Promise<BuildPlan> {
-  const res = await fetch("/api/plan", {
+  const res = await timedFetch("/api/plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -168,7 +179,7 @@ export async function fetchBoardLesson(payload: {
   name: string;
   favoriteGame: string;
 }): Promise<BoardLesson> {
-  const res = await fetch("/api/board", {
+  const res = await timedFetch("/api/board", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -188,7 +199,7 @@ export async function sendBoardChat(payload: {
   studentSaid: string;
   lastAsk?: string;
 }): Promise<{ reply: string; boardItem: BoardItem | null }> {
-  const res = await fetch("/api/board-chat", {
+  const res = await timedFetch("/api/board-chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -212,7 +223,7 @@ export async function fetchBuildLesson(payload: {
   favoriteGame: string;
   name: string;
 }): Promise<BuildLesson> {
-  const res = await fetch("/api/lesson-build", {
+  const res = await timedFetch("/api/lesson-build", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -233,7 +244,7 @@ export async function askDuringCode(payload: {
   fileSoFar: string;
   studentSaid: string;
 }): Promise<{ reply: string; highlightHint: string | null }> {
-  const res = await fetch("/api/code-ask", {
+  const res = await timedFetch("/api/code-ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -254,7 +265,7 @@ export async function fetchQuiz(payload: {
   newCode: string;
   name: string;
 }): Promise<Checkpoint> {
-  const res = await fetch("/api/quiz", {
+  const res = await timedFetch("/api/quiz", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -274,7 +285,7 @@ export async function fetchExtendPart(payload: {
   currentCode: string;
   knownConcepts: string[];
 }): Promise<BuildPart> {
-  const res = await fetch("/api/extend", {
+  const res = await timedFetch("/api/extend", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -293,7 +304,7 @@ export async function fetchEdits(payload: {
   currentCode: string;
   changeRequest: string;
 }): Promise<EditResult> {
-  const res = await fetch("/api/edit", {
+  const res = await timedFetch("/api/edit", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
