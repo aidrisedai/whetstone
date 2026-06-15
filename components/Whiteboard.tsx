@@ -135,7 +135,9 @@ export function Whiteboard({
 }: WhiteboardProps) {
   const [revealed, setRevealed] = useState(0);
   const [extraItems, setExtraItems] = useState<BoardItem[]>([]);
-  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [chat, setChat] = useState<ChatMsg[]>(() => [
+    { who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` },
+  ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [done, setDone] = useState(false);
@@ -174,11 +176,6 @@ export function Whiteboard({
       return r + 1;
     });
   }, [board.steps, say]);
-
-  useEffect(() => {
-    setChat([{ who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` }]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const beginLesson = useCallback(() => {
     teacher.prime();
@@ -347,7 +344,7 @@ export function Whiteboard({
                   type="button"
                   onClick={() => {
                     setShowType(true);
-                    mic.listening ? mic.stop() : mic.start(input);
+                    if (mic.listening) mic.stop(); else mic.start(input);
                   }}
                   title={mic.listening ? "Stop" : "Talk to your teacher"}
                   className={`relative grid h-11 w-11 place-items-center rounded-full shadow transition-colors ${
