@@ -53,6 +53,7 @@ export function useTeacherVoice() {
   const lastBlobUrlRef = useRef<string | null>(null);
   const reqIdRef = useRef(0);
   const primedRef = useRef(false);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // One DOM-attached <audio> element + the silent primer, created once.
   useEffect(() => {
@@ -121,6 +122,10 @@ export function useTeacherVoice() {
 
   const stop = useCallback(() => {
     reqIdRef.current += 1;
+    if (tickRef.current !== null) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
     const a = audioRef.current;
     if (a) {
       a.pause();
@@ -201,14 +206,18 @@ export function useTeacherVoice() {
         // Estimate caption progress from typical speaking speed (~13 chars/sec).
         const durMs = Math.max(1200, (t.length / 13) * 1000);
         const startedAt = Date.now();
-        const tick = setInterval(() => {
+        tickRef.current = setInterval(() => {
           if (myId !== reqIdRef.current) {
-            clearInterval(tick);
+            clearInterval(tickRef.current!);
+            tickRef.current = null;
             return;
           }
           const p = Math.min(1, (Date.now() - startedAt) / durMs);
           setProgress(p);
-          if (p >= 1) clearInterval(tick);
+          if (p >= 1) {
+            clearInterval(tickRef.current!);
+            tickRef.current = null;
+          }
         }, 80);
         browser.speak(t);
         setActiveKind("browser");

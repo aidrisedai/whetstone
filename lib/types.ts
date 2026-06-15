@@ -75,14 +75,6 @@ export interface CoachNote {
   proTip: string;
 }
 
-/** One step in the build loop (initial build or an iteration). */
-export interface BuildStep {
-  id: string;
-  request: string; // "Initial build" or the change request
-  note: CoachNote | null;
-  noteLoading: boolean;
-}
-
 /** A single find-and-replace edit applied to the current app for fast iteration. */
 export interface EditOp {
   find: string;
