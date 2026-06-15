@@ -47,7 +47,8 @@ export function Composer({
   const intake = variant === "intake";
 
   async function addFiles(files: FileList | File[]) {
-    const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const SUPPORTED = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    const accepted = Array.from(files).filter((f) => SUPPORTED.includes(f.type));
     const next = await Promise.all(accepted.map(fileToAttachment));
     if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
   }
