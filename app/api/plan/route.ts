@@ -1,6 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { PLAN_SCHEMA, PLAN_SYSTEM, planUserMessage } from "@/lib/prompts";
 import { demoPlan } from "@/lib/demo";
+import type { BuildPlan } from "@/lib/types";
 import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
@@ -49,7 +50,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const textBlock = resp.content.find((b) => b.type === "text");
     const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    return Response.json(safeParseJson(text));
+    return Response.json(safeParseJson<BuildPlan>(text));
   } catch (err) {
     return jsonError(getErrorMessage(err), 502);
   }
