@@ -68,6 +68,7 @@ export async function POST(req: Request): Promise<Response> {
         : null;
     return Response.json({ reply: parsed.reply, boardItem: item });
   } catch (err) {
+    console.error("[board-chat]", err);
     return jsonError(getErrorMessage(err), 502);
   }
 }

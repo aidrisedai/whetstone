@@ -56,6 +56,7 @@ export async function POST(req: Request): Promise<Response> {
     const part = safeParseJson<Omit<BuildPart, "id">>(text);
     return Response.json({ ...part, id: uid("part") } satisfies BuildPart);
   } catch (err) {
+    console.error("[extend]", err);
     return jsonError(getErrorMessage(err), 502);
   }
 }

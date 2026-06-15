@@ -73,6 +73,7 @@ export async function POST(req: Request): Promise<Response> {
     };
     return Response.json(checkpoint);
   } catch (err) {
+    console.error("[quiz]", err);
     return jsonError(getErrorMessage(err), 502);
   }
 }

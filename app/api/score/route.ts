@@ -65,6 +65,7 @@ export async function POST(req: Request): Promise<Response> {
 
     return Response.json(assessment);
   } catch (err) {
+    console.error("[score]", err);
     return jsonError(getErrorMessage(err), 502);
   }
 }

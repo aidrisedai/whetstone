@@ -42,6 +42,7 @@ export async function POST(req: Request): Promise<Response> {
     const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
     return Response.json(safeParseJson<CoachNote>(text));
   } catch (err) {
+    console.error("[coach]", err);
     return jsonError(getErrorMessage(err), 502);
   }
 }

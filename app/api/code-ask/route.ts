@@ -58,6 +58,7 @@ export async function POST(req: Request): Promise<Response> {
     const hint = parsed.highlightHint && parsed.highlightHint !== "none" ? parsed.highlightHint : null;
     return Response.json({ reply: parsed.reply, highlightHint: hint });
   } catch (err) {
+    console.error("[code-ask]", err);
     return jsonError(getErrorMessage(err), 502);
   }
 }

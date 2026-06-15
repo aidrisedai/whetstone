@@ -51,6 +51,7 @@ export async function POST(req: Request): Promise<Response> {
     const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
     return Response.json(safeParseJson(text));
   } catch (err) {
+    console.error("[plan]", err);
     return jsonError(getErrorMessage(err), 502);
   }
 }

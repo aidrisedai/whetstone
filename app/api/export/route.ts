@@ -36,7 +36,8 @@ export async function POST(req: Request): Promise<Response> {
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
       });
       webhook = r.ok ? "sent" : "failed";
-    } catch {
+    } catch (err) {
+      console.error("[export] Webhook POST failed:", err);
       webhook = "failed";
     }
   }
