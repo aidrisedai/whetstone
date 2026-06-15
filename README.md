@@ -115,10 +115,10 @@ tuned for a 10–11‑year‑old who'd rather be gaming:
   engineering‑manager *why we build it (and why now)*, and the **one concept**
   they'll learn. Favorite‑game analogies are woven in.
 - **Teach → approve → build, part by part.** For each part the kid sees the
-  explanation, then taps **"Build it!"** — only *then* is the code generated. The
-  first part is a full, streamed file (Sonnet 4.6); each later part is added to the
-  **same app** via fast targeted edits (with a full‑rebuild fallback), so the app
-  visibly **grows** one accepted piece at a time.
+  explanation, then taps **"Build it!"** — only *then* is the code generated. Each
+  part is written as a narrated, beat-by-beat code lesson (Opus 4.8), building the
+  same self-contained HTML file incrementally, so the app visibly **grows** one
+  approved piece at a time.
 - **Delightful feedback.** Each accepted part fires confetti, **+XP**, a level
   bar, and a quest‑map stepper — learning that feels like leveling up.
 - **Keep it.** Download the `.html`, ask for free‑form changes at the end, or open
@@ -141,7 +141,7 @@ All optional — see [`.env.example`](./.env.example).
 | `WHETSTONE_ADVISOR_MODEL` | `claude-sonnet-4-6`| Fast, responsive model for the live conversation (try `claude-haiku-4-5`). |
 | `WHETSTONE_SCORING_MODEL` | `claude-opus-4-8`  | Deliberate model for scoring + prompt synthesis (runs each turn). |
 | `WHETSTONE_LESSON_MODEL`  | `claude-opus-4-8`  | Deliberate model for the one-shot closing lesson.              |
-| `WHETSTONE_BUILDER_MODEL` | `claude-sonnet-4-6`| Fast, streamed code model that generates the app.              |
+| `WHETSTONE_BUILDER_MODEL` | `claude-opus-4-8`  | Code-generation model — writes the narrated build lesson & app.|
 | `WHETSTONE_COACH_MODEL`   | `claude-opus-4-8`  | Coach Spark — the build plan and per‑step teaching.            |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
@@ -162,15 +162,24 @@ app/
   api/
     advisor/route.ts    # streamed CEO‑advisor reply (adaptive thinking)
     score/route.ts      # structured assessment (json_schema output)
-    lesson/route.ts     # structured transferable lesson
+    lesson/route.ts     # structured transferable lesson (end of sharpen phase)
     export/route.ts     # builder deep link + optional webhook hand‑off
-    build/route.ts      # streams the generated self‑contained app (first build)
+    plan/route.ts       # Coach Spark breaks the project into 3–5 build parts
+    board/route.ts      # whiteboard teaching lesson for one part (before code)
+    board-chat/route.ts # teacher reply to student questions during the board
+    lesson-build/route.ts # narrated, beat-by-beat code lesson for one part
+    code-ask/route.ts   # teacher answers a question mid code-lesson
+    quiz/route.ts       # grounded checkpoint quiz from the real code just written
+    extend/route.ts     # turns a "keep building" request into a new build part
+    speak/route.ts      # Google Cloud TTS (HD voice); falls back to browser voice
+    build/route.ts      # simple streamed HTML build (available as an API)
     edit/route.ts       # targeted find‑and‑replace edits for fast iteration
-    coach/route.ts      # structured teaching card after each build step
+    coach/route.ts      # structured teaching card after a build step
 components/             # WhetstoneApp orchestrator, Composer, Conversation,
                         # ScorePanel/Ring/DimensionBar, ExportCard, LessonCard,
-                        # BuildWorkspace (preview + code + coach rail)…
+                        # BuildWorkspace, Whiteboard, CodeLesson, CheckpointQuiz…
 hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis (voice out)
+                       # useTeacherVoice (Google HD TTS with browser fallback)
 lib/                   # prompts, scoring (threshold logic), builders, demo, types…
 ```
 
