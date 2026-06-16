@@ -46,8 +46,21 @@ export function Composer({
 
   const intake = variant === "intake";
 
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+  const MAX_BYTES = 5 * 1024 * 1024; // 5 MB — Anthropic's base64 image limit
+
   async function addFiles(files: FileList | File[]) {
-    const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    setFileError(null);
+    const all = Array.from(files);
+    const rejected = all.filter((f) => !ACCEPTED_TYPES.has(f.type));
+    const oversized = all.filter((f) => ACCEPTED_TYPES.has(f.type) && f.size > MAX_BYTES);
+    const accepted = all.filter((f) => ACCEPTED_TYPES.has(f.type) && f.size <= MAX_BYTES);
+
+    if (rejected.length) setFileError(`Unsupported file type. Use JPEG, PNG, GIF, or WebP.`);
+    else if (oversized.length) setFileError(`Image too large (max 5 MB each).`);
+
     const next = await Promise.all(accepted.map(fileToAttachment));
     if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
   }
@@ -186,6 +199,9 @@ export function Composer({
 
       {listening && (
         <div className="mt-1.5 px-2 text-xs font-medium text-ember">listening… speak now</div>
+      )}
+      {fileError && (
+        <div className="mt-1.5 px-2 text-xs text-warn">{fileError}</div>
       )}
     </div>
   );
