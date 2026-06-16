@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { LESSON_BUILD_SCHEMA, LESSON_BUILD_SYSTEM, lessonBuildUserMessage } from "@/lib/prompts";
 import { demoBuildLesson } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, safeParseJson, sizeError } from "@/lib/serverUtils";
 import type { BuildLesson, CodeBeat } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -38,13 +38,16 @@ export async function POST(req: Request): Promise<Response> {
   const projectType = (body.projectType ?? "App").trim();
   const partNumber = typeof body.partNumber === "number" ? body.partNumber : 1;
   const totalParts = typeof body.totalParts === "number" ? body.totalParts : 1;
+  const currentCode = body.currentCode ?? "";
+  const codeSizeErr = sizeError("currentCode", currentCode);
+  if (codeSizeErr) return codeSizeErr;
 
   if (isDemoMode()) {
     return Response.json(
       demoBuildLesson({
         part,
         partNumber,
-        currentCode: body.currentCode ?? "",
+        currentCode,
         projectName: body.projectName ?? projectType,
       }),
     );
@@ -67,7 +70,7 @@ export async function POST(req: Request): Promise<Response> {
             partNumber,
             totalParts,
             part,
-            currentCode: body.currentCode ?? "",
+            currentCode,
             favoriteGame: body.favoriteGame ?? "",
             name: body.name ?? "",
           }),

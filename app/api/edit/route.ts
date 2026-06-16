@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { EDIT_SCHEMA, EDIT_SYSTEM, editUserMessage } from "@/lib/prompts";
 import { demoEdits } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, safeParseJson, sizeError } from "@/lib/serverUtils";
 import type { EditResult } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -17,6 +17,8 @@ export async function POST(req: Request): Promise<Response> {
 
   const currentCode = body.currentCode ?? "";
   const changeRequest = (body.changeRequest ?? "").trim();
+  const codeSizeErr = sizeError("currentCode", currentCode);
+  if (codeSizeErr) return codeSizeErr;
   if (!currentCode) return jsonError("`currentCode` is required");
   if (!changeRequest) return jsonError("`changeRequest` is required");
 

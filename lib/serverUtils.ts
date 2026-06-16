@@ -1,5 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+/** Maximum size for generated app code payloads (200 KB). */
+export const MAX_CODE_BYTES = 200 * 1024;
+
+/** Return a 413 error if `value` exceeds `max` bytes (encoded as UTF-8). */
+export function sizeError(field: string, value: string, max = MAX_CODE_BYTES): Response | null {
+  const bytes = new TextEncoder().encode(value).length;
+  if (bytes > max) {
+    return new Response(JSON.stringify({ error: `\`${field}\` exceeds the ${Math.round(max / 1024)}KB limit` }), {
+      status: 413,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  return null;
+}
+
 /** Turn an unknown error into a short, builder-friendly message. */
 export function getErrorMessage(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) {
