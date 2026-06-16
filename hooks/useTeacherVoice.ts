@@ -41,7 +41,7 @@ function makeSilentUrl(): string {
  */
 export function useTeacherVoice() {
   const browser = useSpeechSynthesis();
-  const [speaking, setSpeaking] = useState(false);
+  const [hdSpeaking, setHdSpeaking] = useState(false);
   const [activeKind, setActiveKind] = useState<VoiceKind>("none");
   const [hdAvailable, setHdAvailable] = useState<boolean | null>(null);
   const [status, setStatus] = useState<string>("");
@@ -115,10 +115,6 @@ export function useTeacherVoice() {
     };
   }, [prime]);
 
-  useEffect(() => {
-    setSpeaking(browser.speaking);
-  }, [browser.speaking]);
-
   const stop = useCallback(() => {
     reqIdRef.current += 1;
     const a = audioRef.current;
@@ -131,7 +127,7 @@ export function useTeacherVoice() {
       }
     }
     browser.cancel();
-    setSpeaking(false);
+    setHdSpeaking(false);
   }, [browser]);
 
   const speak = useCallback(
@@ -165,7 +161,7 @@ export function useTeacherVoice() {
           audio.src = url;
           audio.muted = false;
           audio.onplay = () => {
-            setSpeaking(true);
+            setHdSpeaking(true);
             setActiveKind("hd");
             setStatus(`🔊 HD voice playing (${Math.round(blob.size / 1024)}KB)`);
           };
@@ -175,7 +171,7 @@ export function useTeacherVoice() {
             }
           };
           audio.onended = () => {
-            setSpeaking(false);
+            setHdSpeaking(false);
             setProgress(1);
           };
           audio.onerror = () => setStatus("⚠️ audio element error decoding HD clip");
@@ -221,19 +217,19 @@ export function useTeacherVoice() {
     const a = audioRef.current;
     if (a && !a.paused) a.pause();
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.pause();
-    setSpeaking(false);
+    setHdSpeaking(false);
   }, []);
 
   const resume = useCallback(() => {
     const a = audioRef.current;
     if (a && a.src && a.paused && a.currentTime > 0 && !a.ended) {
       void a.play().catch(() => {});
-      setSpeaking(true);
+      setHdSpeaking(true);
     }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.resume();
     }
   }, []);
 
-  return { supported: true, speaking, speak, stop, pause, resume, prime, activeKind, hdAvailable, status, progress };
+  return { supported: true, speaking: hdSpeaking || browser.speaking, speak, stop, pause, resume, prime, activeKind, hdAvailable, status, progress };
 }
