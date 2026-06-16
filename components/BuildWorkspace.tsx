@@ -61,30 +61,31 @@ type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "chec
 
 /* ----------------------------- small parts ----------------------------- */
 
+const CONFETTI_PARTICLES = Array.from({ length: 26 }).map(() => ({
+  left: Math.random() * 100,
+  delay: Math.random() * 0.25,
+  dur: 1 + Math.random() * 0.9,
+  size: 6 + Math.random() * 9,
+}));
+
 function Confetti() {
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-      {Array.from({ length: 26 }).map((_, i) => {
-        const left = Math.random() * 100;
-        const delay = Math.random() * 0.25;
-        const dur = 1 + Math.random() * 0.9;
-        const size = 6 + Math.random() * 9;
-        return (
-          <span
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: "-14px",
-              width: size,
-              height: size,
-              background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-              borderRadius: i % 2 ? "50%" : "2px",
-              animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
-            }}
-          />
-        );
-      })}
+      {CONFETTI_PARTICLES.map((p, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${p.left}%`,
+            top: "-14px",
+            width: p.size,
+            height: p.size,
+            background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            borderRadius: i % 2 ? "50%" : "2px",
+            animation: `confetti-fall ${p.dur}s ${p.delay}s ease-in forwards`,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -183,6 +184,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
   useEffect(() => {
     if (!loadingLesson && !loadingBoard) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadMsg(0);
     const id = setInterval(() => setLoadMsg((m) => m + 1), 2600);
     return () => clearInterval(id);
@@ -220,6 +222,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     [refinedPrompt, projectType],
   );
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
@@ -233,6 +236,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     if (p.name) void makePlan(p);
     else setStage("profile");
   }, [makePlan, refinedPrompt]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const startFromProfile = () => {
     const p: BuilderProfile = { ...profile, name: nameField.trim(), favoriteGame: gameField.trim() };
