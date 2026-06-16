@@ -58,6 +58,8 @@ export async function POST(req: Request): Promise<Response> {
     audioConfig: { audioEncoding: "LINEAR16", sampleRateHertz: 44100, speakingRate: 1.03 },
   };
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -66,6 +68,7 @@ export async function POST(req: Request): Promise<Response> {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -94,5 +97,7 @@ export async function POST(req: Request): Promise<Response> {
   } catch (err) {
     console.warn("[speak] Google TTS request threw; falling back to browser voice.", err);
     return new Response(null, { status: 204, headers: { "X-TTS-Fallback": "exception" } });
+  } finally {
+    clearTimeout(timer);
   }
 }

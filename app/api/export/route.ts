@@ -29,15 +29,22 @@ export async function POST(req: Request): Promise<Response> {
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     try {
       const r = await fetch(hook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        signal: controller.signal,
       });
       webhook = r.ok ? "sent" : "failed";
-    } catch {
+      if (!r.ok) console.warn(`[export] Webhook returned HTTP ${r.status} for ${hook}`);
+    } catch (err) {
       webhook = "failed";
+      console.warn("[export] Webhook delivery failed:", err instanceof Error ? err.message : err);
+    } finally {
+      clearTimeout(timer);
     }
   }
 
