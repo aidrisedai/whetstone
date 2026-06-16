@@ -360,7 +360,7 @@ const boardStepSchema = {
     items: { type: "array", items: boardItemSchema },
     ask: { type: "string" },
   },
-  required: ["say", "items", "ask"],
+  required: ["say", "items"],
   additionalProperties: false,
 } as const;
 
@@ -429,7 +429,7 @@ export const BOARD_CHAT_SCHEMA = {
       additionalProperties: false,
     },
   },
-  required: ["reply", "boardItem"],
+  required: ["reply"],
   additionalProperties: false,
 } as const;
 
