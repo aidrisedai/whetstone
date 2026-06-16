@@ -30,3 +30,6 @@ yarn-error.log*
 # editors
 .vscode/
 .idea/
+
+# claude code agent worktrees (temporary, created by isolation: worktree)
+.claude/worktrees/
