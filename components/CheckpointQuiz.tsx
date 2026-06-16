@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Checkpoint } from "@/lib/types";
 import { ArrowIcon, CheckIcon, CloseIcon, SparkIcon } from "./icons";
 
@@ -21,7 +21,7 @@ export function CheckpointQuiz({ checkpoint, onDone }: CheckpointQuizProps) {
   const [locked, setLocked] = useState(false);
   const [firstTryRight, setFirstTryRight] = useState(0);
   const [attempted, setAttempted] = useState(false); // attempted current q before (no XP)
-  const reportedRef = useState({ done: false })[0];
+  const reportedRef = useRef(false);
 
   const q = questions[qi];
   const correct = picked !== null && picked === q.correctIndex;
@@ -53,8 +53,8 @@ export function CheckpointQuiz({ checkpoint, onDone }: CheckpointQuizProps) {
       setPicked(null);
       setLocked(false);
       setAttempted(false);
-    } else if (!reportedRef.done) {
-      reportedRef.done = true;
+    } else if (!reportedRef.current) {
+      reportedRef.current = true;
       onDone(firstTryRight, questions.length);
     }
   }
