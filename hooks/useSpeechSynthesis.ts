@@ -40,6 +40,7 @@ export function useSpeechSynthesis() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSupported(true);
     const synth = window.speechSynthesis;
     const load = () => {
