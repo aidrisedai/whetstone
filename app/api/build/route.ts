@@ -27,8 +27,8 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const refinedPrompt = (body.refinedPrompt ?? "").trim();
-  const projectType = (body.projectType ?? "App").trim();
+  const refinedPrompt = (body.refinedPrompt ?? "").trim().slice(0, 8000);
+  const projectType = (body.projectType ?? "App").trim().slice(0, 200);
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
 
   const encoder = new TextEncoder();
