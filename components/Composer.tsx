@@ -26,6 +26,7 @@ export function Composer({
   const [input, setInput] = useState(initialValue);
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { supported: micSupported, listening, transcript, start, stop, reset } =
@@ -47,9 +48,19 @@ export function Composer({
   const intake = variant === "intake";
 
   async function addFiles(files: FileList | File[]) {
+    setImageError(null);
     const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    const next = await Promise.all(accepted.map(fileToAttachment));
-    if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
+    const settled = await Promise.allSettled(accepted.map(fileToAttachment));
+    const succeeded = settled
+      .filter((r): r is PromiseFulfilledResult<ImageAttachment> => r.status === "fulfilled")
+      .map((r) => r.value);
+    const failed = settled.filter((r) => r.status === "rejected");
+    if (failed.length > 0) {
+      setImageError((failed[0] as PromiseRejectedResult).reason instanceof Error
+        ? (failed[0] as PromiseRejectedResult).reason.message
+        : "One or more images could not be added.");
+    }
+    if (succeeded.length) setImages((prev) => [...prev, ...succeeded].slice(0, 4));
   }
 
   function submit() {
@@ -186,6 +197,9 @@ export function Composer({
 
       {listening && (
         <div className="mt-1.5 px-2 text-xs font-medium text-ember">listening… speak now</div>
+      )}
+      {imageError && (
+        <div className="mt-1.5 px-2 text-xs font-medium text-warn">{imageError}</div>
       )}
     </div>
   );
