@@ -21,6 +21,7 @@ export function getErrorMessage(err: unknown): string {
  */
 export function safeParseJson<T>(text: string): T {
   const trimmed = (text ?? "").trim();
+  if (!trimmed) throw new Error("The model returned an empty response — please try again.");
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   const candidate = fenced ? fenced[1] : trimmed;
   const start = candidate.indexOf("{");

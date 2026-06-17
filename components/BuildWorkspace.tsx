@@ -746,7 +746,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
                 >
                   <CheckIcon className="h-4 w-4 text-good" /> Save my app
                 </button>
-                {builderUrl && (
+                {builderUrl ? (
                   <a
                     href={builderUrl}
                     target="_blank"
@@ -756,6 +756,14 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
                     Open in {builderName}
                     <ArrowIcon className="h-4 w-4" />
                   </a>
+                ) : (
+                  <span
+                    title={`Couldn't reach ${builderName} — save your app and paste the code there manually.`}
+                    className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl border border-line bg-panel2 px-4 py-2.5 text-sm font-semibold text-muted opacity-60"
+                  >
+                    Open in {builderName}
+                    <ArrowIcon className="h-4 w-4" />
+                  </span>
                 )}
                 <button
                   type="button"
