@@ -27,7 +27,18 @@ export async function POST(req: Request): Promise<Response> {
   const builderUrl = builder.buildUrl(refinedPrompt);
 
   let webhook: ExportResult["webhook"] = "skipped";
-  const hook = process.env.BUILDER_WEBHOOK_URL;
+  const hookRaw = process.env.BUILDER_WEBHOOK_URL;
+  // Only allow https:// webhooks — reject plain-http and non-URL values so a
+  // misconfigured env var can't cause an SSRF against internal services.
+  let hook: string | null = null;
+  if (hookRaw) {
+    try {
+      const parsed = new URL(hookRaw);
+      if (parsed.protocol === "https:") hook = hookRaw;
+    } catch {
+      /* invalid URL — skip */
+    }
+  }
   if (hook) {
     try {
       const r = await fetch(hook, {
