@@ -44,7 +44,6 @@ export async function POST(req: Request): Promise<Response> {
 
   const apiKey = process.env.GOOGLE_TTS_API_KEY;
   const token = process.env.GOOGLE_TTS_ACCESS_TOKEN;
-  const url = apiKey ? `${TTS_ENDPOINT}?key=${encodeURIComponent(apiKey)}` : TTS_ENDPOINT;
 
   // LINEAR16 @ 44.1kHz = a standard WAV that every browser decodes reliably.
   // (Chirp3-HD's default MP3 is MPEG-2 @ 24kHz, which some Chromium builds —
@@ -59,10 +58,12 @@ export async function POST(req: Request): Promise<Response> {
   };
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(TTS_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        // Pass credentials via headers (not URL params) to avoid key exposure in logs.
+        ...(apiKey ? { "x-goog-api-key": apiKey } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
