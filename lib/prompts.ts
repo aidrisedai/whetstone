@@ -349,7 +349,7 @@ const boardItemSchema = {
     color: { type: "string", enum: ["blue", "pink", "yellow", "green", "teal", "red", "amber", "none"] },
     emphasis: { type: "boolean" },
   },
-  required: ["kind", "text", "color", "emphasis"],
+  required: ["kind", "text", "emphasis"],
   additionalProperties: false,
 } as const;
 
@@ -360,7 +360,7 @@ const boardStepSchema = {
     items: { type: "array", items: boardItemSchema },
     ask: { type: "string" },
   },
-  required: ["say", "items", "ask"],
+  required: ["say", "items"],
   additionalProperties: false,
 } as const;
 
