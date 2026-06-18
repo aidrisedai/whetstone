@@ -78,6 +78,7 @@ export function CodeViewer({
                   {i + 1}
                 </td>
                 <td className="whitespace-pre-wrap break-words px-2 py-0">
+                  {/* eslint-disable-next-line react/no-danger */}
                   <code className="tk" dangerouslySetInnerHTML={{ __html: tint(ln) || "&nbsp;" }} />
                 </td>
               </tr>
