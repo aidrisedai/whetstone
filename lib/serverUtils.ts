@@ -9,6 +9,7 @@ export function getErrorMessage(err: unknown): string {
     return "The advisor is rate-limited right now. Give it a few seconds and try again.";
   }
   if (err instanceof Anthropic.APIError) {
+    console.error("[Anthropic API Error]", { status: err.status, message: err.message });
     return `The advisor hit an API error (${err.status ?? "?"}). Try again in a moment.`;
   }
   if (err instanceof Error) return err.message;

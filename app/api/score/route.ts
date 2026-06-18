@@ -25,16 +25,35 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("`history` must be a non-empty array");
   }
 
+  // Guard against oversized payloads and prompt injection via priorCriteria.
+  const totalContentLength = history.reduce((sum, m) => sum + (m.content?.length ?? 0), 0);
+  if (totalContentLength > 200_000) {
+    return jsonError("Message history is too large");
+  }
+  const validatedCriteria: CriterionSpec[] | null =
+    Array.isArray(priorCriteria)
+      ? priorCriteria
+          .filter(
+            (c): c is CriterionSpec =>
+              c != null &&
+              typeof c === "object" &&
+              typeof c.key === "string" && c.key.length > 0 && c.key.length <= 64 &&
+              typeof c.label === "string" && c.label.length > 0 && c.label.length <= 128 &&
+              typeof c.bestPractice === "string" && c.bestPractice.length > 0 && c.bestPractice.length <= 512,
+          )
+          .slice(0, 3)
+      : null;
+
   const threshold = DEFAULT_THRESHOLD;
 
   if (isDemoMode()) {
-    return Response.json(demoAssessment(history, priorCriteria, threshold));
+    return Response.json(demoAssessment(history, validatedCriteria, threshold));
   }
 
   try {
     const messages = toAnthropicMessages(history);
-    if (priorCriteria && priorCriteria.length > 0) {
-      messages.push(criteriaReuseMessage(priorCriteria));
+    if (validatedCriteria && validatedCriteria.length > 0) {
+      messages.push(criteriaReuseMessage(validatedCriteria));
     }
 
     // Deliberate judgment for scoring; effort/thinking only on models that support them.
@@ -57,7 +76,7 @@ export async function POST(req: Request): Promise<Response> {
         projectType: raw.projectType,
         clarity: raw.clarity,
         conciseness: raw.conciseness,
-        dynamicCriteria: normalizeDynamicCriteria(raw.dynamicCriteria, priorCriteria),
+        dynamicCriteria: normalizeDynamicCriteria(raw.dynamicCriteria, validatedCriteria),
         refinedPrompt: raw.refinedPrompt,
       },
       threshold,

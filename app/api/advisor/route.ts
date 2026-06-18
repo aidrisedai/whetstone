@@ -29,6 +29,10 @@ export async function POST(req: Request): Promise<Response> {
   if (!Array.isArray(history) || history.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  const totalContentLength = history.reduce((sum, m) => sum + (m.content?.length ?? 0), 0);
+  if (totalContentLength > 200_000) {
+    return jsonError("Message history is too large");
+  }
 
   const encoder = new TextEncoder();
 
