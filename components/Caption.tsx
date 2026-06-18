@@ -11,13 +11,18 @@ export function Caption({ text, progress }: { text: string; progress: number }) 
   const realWords = words.filter((w) => w.trim().length > 0).length;
   const spokenCount = Math.round(progress * realWords);
 
-  let seen = 0;
+  // Precompute cumulative non-empty-word count per index to avoid mutating a
+  // variable during render, which React Strict Mode would observe twice.
+  const seenPerIndex = useMemo(() => {
+    let n = 0;
+    return words.map((w) => (w.trim().length === 0 ? n : ++n));
+  }, [words]);
+
   return (
     <p className="text-center text-[17px] leading-snug sm:text-lg">
       {words.map((w, i) => {
         if (w.trim().length === 0) return <span key={i}>{w}</span>;
-        seen += 1;
-        const spoken = seen <= spokenCount || progress >= 1;
+        const spoken = seenPerIndex[i] <= spokenCount || progress >= 1;
         return (
           <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
             {w}
