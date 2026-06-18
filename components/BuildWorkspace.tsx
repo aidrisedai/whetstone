@@ -61,30 +61,35 @@ type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "chec
 
 /* ----------------------------- small parts ----------------------------- */
 
+// Pre-computed stable confetti positions — avoids Math.random() in render (hydration safety + strict mode).
+const CONFETTI_ITEMS = Array.from({ length: 26 }, (_, i) => {
+  const seed = (i * 7 + 13) % 100;
+  return {
+    left: (seed * 3.7 + i * 2.9) % 100,
+    delay: (i * 0.011) % 0.25,
+    dur: 1 + ((i * 0.037 + 0.05) % 0.9),
+    size: 6 + ((i * 0.43 + 1) % 9),
+  };
+});
+
 function Confetti() {
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-      {Array.from({ length: 26 }).map((_, i) => {
-        const left = Math.random() * 100;
-        const delay = Math.random() * 0.25;
-        const dur = 1 + Math.random() * 0.9;
-        const size = 6 + Math.random() * 9;
-        return (
-          <span
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: "-14px",
-              width: size,
-              height: size,
-              background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-              borderRadius: i % 2 ? "50%" : "2px",
-              animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
-            }}
-          />
-        );
-      })}
+      {CONFETTI_ITEMS.map((item, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${item.left}%`,
+            top: "-14px",
+            width: item.size,
+            height: item.size,
+            background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            borderRadius: i % 2 ? "50%" : "2px",
+            animation: `confetti-fall ${item.dur}s ${item.delay}s ease-in forwards`,
+          }}
+        />
+      ))}
     </div>
   );
 }
