@@ -26,6 +26,7 @@ export function Composer({
   const [input, setInput] = useState(initialValue);
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [sizeWarning, setSizeWarning] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { supported: micSupported, listening, transcript, start, stop, reset } =
@@ -47,7 +48,11 @@ export function Composer({
   const intake = variant === "intake";
 
   async function addFiles(files: FileList | File[]) {
-    const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const MAX_BYTES = 5 * 1024 * 1024;
+    const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const tooBig = imageFiles.some((f) => f.size > MAX_BYTES);
+    if (tooBig) setSizeWarning(true);
+    const accepted = imageFiles.filter((f) => f.size <= MAX_BYTES);
     const next = await Promise.all(accepted.map(fileToAttachment));
     if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
   }
@@ -184,6 +189,14 @@ export function Composer({
         </div>
       </div>
 
+      {sizeWarning && (
+        <div className="mt-1.5 px-2 text-xs text-warn">
+          Some images were skipped — max 5 MB each.{" "}
+          <button type="button" className="underline" onClick={() => setSizeWarning(false)}>
+            Dismiss
+          </button>
+        </div>
+      )}
       {listening && (
         <div className="mt-1.5 px-2 text-xs font-medium text-ember">listening… speak now</div>
       )}
