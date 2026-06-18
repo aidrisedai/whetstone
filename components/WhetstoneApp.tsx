@@ -42,6 +42,8 @@ export function WhetstoneApp({
   const criteriaRef = useRef<CriterionSpec[] | null>(null);
   const exportedRef = useRef(false);
   const voiceRef = useRef(false);
+  // Incremented on every reset so in-flight async callbacks can bail out.
+  const genRef = useRef(0);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -56,28 +58,31 @@ export function WhetstoneApp({
   }, []);
 
   const runAdvisor = useCallback(
-    async (history: ChatMessage[], closing: boolean, msgId: string) => {
+    async (history: ChatMessage[], closing: boolean, msgId: string, gen: number) => {
       let acc = "";
       try {
         await streamAdvisor(history, closing, (chunk) => {
+          if (genRef.current !== gen) return;
           acc += chunk;
           updateMsg(msgId, acc);
         });
       } catch (err) {
+        if (genRef.current !== gen) return;
         acc = acc || "⚠️ The advisor stumbled mid-thought. Try sending that again.";
         updateMsg(msgId, acc);
         setError(err instanceof Error ? err.message : "Advisor failed");
       } finally {
-        setAdvisorTyping(false);
+        if (genRef.current === gen) setAdvisorTyping(false);
       }
-      if (voiceRef.current && acc && !acc.startsWith("⚠️")) speak(acc);
+      if (genRef.current === gen && voiceRef.current && acc && !acc.startsWith("⚠️")) speak(acc);
     },
     [speak, updateMsg],
   );
 
-  const runScore = useCallback(async (history: ChatMessage[]): Promise<Assessment | null> => {
+  const runScore = useCallback(async (history: ChatMessage[], gen: number): Promise<Assessment | null> => {
     try {
       const a = await fetchScore(history, criteriaRef.current);
+      if (genRef.current !== gen) return null;
       setAssessment(a);
       if (!criteriaRef.current && a.dynamicCriteria.length > 0) {
         criteriaRef.current = a.dynamicCriteria.map((d) => ({
@@ -88,33 +93,36 @@ export function WhetstoneApp({
       }
       return a;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Scoring failed");
+      if (genRef.current === gen) setError(err instanceof Error ? err.message : "Scoring failed");
       return null;
     } finally {
-      setScoring(false);
+      if (genRef.current === gen) setScoring(false);
     }
   }, []);
 
   const triggerExport = useCallback(
-    async (history: ChatMessage[], result: Assessment) => {
+    async (history: ChatMessage[], result: Assessment, gen: number) => {
       exportedRef.current = true;
       setExported(true);
       setLessonLoading(true);
 
-      void requestExport(result.refinedPrompt).then(setExportResult).catch(() => {});
+      void requestExport(result.refinedPrompt).then((r) => {
+        if (genRef.current === gen) setExportResult(r);
+      }).catch(() => {});
       void copyToClipboard(result.refinedPrompt).catch(() => {});
 
       const closeMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
       setMessages((prev) => [...prev, closeMsg]);
       setAdvisorTyping(true);
-      await runAdvisor(history, true, closeMsg.id);
+      await runAdvisor(history, true, closeMsg.id, gen);
 
+      if (genRef.current !== gen) return;
       try {
         setLesson(await fetchLesson(history));
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Lesson failed");
+        if (genRef.current === gen) setError(err instanceof Error ? err.message : "Lesson failed");
       } finally {
-        setLessonLoading(false);
+        if (genRef.current === gen) setLessonLoading(false);
       }
     },
     [runAdvisor],
@@ -125,6 +133,7 @@ export function WhetstoneApp({
       if (busy) return;
       setError(null);
 
+      const gen = genRef.current;
       const userMsg: ChatMessage = {
         id: uid("u"),
         role: "user",
@@ -140,19 +149,21 @@ export function WhetstoneApp({
       setBusy(true);
 
       const [, result] = await Promise.all([
-        runAdvisor(nextHistory, false, advisorMsg.id),
-        runScore(nextHistory),
+        runAdvisor(nextHistory, false, advisorMsg.id, gen),
+        runScore(nextHistory, gen),
       ]);
 
+      if (genRef.current !== gen) return;
       if (result && result.ready && !exportedRef.current) {
-        await triggerExport(nextHistory, result);
+        await triggerExport(nextHistory, result, gen);
       }
-      setBusy(false);
+      if (genRef.current === gen) setBusy(false);
     },
     [busy, runAdvisor, runScore, triggerExport],
   );
 
   const reset = useCallback(() => {
+    genRef.current += 1; // invalidate all in-flight async operations
     cancelSpeech();
     setMode("sharpen");
     setMessages([]);
