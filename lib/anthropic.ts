@@ -40,7 +40,8 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  // Opus 4.5+ and Sonnet 4.6+ support adaptive thinking + effort; older minor versions error.
+  return /^claude-opus-4-([5-9]|\d{2,})\b/.test(model) || /^claude-sonnet-4-([6-9]|\d{2,})\b/.test(model);
 }
 
 /**
