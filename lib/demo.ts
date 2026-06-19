@@ -45,9 +45,9 @@ const PUSHBACKS = [
   (k: string) => `Okay — but "${k}" is doing a lot of hidden work here. Who exactly is this for, and what can they do with it that they can't do today?`,
   (k: string) => `I hear the ambition. Now make it sharp: when someone uses "${k}", what's the ONE thing they walk away having done?`,
   (k: string) => `You're describing features, not a decision. If you could only ship one piece of "${k}" first, which one — and why that one?`,
-  (k: string) => `Good, that's tighter. But what does "done" look like? Give me the moment a user thinks "yes, this worked."`,
+  (_k: string) => `Good, that's tighter. But what does "done" look like? Give me the moment a user thinks "yes, this worked."`,
   (k: string) => `Now you're getting somewhere. Where does the data or content behind "${k}" actually come from?`,
-  (k: string) => `Cleaner. So what are you deliberately NOT building in v1? Name the thing you're cutting.`,
+  (_k: string) => `Cleaner. So what are you deliberately NOT building in v1? Name the thing you're cutting.`,
 ];
 
 export function demoAdvisorReply(history: ChatMessage[], closing: boolean): string {
@@ -449,7 +449,7 @@ export function demoBuildLesson(args: {
 }
 
 /* ---- Demo checkpoint quiz (offline stand-in) ---- */
-export function demoQuiz(partTitle: string, concept: string): Checkpoint {
+export function demoQuiz(partTitle: string, _concept: string): Checkpoint {
   return {
     partTitle,
     intro: "Quick checkpoint! Let's see what stuck. 🎯",
