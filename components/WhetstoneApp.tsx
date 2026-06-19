@@ -101,7 +101,11 @@ export function WhetstoneApp({
       setExported(true);
       setLessonLoading(true);
 
-      void requestExport(result.refinedPrompt).then(setExportResult).catch(() => {});
+      void requestExport(result.refinedPrompt)
+        .then(setExportResult)
+        .catch(() => {
+          setError("Export to builder failed — copy the prompt above to use it manually.");
+        });
       void copyToClipboard(result.refinedPrompt).catch(() => {});
 
       const closeMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
@@ -139,15 +143,18 @@ export function WhetstoneApp({
       setScoring(true);
       setBusy(true);
 
-      const [, result] = await Promise.all([
-        runAdvisor(nextHistory, false, advisorMsg.id),
-        runScore(nextHistory),
-      ]);
+      try {
+        const [, result] = await Promise.all([
+          runAdvisor(nextHistory, false, advisorMsg.id),
+          runScore(nextHistory),
+        ]);
 
-      if (result && result.ready && !exportedRef.current) {
-        await triggerExport(nextHistory, result);
+        if (result && result.ready && !exportedRef.current) {
+          await triggerExport(nextHistory, result);
+        }
+      } finally {
+        setBusy(false);
       }
-      setBusy(false);
     },
     [busy, runAdvisor, runScore, triggerExport],
   );
