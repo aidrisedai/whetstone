@@ -115,9 +115,6 @@ export function useTeacherVoice() {
     };
   }, [prime]);
 
-  useEffect(() => {
-    setSpeaking(browser.speaking);
-  }, [browser.speaking]);
 
   const stop = useCallback(() => {
     reqIdRef.current += 1;
@@ -194,7 +191,7 @@ export function useTeacherVoice() {
         } else {
           setStatus(`⚠️ /api/speak HTTP ${res.status} — using browser voice`);
         }
-      } catch (e) {
+      } catch {
         setStatus(`⚠️ network error reaching /api/speak — using browser voice`);
       }
       if (myId === reqIdRef.current) {
@@ -235,5 +232,5 @@ export function useTeacherVoice() {
     }
   }, []);
 
-  return { supported: true, speaking, speak, stop, pause, resume, prime, activeKind, hdAvailable, status, progress };
+  return { supported: true, speaking: speaking || browser.speaking, speak, stop, pause, resume, prime, activeKind, hdAvailable, status, progress };
 }
