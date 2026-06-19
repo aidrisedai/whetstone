@@ -3,7 +3,7 @@ import { criteriaReuseMessage, toAnthropicMessages } from "@/lib/messages";
 import { SCORE_SCHEMA, SCORE_SYSTEM } from "@/lib/prompts";
 import { DEFAULT_THRESHOLD, finalizeAssessment, normalizeDynamicCriteria } from "@/lib/scoring";
 import { demoAssessment } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, safeParseJson, MAX_HISTORY_LENGTH } from "@/lib/serverUtils";
 import type { Assessment, ChatMessage, CriterionSpec } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -23,6 +23,9 @@ export async function POST(req: Request): Promise<Response> {
   const priorCriteria = body.priorCriteria ?? null;
   if (!Array.isArray(history) || history.length === 0) {
     return jsonError("`history` must be a non-empty array");
+  }
+  if (history.length > MAX_HISTORY_LENGTH) {
+    return jsonError(`\`history\` must not exceed ${MAX_HISTORY_LENGTH} messages`);
   }
 
   const threshold = DEFAULT_THRESHOLD;

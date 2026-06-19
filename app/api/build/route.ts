@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
 import { BUILD_SYSTEM, buildUserMessage } from "@/lib/prompts";
 import { demoBuildHtml } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, MAX_CODE_CHARS, MAX_FIELD_CHARS } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +30,8 @@ export async function POST(req: Request): Promise<Response> {
   const refinedPrompt = (body.refinedPrompt ?? "").trim();
   const projectType = (body.projectType ?? "App").trim();
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
+  if (refinedPrompt.length > MAX_FIELD_CHARS) return jsonError("`refinedPrompt` is too long");
+  if ((body.currentCode ?? "").length > MAX_CODE_CHARS) return jsonError("`currentCode` is too large");
 
   const encoder = new TextEncoder();
 

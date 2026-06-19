@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { LESSON_BUILD_SCHEMA, LESSON_BUILD_SYSTEM, lessonBuildUserMessage } from "@/lib/prompts";
 import { demoBuildLesson } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, safeParseJson, MAX_CODE_CHARS } from "@/lib/serverUtils";
 import type { BuildLesson, CodeBeat } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -34,6 +34,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const part = body.part;
   if (!part || !part.buildSpec) return jsonError("`part` with a buildSpec is required");
+  if ((body.currentCode ?? "").length > MAX_CODE_CHARS) return jsonError("`currentCode` is too large");
 
   const projectType = (body.projectType ?? "App").trim();
   const partNumber = typeof body.partNumber === "number" ? body.partNumber : 1;

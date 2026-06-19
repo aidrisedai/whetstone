@@ -35,3 +35,12 @@ export function jsonError(message: string, status = 400): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+/** Max number of conversation turns sent to any API route. */
+export const MAX_HISTORY_LENGTH = 40;
+
+/** Max characters for a single text field (prompt, changeRequest, etc.). */
+export const MAX_FIELD_CHARS = 20_000;
+
+/** Max characters for generated code passed back for editing/extending. */
+export const MAX_CODE_CHARS = 200_000;

@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { EDIT_SCHEMA, EDIT_SYSTEM, editUserMessage } from "@/lib/prompts";
 import { demoEdits } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, safeParseJson, MAX_CODE_CHARS, MAX_FIELD_CHARS } from "@/lib/serverUtils";
 import type { EditResult } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -19,6 +19,8 @@ export async function POST(req: Request): Promise<Response> {
   const changeRequest = (body.changeRequest ?? "").trim();
   if (!currentCode) return jsonError("`currentCode` is required");
   if (!changeRequest) return jsonError("`changeRequest` is required");
+  if (currentCode.length > MAX_CODE_CHARS) return jsonError("`currentCode` is too large");
+  if (changeRequest.length > MAX_FIELD_CHARS) return jsonError("`changeRequest` is too long");
 
   if (isDemoMode()) {
     return Response.json(demoEdits(changeRequest));

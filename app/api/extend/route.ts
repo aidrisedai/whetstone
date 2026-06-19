@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { EXTEND_SCHEMA, EXTEND_SYSTEM, extendUserMessage } from "@/lib/prompts";
 import { demoExtendPart } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, safeParseJson, MAX_CODE_CHARS, MAX_FIELD_CHARS } from "@/lib/serverUtils";
 import { uid } from "@/lib/format";
 import type { BuildPart } from "@/lib/types";
 
@@ -24,6 +24,8 @@ export async function POST(req: Request): Promise<Response> {
 
   const request = (body.request ?? "").trim();
   if (!request) return jsonError("`request` is required");
+  if (request.length > MAX_FIELD_CHARS) return jsonError("`request` is too long");
+  if ((body.currentCode ?? "").length > MAX_CODE_CHARS) return jsonError("`currentCode` is too large");
 
   if (isDemoMode()) {
     return Response.json({ ...demoExtendPart(request), id: uid("part") });
