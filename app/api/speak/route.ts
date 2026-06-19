@@ -66,6 +66,7 @@ export async function POST(req: Request): Promise<Response> {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!res.ok) {
