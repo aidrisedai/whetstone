@@ -68,7 +68,7 @@ export async function POST(req: Request): Promise<Response> {
     const parsed = safeParseJson<{ boardTitle: string; steps: BoardStep[]; closing: string }>(text);
     const lesson: BoardLesson = {
       partTitle: part.title,
-      boardTitle: parsed.boardTitle,
+      boardTitle: parsed.boardTitle ?? part.title,
       steps: (parsed.steps || []).filter((s) => s && s.say).map((s) => ({
         say: s.say,
         items: (Array.isArray(s.items) ? s.items : []).map((it) => ({
@@ -78,7 +78,7 @@ export async function POST(req: Request): Promise<Response> {
         })),
         ask: s.ask && s.ask.trim() ? s.ask.trim() : undefined,
       })),
-      closing: parsed.closing,
+      closing: parsed.closing ?? "",
     };
     return Response.json(lesson);
   } catch (err) {

@@ -229,7 +229,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     setGameField(p.favoriteGame);
     requestExport(refinedPrompt)
       .then((r) => setBuilderUrl(r.builderUrl))
-      .catch(() => {});
+      .catch((err) => console.warn("[Whetstone] Export URL fetch failed:", err));
     if (p.name) void makePlan(p);
     else setStage("profile");
   }, [makePlan, refinedPrompt]);
@@ -243,7 +243,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
   // Approve the part → open the WHITEBOARD (teach the idea before any code).
   const startBoard = useCallback(async () => {
-    if (!plan) return;
+    if (!plan || partIndex >= plan.parts.length) return;
     const part = plan.parts[partIndex];
     setLoadingBoard(true);
     setError(null);
@@ -268,7 +268,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   }, [plan, partIndex, profile.name, profile.favoriteGame]);
 
   const startLesson = useCallback(async () => {
-    if (!plan) return;
+    if (!plan || partIndex >= plan.parts.length) return;
     const part = plan.parts[partIndex];
     setLoadingLesson(true);
     setError(null);
@@ -297,7 +297,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   // Lesson finished → commit code, award build XP, then go to the checkpoint quiz.
   const completeLesson = useCallback(
     async (finalCode: string, newCode: string) => {
-      if (!plan) return;
+      if (!plan || partIndex >= plan.parts.length) return;
       const part = plan.parts[partIndex];
       setCode(finalCode);
       setActiveLesson(null);
