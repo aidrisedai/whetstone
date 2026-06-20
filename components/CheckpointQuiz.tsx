@@ -24,13 +24,14 @@ export function CheckpointQuiz({ checkpoint, onDone }: CheckpointQuizProps) {
   const reportedRef = useState({ done: false })[0];
 
   const q = questions[qi];
-  const correct = picked !== null && picked === q.correctIndex;
 
   const optionLetters = useMemo(() => ["A", "B", "C", "D"], []);
 
   if (!q) {
     return null;
   }
+
+  const correct = picked !== null && picked === q.correctIndex;
 
   function choose(idx: number) {
     if (locked) return;
