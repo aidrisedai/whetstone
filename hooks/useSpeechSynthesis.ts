@@ -34,13 +34,15 @@ function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null 
  * robotic one.
  */
 export function useSpeechSynthesis() {
-  const [supported, setSupported] = useState(false);
+  const [supported] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return "speechSynthesis" in window;
+  });
   const [speaking, setSpeaking] = useState(false);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    setSupported(true);
+    if (!supported) return;
     const synth = window.speechSynthesis;
     const load = () => {
       voiceRef.current = pickVoice(synth.getVoices());
@@ -52,7 +54,7 @@ export function useSpeechSynthesis() {
       synth.removeEventListener?.("voiceschanged", load);
       synth.cancel();
     };
-  }, []);
+  }, [supported]);
 
   const speak = useCallback((text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;

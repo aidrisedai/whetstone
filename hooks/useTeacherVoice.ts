@@ -41,12 +41,15 @@ function makeSilentUrl(): string {
  */
 export function useTeacherVoice() {
   const browser = useSpeechSynthesis();
-  const [speaking, setSpeaking] = useState(false);
+  const [hdSpeaking, setHdSpeaking] = useState(false);
   const [activeKind, setActiveKind] = useState<VoiceKind>("none");
   const [hdAvailable, setHdAvailable] = useState<boolean | null>(null);
   const [status, setStatus] = useState<string>("");
   // 0..1 progress through the line currently being spoken — drives captions.
   const [progress, setProgress] = useState(0);
+
+  // Derived: speaking whenever either voice channel is active.
+  const speaking = hdSpeaking || browser.speaking;
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const silentUrlRef = useRef<string | null>(null);
@@ -115,10 +118,6 @@ export function useTeacherVoice() {
     };
   }, [prime]);
 
-  useEffect(() => {
-    setSpeaking(browser.speaking);
-  }, [browser.speaking]);
-
   const stop = useCallback(() => {
     reqIdRef.current += 1;
     const a = audioRef.current;
@@ -131,7 +130,7 @@ export function useTeacherVoice() {
       }
     }
     browser.cancel();
-    setSpeaking(false);
+    setHdSpeaking(false);
   }, [browser]);
 
   const speak = useCallback(
@@ -165,7 +164,7 @@ export function useTeacherVoice() {
           audio.src = url;
           audio.muted = false;
           audio.onplay = () => {
-            setSpeaking(true);
+            setHdSpeaking(true);
             setActiveKind("hd");
             setStatus(`🔊 HD voice playing (${Math.round(blob.size / 1024)}KB)`);
           };
@@ -175,7 +174,7 @@ export function useTeacherVoice() {
             }
           };
           audio.onended = () => {
-            setSpeaking(false);
+            setHdSpeaking(false);
             setProgress(1);
           };
           audio.onerror = () => setStatus("⚠️ audio element error decoding HD clip");
@@ -194,7 +193,7 @@ export function useTeacherVoice() {
         } else {
           setStatus(`⚠️ /api/speak HTTP ${res.status} — using browser voice`);
         }
-      } catch (e) {
+      } catch {
         setStatus(`⚠️ network error reaching /api/speak — using browser voice`);
       }
       if (myId === reqIdRef.current) {
@@ -221,14 +220,14 @@ export function useTeacherVoice() {
     const a = audioRef.current;
     if (a && !a.paused) a.pause();
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.pause();
-    setSpeaking(false);
+    setHdSpeaking(false);
   }, []);
 
   const resume = useCallback(() => {
     const a = audioRef.current;
     if (a && a.src && a.paused && a.currentTime > 0 && !a.ended) {
       void a.play().catch(() => {});
-      setSpeaking(true);
+      setHdSpeaking(true);
     }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.resume();
