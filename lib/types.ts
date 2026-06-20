@@ -68,32 +68,6 @@ export interface ExportResult {
   webhook: "sent" | "skipped" | "failed";
 }
 
-/** A coaching card delivered after each build step — the learning-while-building. */
-export interface CoachNote {
-  whatChanged: string;
-  concept: string;
-  proTip: string;
-}
-
-/** One step in the build loop (initial build or an iteration). */
-export interface BuildStep {
-  id: string;
-  request: string; // "Initial build" or the change request
-  note: CoachNote | null;
-  noteLoading: boolean;
-}
-
-/** A single find-and-replace edit applied to the current app for fast iteration. */
-export interface EditOp {
-  find: string;
-  replace: string;
-}
-
-export interface EditResult {
-  summary: string;
-  edits: EditOp[];
-}
-
 /** One buildable piece of the project, taught before any code is written. */
 export interface BuildPart {
   id: string;

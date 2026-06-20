@@ -6,10 +6,8 @@ import type {
   BuildPart,
   ChatMessage,
   Checkpoint,
-  CoachNote,
   CodeBeat,
   CriterionSpec,
-  EditResult,
   Lesson,
 } from "./types";
 import { finalizeAssessment } from "./scoring";
@@ -189,123 +187,6 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-/**
- * A real, self-contained, interactive starter app for demo mode — a working
- * item tracker (add / toggle / delete, persisted to localStorage), themed to
- * the project. Renders and runs offline in the preview iframe.
- */
-export function demoBuildHtml(projectType: string, refinedPrompt: string, changeRequest?: string): string {
-  const title = escapeHtml(projectType || "Your app");
-  const sub = escapeHtml((refinedPrompt || "Built by Whetstone").slice(0, 150));
-  const banner = changeRequest
-    ? `<div class="banner">Demo build · applied your note: "${escapeHtml(changeRequest)}"</div>`
-    : `<div class="banner">Demo build · set ANTHROPIC_API_KEY for the real Whetstone builder</div>`;
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title}</title>
-<style>
-  :root{color-scheme:dark}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#0b0d10;color:#eaedf2;display:flex;justify-content:center;padding:24px}
-  .app{width:100%;max-width:560px}
-  h1{font-size:1.6rem;margin:0 0 4px}
-  p.sub{color:#9ba3af;margin:0 0 16px;font-size:.92rem;line-height:1.4}
-  .banner{background:#1b1f26;border:1px solid #262b33;border-radius:10px;padding:10px 12px;margin-bottom:16px;color:#ffb020;font-size:.82rem}
-  .row{display:flex;gap:8px;margin-bottom:16px}
-  input{flex:1;padding:12px;border-radius:10px;border:1px solid #262b33;background:#14171c;color:#eaedf2;font-size:1rem}
-  input:focus{outline:2px solid #ff6b35;outline-offset:1px}
-  button.add{padding:12px 16px;border:0;border-radius:10px;background:#ff6b35;color:#0b0d10;font-weight:700;cursor:pointer}
-  ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
-  li{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #262b33;border-radius:10px;background:#14171c}
-  li.done span{text-decoration:line-through;color:#9ba3af}
-  li span{flex:1;cursor:pointer}
-  .del{background:transparent;border:0;color:#9ba3af;font-size:1.2rem;cursor:pointer;padding:2px 8px}
-  .empty{color:#9ba3af;text-align:center;padding:24px}
-</style>
-</head>
-<body>
-<div class="app">
-  <h1>${title}</h1>
-  <p class="sub">${sub}</p>
-  ${banner}
-  <div class="row">
-    <input id="item" placeholder="Add an item and press Enter" aria-label="Add an item">
-    <button class="add" id="add">Add</button>
-  </div>
-  <ul id="list"></ul>
-  <p class="empty" id="empty">Nothing yet — add your first item.</p>
-</div>
-<script>
-  (function(){
-    var KEY = 'whetstone-demo-items';
-    var list = document.getElementById('list');
-    var empty = document.getElementById('empty');
-    var input = document.getElementById('item');
-    function load(){ try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } }
-    function save(items){ localStorage.setItem(KEY, JSON.stringify(items)); }
-    function render(){
-      var items = load();
-      list.innerHTML = '';
-      empty.style.display = items.length ? 'none' : 'block';
-      items.forEach(function(it, i){
-        var li = document.createElement('li');
-        if (it.done) li.className = 'done';
-        var span = document.createElement('span');
-        span.textContent = it.text;
-        span.onclick = function(){ items[i].done = !items[i].done; save(items); render(); };
-        var del = document.createElement('button');
-        del.className = 'del'; del.setAttribute('aria-label', 'Delete'); del.textContent = '\\u00d7';
-        del.onclick = function(){ items.splice(i, 1); save(items); render(); };
-        li.appendChild(span); li.appendChild(del);
-        list.appendChild(li);
-      });
-    }
-    function add(){ var t = input.value.trim(); if (!t) return; var items = load(); items.push({ text: t, done: false }); save(items); input.value = ''; render(); }
-    document.getElementById('add').onclick = add;
-    input.addEventListener('keydown', function(e){ if (e.key === 'Enter') add(); });
-    render();
-  })();
-</script>
-</body>
-</html>`;
-}
-
-export function demoCoach(step: number, changeRequest: string): CoachNote {
-  if (step <= 1) {
-    return {
-      whatChanged: "Whetstone turned your prompt into a working first version you can actually click around in.",
-      concept:
-        "Shipping a rough v1 fast teaches you more than another hour of planning — you discover what's missing by using the thing, not imagining it.",
-      proTip: "Open it, try the core action once, and name the first thing that feels off. That's your next build step.",
-    };
-  }
-  return {
-    whatChanged: changeRequest ? `Applied your change: "${changeRequest}".` : "Applied your latest change.",
-    concept:
-      "Every change request is a tiny spec — the more concretely you say what you want, the closer the build lands on the first try.",
-    proTip: "Ask for one specific change at a time so you can see exactly what each one does.",
-  };
-}
-
-export function demoEdits(changeRequest: string): EditResult {
-  const note = escapeHtml(changeRequest || "your change");
-  return {
-    summary: `Applied: ${changeRequest}`,
-    edits: [
-      {
-        find: "</body>",
-        replace:
-          `<div style="position:fixed;left:8px;right:8px;bottom:8px;background:#1b1f26;border:1px solid #262b33;` +
-          `color:#ffb020;padding:8px 12px;border-radius:8px;font:13px system-ui">Demo edit · ${note}</div>\n</body>`,
-      },
-    ],
-  };
 }
 
 export function demoPlan(

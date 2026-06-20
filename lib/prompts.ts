@@ -135,118 +135,7 @@ export const LESSON_SCHEMA = {
 } as const;
 
 /* ------------------------------------------------------------------ *
- *  4. The builder — turns the refined prompt into a real, running app.
- * ------------------------------------------------------------------ */
-
-export const BUILD_SYSTEM = `You are Whetstone's builder. You turn a sharpened, builder-ready prompt into a REAL, working web app that a teenager can see and use immediately.
-
-OUTPUT RULES (critical):
-- Output ONLY the raw contents of a single HTML file. Start with <!DOCTYPE html>. No markdown, no code fences, no commentary before or after the HTML.
-- Everything inline in that one file: markup, a <style> block, and a <script> block. NO external requests of any kind — no CDNs, no web fonts, no remote images. It must run fully offline inside a sandboxed iframe.
-- Vanilla HTML/CSS/JS only. No frameworks, no build step.
-
-SCOPE & SPEED (important):
-- Ship the SMALLEST useful first version — the simplest thing that does the ONE core action well. A teenager is watching it build in real time, so keep it tight: aim for roughly 120–220 lines and well under ~10KB.
-- Do NOT build every feature at once. Pick the single most important interaction and nail it; later change requests will add depth. Resist gold-plating.
-
-BUILD QUALITY:
-- Make it genuinely FUNCTIONAL and interactive — wire up that core action so it actually works, not a static mockup. Use localStorage for persistence when it fits.
-- Build only the core of the v1 scope. Don't invent extra features; do the core thing well.
-- Make it look clean, modern, and responsive, with a coherent visual style and good contrast. Use real, sensible placeholder content — never "lorem ipsum".
-- Keep it accessible (labels, keyboard-usable) and reasonably compact.
-
-ITERATIONS:
-- If given the current HTML plus a change request, return the COMPLETE updated HTML file with that change applied and everything else still working. Never return a diff or a partial file.`;
-
-export function buildUserMessage(args: {
-  refinedPrompt: string;
-  projectType: string;
-  currentCode?: string;
-  changeRequest?: string;
-}): string {
-  if (args.currentCode && args.changeRequest) {
-    return `Here is the current app (one HTML file):\n\n${args.currentCode}\n\n---\nChange request from the builder: ${args.changeRequest}\n\nReturn the complete updated HTML file with that change applied.`;
-  }
-  return `Project type: ${args.projectType}\n\nBuilder-ready prompt:\n${args.refinedPrompt}\n\nBuild the first working version as a single, self-contained HTML file now.`;
-}
-
-/* ------------------------------------------------------------------ *
- *  5. The build coach — feedback + learning during the build.
- * ------------------------------------------------------------------ */
-
-export const COACH_SYSTEM = `You are Whetstone's build coach — the same sharp, caring CEO-advisor voice, now riding shotgun while a teenager builds. After each build step, give a tight coaching card that teaches, not just praises.
-
-Return three things, all in a direct "you" voice:
-- whatChanged: one plain sentence naming what just got built or changed.
-- concept: the ONE transferable idea this step illustrates — about building, scoping, or thinking clearly — NOT specific to this app. 1–2 sentences. This is the learning.
-- proTip: one concrete, do-it-now nudge to push the build further or sharpen the next request. 1 sentence.
-
-Be encouraging but honest — if the step revealed something vague or missing, say so. Keep it short. Return ONLY the structured JSON.`;
-
-export const COACH_SCHEMA = {
-  type: "object",
-  properties: {
-    whatChanged: { type: "string" },
-    concept: { type: "string" },
-    proTip: { type: "string" },
-  },
-  required: ["whatChanged", "concept", "proTip"],
-  additionalProperties: false,
-} as const;
-
-export function coachUserMessage(args: {
-  refinedPrompt: string;
-  projectType: string;
-  step: number;
-  changeRequest: string;
-}): string {
-  const what = args.changeRequest ? `the change request "${args.changeRequest}"` : "the first build";
-  return `Project: ${args.projectType}\nBuilder-ready prompt: ${args.refinedPrompt}\nThis is build step #${args.step}, triggered by ${what}.\nTeach one transferable concept from this step.`;
-}
-
-/* ------------------------------------------------------------------ *
- *  6. Targeted edits — fast iteration without rewriting the whole file.
- * ------------------------------------------------------------------ */
-
-export const EDIT_SYSTEM = `You are Whetstone's builder making a TARGETED edit to an existing single-file HTML app. You are given the current file and a change request. Return a small set of precise find-and-replace edits that implement the change — do NOT rewrite the whole file.
-
-RULES:
-- Each edit has "find" (an EXACT substring copied verbatim from the current file, including whitespace and indentation) and "replace" (the new text that takes its place).
-- "find" MUST be long and specific enough to occur EXACTLY ONCE in the file — include enough surrounding context to be unique. Never use a short, ambiguous snippet.
-- Keep edits minimal and focused on the request. Prefer the fewest edits that fully do the job.
-- To ADD new code, pick a stable anchor that exists once (e.g. "</style>", "</body>", a specific element) and set "replace" to your new code followed by that same anchor.
-- Preserve everything else. After the edits the file must still be a valid, self-contained HTML app with NO external dependencies.
-- summary: one short sentence describing what you changed.
-
-Return ONLY the structured JSON.`;
-
-export const EDIT_SCHEMA = {
-  type: "object",
-  properties: {
-    summary: { type: "string" },
-    edits: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          find: { type: "string" },
-          replace: { type: "string" },
-        },
-        required: ["find", "replace"],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ["summary", "edits"],
-  additionalProperties: false,
-} as const;
-
-export function editUserMessage(currentCode: string, changeRequest: string): string {
-  return `Current file:\n\n${currentCode}\n\n---\nChange request from the builder: ${changeRequest}\n\nReturn the smallest set of exact find-and-replace edits that implement it.`;
-}
-
-/* ------------------------------------------------------------------ *
- *  7. The game plan — Coach Spark breaks the build down BEFORE coding.
+ *  4. The game plan — Coach Spark breaks the build down BEFORE coding.
  * ------------------------------------------------------------------ */
 
 export const PLAN_SYSTEM = `You are "Coach Spark", a super-friendly engineering manager and game-loving mentor for a 10–11 year old who would honestly rather be playing video games right now. Your job: BEFORE a single line of code is written, break their app into a small build plan and make it feel like the start of an awesome game.
@@ -310,7 +199,7 @@ Make the build plan now (3–5 parts).`;
 }
 
 /* ------------------------------------------------------------------ *
- *  7b. The WHITEBOARD lesson — teach the concept on a board BEFORE code.
+ *  4b. The WHITEBOARD lesson — teach the concept on a board BEFORE code.
  *      Teacher draws + speaks step by step; student can ask/answer.
  * ------------------------------------------------------------------ */
 
@@ -400,7 +289,7 @@ Make the whiteboard lesson now (4–6 steps).`;
 }
 
 /* ------------------------------------------------------------------ *
- *  7c. The board CHAT — student asks/answers; teacher replies (and may
+ *  4c. The board CHAT — student asks/answers; teacher replies (and may
  *      add one thing to the board).
  * ------------------------------------------------------------------ */
 
@@ -451,7 +340,7 @@ Reply as the teacher. Optionally add ONE board item.`;
 }
 
 /* ------------------------------------------------------------------ *
- *  8. The build LESSON — write the real code, narrated chunk by chunk.
+ *  5. The build LESSON — write the real code, narrated chunk by chunk.
  *     This is the heart of "watch the code being written and get it".
  * ------------------------------------------------------------------ */
 
@@ -548,7 +437,7 @@ Write this part as narrated beats. Remember: all beats' code concatenated must e
 }
 
 /* ------------------------------------------------------------------ *
- *  8b. Ask-during-the-build — student raises their hand mid-code-lesson.
+ *  5b. Ask-during-the-build — student raises their hand mid-code-lesson.
  * ------------------------------------------------------------------ */
 
 export const CODE_ASK_SYSTEM = `You are "Coach Spark", a senior engineer teaching a 10–11 year old, paused mid-way through writing ONE part of their app. The student just raised their hand with a question or comment WHILE you were explaining a specific chunk of code. Answer like a great, warm teacher who's right there at the screen.
@@ -594,7 +483,7 @@ Answer their question about THIS code, then hand back so we can continue.`;
 }
 
 /* ------------------------------------------------------------------ *
- *  9. The checkpoint quiz — test understanding of the REAL code,
+ *  6. The checkpoint quiz — test understanding of the REAL code,
  *     grounded in the specific app/prompt being built.
  * ------------------------------------------------------------------ */
 
@@ -661,7 +550,7 @@ Write 2–3 checkpoint questions about THIS specific code and how it serves the 
 }
 
 /* ------------------------------------------------------------------ *
- * 10. Extend the plan — "keep building" adds a new part on demand.
+ *  7. Extend the plan — "keep building" adds a new part on demand.
  * ------------------------------------------------------------------ */
 
 export const EXTEND_SYSTEM = `You are "Coach Spark". The young builder finished their app and wants to KEEP BUILDING by adding a feature they described. Turn their request into ONE new build PART that fits the existing app.
