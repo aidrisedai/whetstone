@@ -24,7 +24,11 @@ interface SpeechResultEvent {
  * input. Gracefully reports `supported: false` where the API is missing.
  */
 export function useSpeechRecognition() {
-  const [supported, setSupported] = useState(false);
+  const [supported] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+    return !!(w.SpeechRecognition || w.webkitSpeechRecognition);
+  });
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const recRef = useRef<RecognitionLike | null>(null);
@@ -38,7 +42,6 @@ export function useSpeechRecognition() {
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Ctor) return;
 
-    setSupported(true);
     const rec = new Ctor();
     rec.lang = "en-US";
     rec.continuous = true;
