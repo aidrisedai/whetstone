@@ -7,17 +7,22 @@ import { useMemo } from "react";
  * dark/bold, the rest are greyed. `progress` is 0..1 through the line.
  */
 export function Caption({ text, progress }: { text: string; progress: number }) {
-  const words = useMemo(() => text.split(/(\s+)/), [text]); // keep whitespace tokens
-  const realWords = words.filter((w) => w.trim().length > 0).length;
+  const { words, wordSeq } = useMemo(() => {
+    const ws = text.split(/(\s+)/);
+    let idx = 0;
+    const seq = ws.map((w) => (w.trim().length === 0 ? -1 : idx++));
+    return { words: ws, wordSeq: seq };
+  }, [text]);
+
+  // wordSeq[i] is the 0-based non-whitespace index for token i, or -1 for whitespace.
+  const realWords = wordSeq.filter((n) => n >= 0).length;
   const spokenCount = Math.round(progress * realWords);
 
-  let seen = 0;
   return (
     <p className="text-center text-[17px] leading-snug sm:text-lg">
       {words.map((w, i) => {
-        if (w.trim().length === 0) return <span key={i}>{w}</span>;
-        seen += 1;
-        const spoken = seen <= spokenCount || progress >= 1;
+        if (wordSeq[i] === -1) return <span key={i}>{w}</span>;
+        const spoken = wordSeq[i] < spokenCount || progress >= 1;
         return (
           <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
             {w}

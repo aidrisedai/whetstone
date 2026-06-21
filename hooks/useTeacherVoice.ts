@@ -115,10 +115,6 @@ export function useTeacherVoice() {
     };
   }, [prime]);
 
-  useEffect(() => {
-    setSpeaking(browser.speaking);
-  }, [browser.speaking]);
-
   const stop = useCallback(() => {
     reqIdRef.current += 1;
     const a = audioRef.current;
@@ -235,5 +231,5 @@ export function useTeacherVoice() {
     }
   }, []);
 
-  return { supported: true, speaking, speak, stop, pause, resume, prime, activeKind, hdAvailable, status, progress };
+  return { supported: true, speaking: speaking || browser.speaking, speak, stop, pause, resume, prime, activeKind, hdAvailable, status, progress };
 }
