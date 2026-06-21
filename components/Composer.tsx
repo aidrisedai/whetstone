@@ -48,8 +48,13 @@ export function Composer({
 
   async function addFiles(files: FileList | File[]) {
     const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    const next = await Promise.all(accepted.map(fileToAttachment));
-    if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
+    const results = await Promise.allSettled(accepted.map(fileToAttachment));
+    const attached: ImageAttachment[] = [];
+    for (const r of results) {
+      if (r.status === "fulfilled") attached.push(r.value);
+      else alert(r.reason instanceof Error ? r.reason.message : "Could not attach image.");
+    }
+    if (attached.length) setImages((prev) => [...prev, ...attached].slice(0, 4));
   }
 
   function submit() {
