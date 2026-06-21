@@ -31,10 +31,7 @@ export function Composer({
   const { supported: micSupported, listening, transcript, start, stop, reset } =
     useSpeechRecognition();
 
-  // While the mic is live, mirror the running transcript into the text box.
-  useEffect(() => {
-    if (listening) setInput(transcript);
-  }, [transcript, listening]);
+  const currentInput = listening ? transcript : input;
 
   // Auto-grow the textarea.
   useEffect(() => {
@@ -42,7 +39,7 @@ export function Composer({
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, variant === "intake" ? 220 : 160)}px`;
-  }, [input, variant]);
+  }, [currentInput, variant]);
 
   const intake = variant === "intake";
 
@@ -53,7 +50,7 @@ export function Composer({
   }
 
   function submit() {
-    const content = input.trim();
+    const content = currentInput.trim();
     if (disabled || (!content && images.length === 0)) return;
     if (listening) stop();
     onSend(content, images);
@@ -111,7 +108,7 @@ export function Composer({
       <div className="flex items-end gap-2">
         <textarea
           ref={textareaRef}
-          value={input}
+          value={currentInput}
           autoFocus={autoFocus}
           disabled={disabled}
           onChange={(e) => setInput(e.target.value)}
@@ -175,7 +172,7 @@ export function Composer({
           <button
             type="button"
             onClick={submit}
-            disabled={disabled || (!input.trim() && images.length === 0)}
+            disabled={disabled || (!currentInput.trim() && images.length === 0)}
             className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep text-base shadow-glow transition-transform hover:scale-105 disabled:from-line disabled:to-line disabled:text-muted disabled:shadow-none disabled:hover:scale-100"
             aria-label="Send"
           >
