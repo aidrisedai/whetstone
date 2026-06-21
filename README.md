@@ -116,7 +116,7 @@ tuned for a 10–11‑year‑old who'd rather be gaming:
   they'll learn. Favorite‑game analogies are woven in.
 - **Teach → approve → build, part by part.** For each part the kid sees the
   explanation, then taps **"Build it!"** — only *then* is the code generated. The
-  first part is a full, streamed file (Sonnet 4.6); each later part is added to the
+  first part is a full, streamed file (Opus 4.8); each later part is added to the
   **same app** via fast targeted edits (with a full‑rebuild fallback), so the app
   visibly **grows** one accepted piece at a time.
 - **Delightful feedback.** Each accepted part fires confetti, **+XP**, a level
