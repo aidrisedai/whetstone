@@ -299,6 +299,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     async (finalCode: string, newCode: string) => {
       if (!plan) return;
       const part = plan.parts[partIndex];
+      if (!part) return;
       setCode(finalCode);
       setActiveLesson(null);
 
