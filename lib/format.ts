@@ -20,17 +20,6 @@ export function assembleBeatsUpTo(beats: CodeBeat[], index: number): string {
     .join("");
 }
 
-/** A reassembled beat lesson is usable only if it forms a real HTML document. */
-export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
-  const full = assembleBeats(beats).trim();
-  return (
-    full.length > 0 &&
-    /<!DOCTYPE html/i.test(full.slice(0, 200)) &&
-    /<\/html>\s*$/i.test(full) &&
-    full.includes("<body")
-  );
-}
-
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */
 export function fileToAttachment(file: File): Promise<ImageAttachment> {
   return new Promise((resolve, reject) => {
@@ -59,36 +48,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     /* falls through */
   }
   return false;
-}
-
-/** Strip any stray markdown code fences the model may have wrapped the HTML in. */
-export function cleanGeneratedHtml(text: string): string {
-  let t = (text ?? "").trim();
-  t = t.replace(/^```[a-zA-Z]*\s*/, "").replace(/\s*```$/, "");
-  return t.trim();
-}
-
-/**
- * Apply find-and-replace edits to the current app, in order, each on the first
- * exact match. Returns the new code and how many edits actually landed (0 means
- * the caller should fall back to a full rebuild).
- */
-export function applyEdits(
-  code: string,
-  edits: { find: string; replace: string }[],
-): { code: string; applied: number } {
-  let out = code;
-  let applied = 0;
-  for (const e of edits) {
-    if (!e || typeof e.find !== "string" || typeof e.replace !== "string" || e.find.length === 0) {
-      continue;
-    }
-    const idx = out.indexOf(e.find);
-    if (idx === -1) continue;
-    out = out.slice(0, idx) + e.replace + out.slice(idx + e.find.length);
-    applied += 1;
-  }
-  return { code: out, applied };
 }
 
 /** Trigger a client-side download of text content (e.g. the built HTML). */
