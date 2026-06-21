@@ -347,7 +347,7 @@ export function Whiteboard({
                   type="button"
                   onClick={() => {
                     setShowType(true);
-                    mic.listening ? mic.stop() : mic.start(input);
+                    if (mic.listening) mic.stop(); else mic.start(input);
                   }}
                   title={mic.listening ? "Stop" : "Talk to your teacher"}
                   className={`relative grid h-11 w-11 place-items-center rounded-full shadow transition-colors ${
