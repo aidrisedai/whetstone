@@ -141,7 +141,7 @@ All optional — see [`.env.example`](./.env.example).
 | `WHETSTONE_ADVISOR_MODEL` | `claude-sonnet-4-6`| Fast, responsive model for the live conversation (try `claude-haiku-4-5`). |
 | `WHETSTONE_SCORING_MODEL` | `claude-opus-4-8`  | Deliberate model for scoring + prompt synthesis (runs each turn). |
 | `WHETSTONE_LESSON_MODEL`  | `claude-opus-4-8`  | Deliberate model for the one-shot closing lesson.              |
-| `WHETSTONE_BUILDER_MODEL` | `claude-sonnet-4-6`| Fast, streamed code model that generates the app.              |
+| `WHETSTONE_BUILDER_MODEL` | `claude-opus-4-8`  | Code-generation model for the narrated build lesson (highest-quality code). |
 | `WHETSTONE_COACH_MODEL`   | `claude-opus-4-8`  | Coach Spark — the build plan and per‑step teaching.            |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
@@ -162,15 +162,24 @@ app/
   api/
     advisor/route.ts    # streamed CEO‑advisor reply (adaptive thinking)
     score/route.ts      # structured assessment (json_schema output)
-    lesson/route.ts     # structured transferable lesson
+    lesson/route.ts     # structured transferable lesson (end of sharpening phase)
     export/route.ts     # builder deep link + optional webhook hand‑off
-    build/route.ts      # streams the generated self‑contained app (first build)
-    edit/route.ts       # targeted find‑and‑replace edits for fast iteration
-    coach/route.ts      # structured teaching card after each build step
+    speak/route.ts      # Google Cloud TTS; falls back to 204 for browser voice
+    plan/route.ts       # Coach Spark breaks the project into 3–5 build parts
+    board/route.ts      # whiteboard lesson for one part (teach before coding)
+    board-chat/route.ts # student asks/answers mid‑board; teacher replies
+    lesson-build/route.ts # narrated code‑beat lesson that grows the real app
+    code-ask/route.ts   # student raises hand during the code lesson
+    quiz/route.ts       # checkpoint quiz grounded in the code just written
+    extend/route.ts     # "keep building" — turns a request into a new part
+    build/route.ts      # streams the generated self‑contained app (legacy/API use)
+    edit/route.ts       # targeted find‑and‑replace edits (legacy/API use)
+    coach/route.ts      # per‑step coaching card (legacy/API use)
 components/             # WhetstoneApp orchestrator, Composer, Conversation,
                         # ScorePanel/Ring/DimensionBar, ExportCard, LessonCard,
-                        # BuildWorkspace (preview + code + coach rail)…
-hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis (voice out)
+                        # BuildWorkspace, Whiteboard, CodeLesson, CheckpointQuiz…
+hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis (browser TTS)
+                        # useTeacherVoice (Google HD TTS with browser fallback)
 lib/                   # prompts, scoring (threshold logic), builders, demo, types…
 ```
 
