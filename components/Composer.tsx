@@ -33,6 +33,7 @@ export function Composer({
 
   // While the mic is live, mirror the running transcript into the text box.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (listening) setInput(transcript);
   }, [transcript, listening]);
 
@@ -89,7 +90,6 @@ export function Composer({
         <div className="mb-2.5 flex flex-wrap gap-2 px-1">
           {images.map((img, i) => (
             <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg border border-line">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`data:${img.mediaType};base64,${img.data}`}
                 alt={img.name ?? "attachment"}

@@ -176,6 +176,7 @@ export function Whiteboard({
   }, [board.steps, say]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setChat([{ who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -191,6 +192,7 @@ export function Whiteboard({
   }, [revealed, extraItems]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mic.listening) setInput(mic.transcript);
   }, [mic.transcript, mic.listening]);
 
@@ -347,7 +349,7 @@ export function Whiteboard({
                   type="button"
                   onClick={() => {
                     setShowType(true);
-                    mic.listening ? mic.stop() : mic.start(input);
+                    if (mic.listening) mic.stop(); else mic.start(input);
                   }}
                   title={mic.listening ? "Stop" : "Talk to your teacher"}
                   className={`relative grid h-11 w-11 place-items-center rounded-full shadow transition-colors ${
