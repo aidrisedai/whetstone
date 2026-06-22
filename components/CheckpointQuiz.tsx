@@ -54,6 +54,7 @@ export function CheckpointQuiz({ checkpoint, onDone }: CheckpointQuizProps) {
       setLocked(false);
       setAttempted(false);
     } else if (!reportedRef.done) {
+      // eslint-disable-next-line react-hooks/immutability
       reportedRef.done = true;
       onDone(firstTryRight, questions.length);
     }
