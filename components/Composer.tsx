@@ -46,8 +46,14 @@ export function Composer({
 
   const intake = variant === "intake";
 
+  // 5 MB matches the Anthropic API's practical per-image sweet spot and prevents
+  // unexpectedly large payloads from slow networks or accidental raw camera uploads.
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
   async function addFiles(files: FileList | File[]) {
-    const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const accepted = Array.from(files).filter(
+      (f) => f.type.startsWith("image/") && f.size <= MAX_IMAGE_BYTES,
+    );
     const next = await Promise.all(accepted.map(fileToAttachment));
     if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
   }
