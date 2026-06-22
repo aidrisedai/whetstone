@@ -79,7 +79,7 @@ export function WhetstoneApp({
     try {
       const a = await fetchScore(history, criteriaRef.current);
       setAssessment(a);
-      if (!criteriaRef.current && a.dynamicCriteria.length > 0) {
+      if (!criteriaRef.current && a.dynamicCriteria?.length > 0) {
         criteriaRef.current = a.dynamicCriteria.map((d) => ({
           key: d.key,
           label: d.label,
