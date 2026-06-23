@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BoardLesson,
   BuildPlan,
-  BuildPart,
   BuilderProfile,
   ChatMessage,
   Checkpoint,
@@ -605,8 +604,8 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
           />
           {loadingLesson && (
             <p className="text-center text-sm text-muted">
-              <span className="mr-2">⌨️</span>
-              Getting the code ready…
+              <span className="mr-2">{LOAD_EMOJI[loadMsg % LOAD_EMOJI.length]}</span>
+              {LOAD_LINES[loadMsg % LOAD_LINES.length]}
             </p>
           )}
           {error && <p className="text-center text-sm text-warn">{error}</p>}
