@@ -7,23 +7,33 @@ import { useMemo } from "react";
  * dark/bold, the rest are greyed. `progress` is 0..1 through the line.
  */
 export function Caption({ text, progress }: { text: string; progress: number }) {
-  const words = useMemo(() => text.split(/(\s+)/), [text]); // keep whitespace tokens
-  const realWords = words.filter((w) => w.trim().length > 0).length;
-  const spokenCount = Math.round(progress * realWords);
+  // Split into tokens (words + whitespace runs). Whitespace tokens are rendered as-is.
+  const tokens = useMemo(() => text.split(/(\s+)/), [text]);
 
-  let seen = 0;
+  // Pre-annotate each token with its cumulative word index (stable across renders).
+  const annotated = useMemo(() => {
+    let idx = 0;
+    return tokens.map((w) => {
+      const isWord = w.trim().length > 0;
+      if (isWord) idx += 1;
+      return { w, isWord, wordIdx: idx };
+    });
+  }, [tokens]);
+
+  const totalWords = annotated[annotated.length - 1]?.wordIdx ?? 0;
+  const spokenCount = Math.round(progress * totalWords);
+
   return (
     <p className="text-center text-[17px] leading-snug sm:text-lg">
-      {words.map((w, i) => {
-        if (w.trim().length === 0) return <span key={i}>{w}</span>;
-        seen += 1;
-        const spoken = seen <= spokenCount || progress >= 1;
-        return (
-          <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
+      {annotated.map(({ w, isWord, wordIdx }, i) =>
+        isWord ? (
+          <span key={i} className={wordIdx <= spokenCount || progress >= 1 ? "cap-spoken" : "cap-rest"}>
             {w}
           </span>
-        );
-      })}
+        ) : (
+          <span key={i}>{w}</span>
+        ),
+      )}
     </p>
   );
 }
