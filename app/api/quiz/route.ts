@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { QUIZ_SCHEMA, QUIZ_SYSTEM, quizUserMessage } from "@/lib/prompts";
 import { demoQuiz } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 import { uid } from "@/lib/format";
 import type { Checkpoint, QuizQuestion } from "@/lib/types";
 
@@ -9,6 +9,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: {
     projectName?: string;
     refinedPrompt?: string;

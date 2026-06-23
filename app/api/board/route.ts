@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { BOARD_SCHEMA, BOARD_SYSTEM, boardUserMessage } from "@/lib/prompts";
 import { demoBoardLesson } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 import type { BoardLesson, BoardStep } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -15,6 +15,8 @@ interface PartInput {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: {
     projectName?: string;
     bigPicture?: string;

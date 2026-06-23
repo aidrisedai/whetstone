@@ -1,13 +1,15 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { EDIT_SCHEMA, EDIT_SYSTEM, editUserMessage } from "@/lib/prompts";
 import { demoEdits } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 import type { EditResult } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: { refinedPrompt?: string; projectType?: string; currentCode?: string; changeRequest?: string };
   try {
     body = await req.json();

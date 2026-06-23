@@ -10,7 +10,7 @@
  * Optional: GOOGLE_TTS_VOICE (default "en-US-Chirp3-HD-Charon"),
  *           GOOGLE_TTS_LANG (default "en-US").
  */
-import { jsonError } from "@/lib/serverUtils";
+import { checkRateLimit, jsonError } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +27,8 @@ export function GET(): Response {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: { text?: string };
   try {
     body = await req.json();

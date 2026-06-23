@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { BOARD_CHAT_SCHEMA, BOARD_CHAT_SYSTEM, boardChatUserMessage } from "@/lib/prompts";
 import { demoBoardChat } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 import type { BoardItem } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -13,6 +13,8 @@ interface BoardChatResult {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: {
     projectName?: string;
     part?: { title: string; concept: string };

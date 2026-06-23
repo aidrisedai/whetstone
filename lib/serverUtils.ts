@@ -1,5 +1,32 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+// In-memory sliding-window rate limiter keyed by IP.
+// 60 requests per minute per IP across all API routes.
+const RL_WINDOW_MS = 60_000;
+const RL_MAX = 60;
+const rlMap = new Map<string, { count: number; reset: number }>();
+
+export function checkRateLimit(req: Request): Response | null {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
+  const now = Date.now();
+  const entry = rlMap.get(ip);
+  if (!entry || now >= entry.reset) {
+    rlMap.set(ip, { count: 1, reset: now + RL_WINDOW_MS });
+    return null;
+  }
+  entry.count++;
+  if (entry.count > RL_MAX) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), {
+      status: 429,
+      headers: { "Content-Type": "application/json", "Retry-After": "60" },
+    });
+  }
+  return null;
+}
+
 /** Turn an unknown error into a short, builder-friendly message. */
 export function getErrorMessage(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) {

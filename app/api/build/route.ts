@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
 import { BUILD_SYSTEM, buildUserMessage } from "@/lib/prompts";
 import { demoBuildHtml } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +15,8 @@ const STREAM_HEADERS = {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: {
     refinedPrompt?: string;
     projectType?: string;

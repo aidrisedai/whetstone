@@ -2,13 +2,15 @@ import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { LESSON_SCHEMA, LESSON_SYSTEM } from "@/lib/prompts";
 import { demoLesson } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 import type { ChatMessage, Lesson } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: { history?: ChatMessage[] };
   try {
     body = await req.json();

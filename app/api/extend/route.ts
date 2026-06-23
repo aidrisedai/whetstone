@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { EXTEND_SCHEMA, EXTEND_SYSTEM, extendUserMessage } from "@/lib/prompts";
 import { demoExtendPart } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 import { uid } from "@/lib/format";
 import type { BuildPart } from "@/lib/types";
 
@@ -9,6 +9,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: {
     projectName?: string;
     refinedPrompt?: string;

@@ -3,7 +3,7 @@ import { criteriaReuseMessage, toAnthropicMessages } from "@/lib/messages";
 import { SCORE_SCHEMA, SCORE_SYSTEM } from "@/lib/prompts";
 import { DEFAULT_THRESHOLD, finalizeAssessment, normalizeDynamicCriteria } from "@/lib/scoring";
 import { demoAssessment } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 import type { Assessment, ChatMessage, CriterionSpec } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -12,6 +12,8 @@ export const dynamic = "force-dynamic";
 type RawAssessment = Omit<Assessment, "overall" | "ready" | "threshold">;
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: { history?: ChatMessage[]; priorCriteria?: CriterionSpec[] | null };
   try {
     body = await req.json();

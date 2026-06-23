@@ -1,12 +1,14 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { PLAN_SCHEMA, PLAN_SYSTEM, planUserMessage } from "@/lib/prompts";
 import { demoPlan } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: {
     refinedPrompt?: string;
     projectType?: string;

@@ -2,7 +2,7 @@ import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { ADVISOR_SYSTEM, advisorClosingNote } from "@/lib/prompts";
 import { demoAdvisorReply } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError } from "@/lib/serverUtils";
 import type { ChatMessage } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -17,6 +17,8 @@ const STREAM_HEADERS = {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: { history?: ChatMessage[]; phase?: string };
   try {
     body = await req.json();

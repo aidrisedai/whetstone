@@ -1,12 +1,14 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { CODE_ASK_SCHEMA, CODE_ASK_SYSTEM, codeAskUserMessage } from "@/lib/prompts";
 import { demoCodeAsk } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = checkRateLimit(req);
+  if (rl) return rl;
   let body: {
     projectName?: string;
     partTitle?: string;
