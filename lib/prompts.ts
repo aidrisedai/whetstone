@@ -358,9 +358,10 @@ const boardStepSchema = {
   properties: {
     say: { type: "string" },
     items: { type: "array", items: boardItemSchema },
+    // ask is optional — prompt instructs to use it on ~half the steps only.
     ask: { type: "string" },
   },
-  required: ["say", "items", "ask"],
+  required: ["say", "items"],
   additionalProperties: false,
 } as const;
 
