@@ -29,15 +29,25 @@ export async function POST(req: Request): Promise<Response> {
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
+    let hookUrl: URL;
     try {
-      const r = await fetch(hook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
-      });
-      webhook = r.ok ? "sent" : "failed";
+      hookUrl = new URL(hook);
+      if (hookUrl.protocol !== "https:" && hookUrl.protocol !== "http:") throw new Error("invalid protocol");
     } catch {
-      webhook = "failed";
+      console.warn("[export] BUILDER_WEBHOOK_URL is not a valid HTTP/HTTPS URL — skipping.");
+      hookUrl = null as never;
+    }
+    if (hookUrl) {
+      try {
+        const r = await fetch(hookUrl.toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        });
+        webhook = r.ok ? "sent" : "failed";
+      } catch {
+        webhook = "failed";
+      }
     }
   }
 
