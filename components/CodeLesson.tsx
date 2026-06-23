@@ -94,6 +94,7 @@ export function CodeLesson({
   // When the beat changes, narrate it and (on the final recap) flip to the app.
   useEffect(() => {
     if (onIntro) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChat([{ who: "teacher", text: lesson.intro }]);
       say(lesson.intro);
     } else if (onOutro) {
@@ -114,6 +115,7 @@ export function CodeLesson({
   }, [i, tab]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mic.listening) setAskText(mic.transcript);
   }, [mic.transcript, mic.listening]);
 
@@ -176,8 +178,6 @@ export function CodeLesson({
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
 
-  // Render code chunks; the active chunk is spotlighted with line numbers.
-  let lineNo = 0;
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* LEFT: editor / browser */}
@@ -222,6 +222,7 @@ export function CodeLesson({
                 {beats.slice(0, i + 1).map((b, idx) => {
                   const active = idx === i;
                   const lines = b.code.split("\n");
+                  const lineOffset = beats.slice(0, idx).reduce((acc, pb) => acc + pb.code.split("\n").length, 0);
                   return (
                     <div
                       key={idx}
@@ -242,8 +243,7 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
-                        lineNo += 1;
-                        const n = lineNo;
+                        const n = lineOffset + li + 1;
                         let html = tint(ln);
                         if (active && flash && ln.includes(flash)) {
                           // wrap the flashed substring (best-effort, escaped already by tint)
@@ -255,7 +255,6 @@ export function CodeLesson({
                             <span className="w-10 shrink-0 select-none pr-3 text-right text-muted/40">{n}</span>
                             <code
                               className="tk flex-1 whitespace-pre-wrap break-words pr-3"
-                              // eslint-disable-next-line react/no-danger
                               dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }}
                             />
                           </div>
