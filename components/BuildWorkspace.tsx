@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BoardLesson,
   BuildPlan,
-  BuildPart,
   BuilderProfile,
   ChatMessage,
   Checkpoint,
@@ -39,15 +38,13 @@ import { ArrowIcon, CheckIcon, CloseIcon, SendIcon, SparkIcon } from "./icons";
 
 const CONFETTI_COLORS = ["#ff6b35", "#ffb020", "#4cc9e6", "#41d49a", "#ff8a5b"];
 
-const LOAD_LINES = [
-  "Sketching out the code…",
-  "Choosing the perfect pieces to teach you…",
-  "Breaking it into bite-size chunks…",
-  "Writing real, working code…",
-  "Adding the explanations…",
-  "Almost ready — this part's gonna be good…",
-];
-const LOAD_EMOJI = ["✏️", "🧩", "🍪", "⌨️", "💬", "✨"];
+// Pre-computed stable confetti positions to avoid Math.random() during render.
+const CONFETTI_PIECES = Array.from({ length: 26 }, (_, i) => ({
+  left: (i * 37 + 11) % 100,
+  delay: (i * 0.037) % 0.25,
+  dur: 1 + (i * 0.067) % 0.9,
+  size: 6 + (i * 0.43) % 9,
+}));
 
 interface BuildWorkspaceProps {
   refinedPrompt: string;
@@ -64,27 +61,21 @@ type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "chec
 function Confetti() {
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-      {Array.from({ length: 26 }).map((_, i) => {
-        const left = Math.random() * 100;
-        const delay = Math.random() * 0.25;
-        const dur = 1 + Math.random() * 0.9;
-        const size = 6 + Math.random() * 9;
-        return (
-          <span
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: "-14px",
-              width: size,
-              height: size,
-              background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-              borderRadius: i % 2 ? "50%" : "2px",
-              animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
-            }}
-          />
-        );
-      })}
+      {CONFETTI_PIECES.map((p, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${p.left}%`,
+            top: "-14px",
+            width: p.size,
+            height: p.size,
+            background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            borderRadius: i % 2 ? "50%" : "2px",
+            animation: `confetti-fall ${p.dur}s ${p.delay}s ease-in forwards`,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -173,20 +164,12 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
   const [nameField, setNameField] = useState("");
   const [gameField, setGameField] = useState("");
-  const [loadMsg, setLoadMsg] = useState(0);
 
   const startedRef = useRef(false);
   const codeRef = useRef("");
   useEffect(() => {
     codeRef.current = code;
   }, [code]);
-
-  useEffect(() => {
-    if (!loadingLesson && !loadingBoard) return;
-    setLoadMsg(0);
-    const id = setInterval(() => setLoadMsg((m) => m + 1), 2600);
-    return () => clearInterval(id);
-  }, [loadingLesson, loadingBoard]);
 
   const awardXp = useCallback((delta: number, patch?: Partial<BuilderProfile>) => {
     setProfile((prev) => {
