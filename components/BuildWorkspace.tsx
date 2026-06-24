@@ -61,30 +61,32 @@ type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "chec
 
 /* ----------------------------- small parts ----------------------------- */
 
+// Pre-generated so confetti values are stable across re-renders (avoids hydration mismatch).
+const CONFETTI_PARTICLES = Array.from({ length: 26 }, (_, i) => ({
+  left: (((i * 37 + 13) * 97) % 100),
+  delay: (((i * 53 + 7) * 19) % 25) / 100,
+  dur: 1 + (((i * 61 + 11) * 31) % 90) / 100,
+  size: 6 + (((i * 43 + 17) * 41) % 90) / 10,
+}));
+
 function Confetti() {
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-      {Array.from({ length: 26 }).map((_, i) => {
-        const left = Math.random() * 100;
-        const delay = Math.random() * 0.25;
-        const dur = 1 + Math.random() * 0.9;
-        const size = 6 + Math.random() * 9;
-        return (
-          <span
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: "-14px",
-              width: size,
-              height: size,
-              background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-              borderRadius: i % 2 ? "50%" : "2px",
-              animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
-            }}
-          />
-        );
-      })}
+      {CONFETTI_PARTICLES.map(({ left, delay, dur, size }, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${left}%`,
+            top: "-14px",
+            width: size,
+            height: size,
+            background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            borderRadius: i % 2 ? "50%" : "2px",
+            animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -229,7 +231,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     setGameField(p.favoriteGame);
     requestExport(refinedPrompt)
       .then((r) => setBuilderUrl(r.builderUrl))
-      .catch(() => {});
+      .catch((err: unknown) => console.error("Export failed:", err));
     if (p.name) void makePlan(p);
     else setStage("profile");
   }, [makePlan, refinedPrompt]);

@@ -101,7 +101,12 @@ export function WhetstoneApp({
       setExported(true);
       setLessonLoading(true);
 
-      void requestExport(result.refinedPrompt).then(setExportResult).catch(() => {});
+      void requestExport(result.refinedPrompt)
+        .then(setExportResult)
+        .catch((err: unknown) => {
+          console.error("Export failed:", err);
+          setError("Couldn't reach your builder — copy the prompt below and paste it manually.");
+        });
       void copyToClipboard(result.refinedPrompt).catch(() => {});
 
       const closeMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
