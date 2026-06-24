@@ -35,3 +35,14 @@ export function jsonError(message: string, status = 400): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+/**
+ * Basic guard against runaway request bodies. Returns an error Response when
+ * the history is too long, or null when the history is safe to proceed with.
+ */
+export function guardHistory(history: unknown[]): Response | null {
+  if (history.length > 200) {
+    return jsonError("Conversation too long — start a new session.", 413);
+  }
+  return null;
+}

@@ -2,7 +2,7 @@ import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { ADVISOR_SYSTEM, advisorClosingNote } from "@/lib/prompts";
 import { demoAdvisorReply } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { getErrorMessage, guardHistory, jsonError } from "@/lib/serverUtils";
 import type { ChatMessage } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -29,6 +29,8 @@ export async function POST(req: Request): Promise<Response> {
   if (!Array.isArray(history) || history.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  const guard = guardHistory(history);
+  if (guard) return guard;
 
   const encoder = new TextEncoder();
 

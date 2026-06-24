@@ -26,6 +26,7 @@ export function Composer({
   const [input, setInput] = useState(initialValue);
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [sizeWarning, setSizeWarning] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { supported: micSupported, listening, transcript, start, stop, reset } =
@@ -47,7 +48,11 @@ export function Composer({
   const intake = variant === "intake";
 
   async function addFiles(files: FileList | File[]) {
-    const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB — Anthropic API hard limit per image
+    const images_ = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const accepted = images_.filter((f) => f.size <= MAX_BYTES);
+    const dropped = images_.length - accepted.length;
+    if (dropped > 0) setSizeWarning(true);
     const next = await Promise.all(accepted.map(fileToAttachment));
     if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
   }
@@ -186,6 +191,14 @@ export function Composer({
 
       {listening && (
         <div className="mt-1.5 px-2 text-xs font-medium text-ember">listening… speak now</div>
+      )}
+      {sizeWarning && (
+        <div className="mt-1.5 flex items-center justify-between px-2 text-xs text-warn">
+          <span>Image too large — max 5 MB per image.</span>
+          <button type="button" onClick={() => setSizeWarning(false)} className="ml-2 underline">
+            Dismiss
+          </button>
+        </div>
       )}
     </div>
   );
