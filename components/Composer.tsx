@@ -31,8 +31,9 @@ export function Composer({
   const { supported: micSupported, listening, transcript, start, stop, reset } =
     useSpeechRecognition();
 
-  // While the mic is live, mirror the running transcript into the text box.
+  // Mirror the live speech transcript into the text box while the mic is active.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (listening) setInput(transcript);
   }, [transcript, listening]);
 

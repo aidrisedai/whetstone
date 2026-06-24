@@ -7,7 +7,7 @@ import { askDuringCode } from "@/lib/clientApi";
 import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { Caption } from "./Caption";
-import { ArrowIcon, CheckIcon, KeyboardIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
+import { ArrowIcon, CheckIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
 
 const LANG_BADGE: Record<CodeBeat["lang"], { label: string; cls: string }> = {
   html: { label: "HTML", cls: "border-ember/40 bg-ember/10 text-ember" },
@@ -82,6 +82,12 @@ export function CodeLesson({
   const fullCode = useMemo(() => assembleBeats(beats), [beats]);
   const codeSoFar = onOutro ? fullCode : i < 0 ? "" : assembleBeatsUpTo(beats, i);
 
+  // Cumulative start line number (0-based) for each beat — computed without mutation.
+  const beatLineOffsets = useMemo(
+    () => beats.map((_, j) => beats.slice(0, j).reduce((s, b) => s + b.code.split("\n").length, 0)),
+    [beats],
+  );
+
   const say = useCallback(
     (text: string) => {
       setCaption(text);
@@ -92,6 +98,7 @@ export function CodeLesson({
   );
 
   // When the beat changes, narrate it and (on the final recap) flip to the app.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (onIntro) {
       setChat([{ who: "teacher", text: lesson.intro }]);
@@ -107,6 +114,7 @@ export function CodeLesson({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Auto-center the chunk being explained.
   useEffect(() => {
@@ -114,6 +122,7 @@ export function CodeLesson({
   }, [i, tab]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mic.listening) setAskText(mic.transcript);
   }, [mic.transcript, mic.listening]);
 
@@ -171,13 +180,10 @@ export function CodeLesson({
     }
   }
 
-  const progress = onIntro ? 0 : onOutro ? 100 : Math.round(((i + 1) / beats.length) * 100);
   const newCount = beats.filter((b) => b.isNew).length;
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
 
-  // Render code chunks; the active chunk is spotlighted with line numbers.
-  let lineNo = 0;
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* LEFT: editor / browser */}
@@ -222,6 +228,7 @@ export function CodeLesson({
                 {beats.slice(0, i + 1).map((b, idx) => {
                   const active = idx === i;
                   const lines = b.code.split("\n");
+                  const lineOffset = beatLineOffsets[idx];
                   return (
                     <div
                       key={idx}
@@ -242,8 +249,7 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
-                        lineNo += 1;
-                        const n = lineNo;
+                        const n = lineOffset + li + 1;
                         let html = tint(ln);
                         if (active && flash && ln.includes(flash)) {
                           // wrap the flashed substring (best-effort, escaped already by tint)
@@ -255,7 +261,6 @@ export function CodeLesson({
                             <span className="w-10 shrink-0 select-none pr-3 text-right text-muted/40">{n}</span>
                             <code
                               className="tk flex-1 whitespace-pre-wrap break-words pr-3"
-                              // eslint-disable-next-line react/no-danger
                               dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }}
                             />
                           </div>
