@@ -141,11 +141,15 @@ All optional — see [`.env.example`](./.env.example).
 | `WHETSTONE_ADVISOR_MODEL` | `claude-sonnet-4-6`| Fast, responsive model for the live conversation (try `claude-haiku-4-5`). |
 | `WHETSTONE_SCORING_MODEL` | `claude-opus-4-8`  | Deliberate model for scoring + prompt synthesis (runs each turn). |
 | `WHETSTONE_LESSON_MODEL`  | `claude-opus-4-8`  | Deliberate model for the one-shot closing lesson.              |
-| `WHETSTONE_BUILDER_MODEL` | `claude-sonnet-4-6`| Fast, streamed code model that generates the app.              |
+| `WHETSTONE_BUILDER_MODEL` | `claude-opus-4-8`  | Code generation model — Opus 4.8 for top quality output.       |
 | `WHETSTONE_COACH_MODEL`   | `claude-opus-4-8`  | Coach Spark — the build plan and per‑step teaching.            |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
 | `BUILDER_WEBHOOK_URL`     | _(unset)_          | Server‑to‑server hand‑off: the refined prompt is POSTed here.  |
+| `GOOGLE_TTS_API_KEY`      | _(unset)_          | Google Cloud API key for natural teacher voice (optional).     |
+| `GOOGLE_TTS_ACCESS_TOKEN` | _(unset)_          | OAuth access token alternative to `GOOGLE_TTS_API_KEY`.        |
+| `GOOGLE_TTS_VOICE`        | `en-US-Chirp3-HD-Charon` | Any Google Cloud TTS voice name.                        |
+| `GOOGLE_TTS_LANG`         | `en-US`            | BCP-47 language tag for Google TTS.                            |
 
 ---
 
