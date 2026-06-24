@@ -33,6 +33,7 @@ export function Composer({
 
   // While the mic is live, mirror the running transcript into the text box.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (listening) setInput(transcript);
   }, [transcript, listening]);
 

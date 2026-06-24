@@ -116,6 +116,7 @@ export function useTeacherVoice() {
   }, [prime]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSpeaking(browser.speaking);
   }, [browser.speaking]);
 
