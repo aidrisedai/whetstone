@@ -9,7 +9,7 @@ import {
 import type { CodeBeat } from "../lib/types";
 
 function beat(code: string, label = ""): CodeBeat {
-  return { code, label, concept: "", explanation: "" };
+  return { code, label, lang: "html", say: "", isNew: false };
 }
 
 // ── assembleBeats ──────────────────────────────────────────────────────────

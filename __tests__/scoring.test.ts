@@ -123,12 +123,11 @@ describe("normalizeDynamicCriteria", () => {
 describe("finalizeAssessment", () => {
   it("computes overall, clamps scores, and sets ready flag", () => {
     const raw = {
+      projectType: "web-app",
+      refinedPrompt: "A todo list app",
       clarity: { score: 90, rationale: "clear", suggestion: "" },
       conciseness: { score: 80, rationale: "ok", suggestion: "" },
       dynamicCriteria: [makeCriterion("market", 85)],
-      criteriaSpecs: [],
-      rationale: "looks good",
-      suggestion: "",
     };
     const result = finalizeAssessment(raw, 80);
     expect(result.clarity.score).toBe(90);
@@ -140,12 +139,11 @@ describe("finalizeAssessment", () => {
 
   it("marks not ready when overall below threshold", () => {
     const raw = {
+      projectType: "web-app",
+      refinedPrompt: "A vague idea",
       clarity: { score: 70, rationale: "", suggestion: "" },
       conciseness: { score: 70, rationale: "", suggestion: "" },
       dynamicCriteria: [],
-      criteriaSpecs: [],
-      rationale: "",
-      suggestion: "",
     };
     expect(finalizeAssessment(raw, 80).ready).toBe(false);
   });
