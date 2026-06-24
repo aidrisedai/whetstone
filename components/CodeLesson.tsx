@@ -176,8 +176,15 @@ export function CodeLesson({
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
 
-  // Render code chunks; the active chunk is spotlighted with line numbers.
-  let lineNo = 0;
+  // Precompute cumulative line offsets per beat (start line for each beat).
+  const beatLineOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    beats.reduce((acc, b) => {
+      offsets.push(acc);
+      return acc + b.code.split("\n").length;
+    }, 0);
+    return offsets;
+  }, [beats]);
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* LEFT: editor / browser */}
@@ -242,8 +249,7 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
-                        lineNo += 1;
-                        const n = lineNo;
+                        const n = (beatLineOffsets[idx] ?? 0) + li + 1;
                         let html = tint(ln);
                         if (active && flash && ln.includes(flash)) {
                           // wrap the flashed substring (best-effort, escaped already by tint)
