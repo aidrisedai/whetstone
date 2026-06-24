@@ -32,10 +32,15 @@ export async function streamAdvisor(
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) onChunk(decoder.decode(value, { stream: true }));
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) onChunk(decoder.decode(value, { stream: true }));
+    }
+  } catch (err) {
+    console.error("[advisor stream] Connection lost mid-response:", err);
+    throw err;
   }
 }
 
@@ -104,10 +109,15 @@ export async function streamBuild(
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) onChunk(decoder.decode(value, { stream: true }));
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) onChunk(decoder.decode(value, { stream: true }));
+    }
+  } catch (err) {
+    console.error("[build stream] Connection lost mid-response:", err);
+    throw err;
   }
 }
 
