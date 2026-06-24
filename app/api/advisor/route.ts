@@ -3,6 +3,7 @@ import { toAnthropicMessages } from "@/lib/messages";
 import { ADVISOR_SYSTEM, advisorClosingNote } from "@/lib/prompts";
 import { demoAdvisorReply } from "@/lib/demo";
 import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 import type { ChatMessage } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -28,6 +29,12 @@ export async function POST(req: Request): Promise<Response> {
   const closing = body.phase === "closing";
   if (!Array.isArray(history) || history.length === 0) {
     return jsonError("`history` must be a non-empty array");
+  }
+
+  const ip = clientIp(req);
+  const limit = isDemoMode() ? 60 : 30;
+  if (!checkRateLimit(ip, limit)) {
+    return jsonError("Too many requests — slow down a little.", 429);
   }
 
   const encoder = new TextEncoder();

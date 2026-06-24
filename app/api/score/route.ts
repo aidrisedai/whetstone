@@ -4,6 +4,7 @@ import { SCORE_SCHEMA, SCORE_SYSTEM } from "@/lib/prompts";
 import { DEFAULT_THRESHOLD, finalizeAssessment, normalizeDynamicCriteria } from "@/lib/scoring";
 import { demoAssessment } from "@/lib/demo";
 import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 import type { Assessment, ChatMessage, CriterionSpec } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -23,6 +24,10 @@ export async function POST(req: Request): Promise<Response> {
   const priorCriteria = body.priorCriteria ?? null;
   if (!Array.isArray(history) || history.length === 0) {
     return jsonError("`history` must be a non-empty array");
+  }
+
+  if (!checkRateLimit(clientIp(req), isDemoMode() ? 60 : 30)) {
+    return jsonError("Too many requests — slow down a little.", 429);
   }
 
   const threshold = DEFAULT_THRESHOLD;
