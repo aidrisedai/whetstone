@@ -15,8 +15,8 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const currentCode = body.currentCode ?? "";
-  const changeRequest = (body.changeRequest ?? "").trim();
+  const currentCode = (body.currentCode ?? "").slice(0, 500_000);
+  const changeRequest = (body.changeRequest ?? "").trim().slice(0, 2_000);
   if (!currentCode) return jsonError("`currentCode` is required");
   if (!changeRequest) return jsonError("`changeRequest` is required");
 
