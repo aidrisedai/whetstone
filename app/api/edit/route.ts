@@ -16,7 +16,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const currentCode = body.currentCode ?? "";
-  const changeRequest = (body.changeRequest ?? "").trim();
+  const changeRequest = (body.changeRequest ?? "").trim().slice(0, 600);
   if (!currentCode) return jsonError("`currentCode` is required");
   if (!changeRequest) return jsonError("`changeRequest` is required");
 

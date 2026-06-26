@@ -22,7 +22,7 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const request = (body.request ?? "").trim();
+  const request = (body.request ?? "").trim().slice(0, 600);
   if (!request) return jsonError("`request` is required");
 
   if (isDemoMode()) {

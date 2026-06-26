@@ -21,7 +21,7 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const studentSaid = (body.studentSaid ?? "").trim();
+  const studentSaid = (body.studentSaid ?? "").trim().slice(0, 600);
   if (!studentSaid) return jsonError("`studentSaid` is required");
 
   if (isDemoMode()) {
