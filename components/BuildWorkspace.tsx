@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BoardLesson,
   BuildPlan,
-  BuildPart,
   BuilderProfile,
   ChatMessage,
   Checkpoint,
@@ -61,30 +60,32 @@ type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "chec
 
 /* ----------------------------- small parts ----------------------------- */
 
+// Pre-compute random confetti positions once at module load so they're stable across re-renders.
+const CONFETTI_PIECES = Array.from({ length: 26 }, () => ({
+  left: Math.random() * 100,
+  delay: Math.random() * 0.25,
+  dur: 1 + Math.random() * 0.9,
+  size: 6 + Math.random() * 9,
+}));
+
 function Confetti() {
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-      {Array.from({ length: 26 }).map((_, i) => {
-        const left = Math.random() * 100;
-        const delay = Math.random() * 0.25;
-        const dur = 1 + Math.random() * 0.9;
-        const size = 6 + Math.random() * 9;
-        return (
-          <span
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: "-14px",
-              width: size,
-              height: size,
-              background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-              borderRadius: i % 2 ? "50%" : "2px",
-              animation: `confetti-fall ${dur}s ${delay}s ease-in forwards`,
-            }}
-          />
-        );
-      })}
+      {CONFETTI_PIECES.map((p, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${p.left}%`,
+            top: "-14px",
+            width: p.size,
+            height: p.size,
+            background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            borderRadius: i % 2 ? "50%" : "2px",
+            animation: `confetti-fall ${p.dur}s ${p.delay}s ease-in forwards`,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -561,8 +562,8 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
             {loadingBoard ? (
               <div className="mt-5 rounded-xl border border-steel/30 bg-base/40 p-5 text-center">
-                <div className="mb-2 animate-float text-3xl">🖍️</div>
-                <p className="font-display text-base font-bold text-ink">Coach Spark is heading to the whiteboard…</p>
+                <div className="mb-2 animate-float text-3xl">{LOAD_EMOJI[loadMsg % LOAD_EMOJI.length]}</div>
+                <p className="font-display text-base font-bold text-ink">{LOAD_LINES[loadMsg % LOAD_LINES.length]}</p>
                 <div className="mx-auto mt-3 h-1.5 w-44 overflow-hidden rounded-full bg-panel2">
                   <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-steel to-good" />
                 </div>
@@ -605,8 +606,8 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
           />
           {loadingLesson && (
             <p className="text-center text-sm text-muted">
-              <span className="mr-2">⌨️</span>
-              Getting the code ready…
+              <span className="mr-2">{LOAD_EMOJI[loadMsg % LOAD_EMOJI.length]}</span>
+              {LOAD_LINES[loadMsg % LOAD_LINES.length]}
             </p>
           )}
           {error && <p className="text-center text-sm text-warn">{error}</p>}
