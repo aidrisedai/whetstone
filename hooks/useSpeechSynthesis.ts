@@ -34,13 +34,14 @@ function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null 
  * robotic one.
  */
 export function useSpeechSynthesis() {
-  const [supported, setSupported] = useState(false);
+  const [supported] = useState(
+    () => typeof window !== "undefined" && "speechSynthesis" in window,
+  );
   const [speaking, setSpeaking] = useState(false);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    setSupported(true);
     const synth = window.speechSynthesis;
     const load = () => {
       voiceRef.current = pickVoice(synth.getVoices());

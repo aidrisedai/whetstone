@@ -116,6 +116,8 @@ export function useTeacherVoice() {
   }, [prime]);
 
   useEffect(() => {
+    // Sync speaking state from the browser TTS hook (external system source).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSpeaking(browser.speaking);
   }, [browser.speaking]);
 
@@ -194,7 +196,7 @@ export function useTeacherVoice() {
         } else {
           setStatus(`⚠️ /api/speak HTTP ${res.status} — using browser voice`);
         }
-      } catch (e) {
+      } catch {
         setStatus(`⚠️ network error reaching /api/speak — using browser voice`);
       }
       if (myId === reqIdRef.current) {
