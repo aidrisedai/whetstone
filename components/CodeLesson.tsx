@@ -94,6 +94,7 @@ export function CodeLesson({
   // When the beat changes, narrate it and (on the final recap) flip to the app.
   useEffect(() => {
     if (onIntro) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChat([{ who: "teacher", text: lesson.intro }]);
       say(lesson.intro);
     } else if (onOutro) {
@@ -113,9 +114,7 @@ export function CodeLesson({
     activeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [i, tab]);
 
-  useEffect(() => {
-    if (mic.listening) setAskText(mic.transcript);
-  }, [mic.transcript, mic.listening]);
+  const displayAskText = mic.listening ? mic.transcript : askText;
 
   const next = () => {
     teacher.stop();
@@ -138,7 +137,7 @@ export function CodeLesson({
   }
 
   async function submitQuestion() {
-    const q = askText.trim();
+    const q = displayAskText.trim();
     if (!q || thinking) return;
     if (mic.listening) mic.stop();
     setAskText("");
@@ -176,8 +175,6 @@ export function CodeLesson({
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
 
-  // Render code chunks; the active chunk is spotlighted with line numbers.
-  let lineNo = 0;
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* LEFT: editor / browser */}
@@ -220,6 +217,7 @@ export function CodeLesson({
             ) : (
               <div className="font-mono text-[12.5px] leading-[1.65]">
                 {beats.slice(0, i + 1).map((b, idx) => {
+                  const lineOffset = beats.slice(0, idx).reduce((sum, prev) => sum + prev.code.split("\n").length, 0);
                   const active = idx === i;
                   const lines = b.code.split("\n");
                   return (
@@ -242,8 +240,7 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
-                        lineNo += 1;
-                        const n = lineNo;
+                        const n = lineOffset + li + 1;
                         let html = tint(ln);
                         if (active && flash && ln.includes(flash)) {
                           // wrap the flashed substring (best-effort, escaped already by tint)
@@ -255,7 +252,6 @@ export function CodeLesson({
                             <span className="w-10 shrink-0 select-none pr-3 text-right text-muted/40">{n}</span>
                             <code
                               className="tk flex-1 whitespace-pre-wrap break-words pr-3"
-                              // eslint-disable-next-line react/no-danger
                               dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }}
                             />
                           </div>
@@ -369,12 +365,12 @@ export function CodeLesson({
         </div>
 
         {/* Raise-your-hand ask box */}
-        {asking || askText ? (
+        {asking || displayAskText ? (
           <div className="rounded-2xl border border-steel/30 bg-steel/5 p-2">
             <div className="mb-1 px-1 text-[11px] font-semibold text-steel">🙋 Ask about this code</div>
             <div className="flex items-end gap-2">
               <textarea
-                value={askText}
+                value={displayAskText}
                 autoFocus
                 onChange={(e) => setAskText(e.target.value)}
                 onKeyDown={(e) => {
@@ -390,7 +386,7 @@ export function CodeLesson({
               {mic.supported && (
                 <button
                   type="button"
-                  onClick={() => (mic.listening ? mic.stop() : mic.start(askText))}
+                  onClick={() => (mic.listening ? mic.stop() : mic.start(displayAskText))}
                   title={mic.listening ? "Stop" : "Talk"}
                   className={`relative grid h-9 w-9 place-items-center rounded-xl transition-colors ${
                     mic.listening ? "bg-ember text-white" : "text-muted ring-1 ring-line hover:text-ink"
@@ -403,7 +399,7 @@ export function CodeLesson({
               <button
                 type="button"
                 onClick={() => void submitQuestion()}
-                disabled={thinking || !askText.trim()}
+                disabled={thinking || !displayAskText.trim()}
                 className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep text-white shadow-glow transition-transform hover:scale-105 disabled:from-line disabled:to-line disabled:text-muted disabled:shadow-none disabled:hover:scale-100"
                 aria-label="Ask"
               >

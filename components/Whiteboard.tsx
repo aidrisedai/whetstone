@@ -135,7 +135,9 @@ export function Whiteboard({
 }: WhiteboardProps) {
   const [revealed, setRevealed] = useState(0);
   const [extraItems, setExtraItems] = useState<BoardItem[]>([]);
-  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [chat, setChat] = useState<ChatMsg[]>(() => [
+    { who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` },
+  ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [done, setDone] = useState(false);
@@ -175,11 +177,6 @@ export function Whiteboard({
     });
   }, [board.steps, say]);
 
-  useEffect(() => {
-    setChat([{ who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` }]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const beginLesson = useCallback(() => {
     teacher.prime();
     setStarted(true);
@@ -190,14 +187,12 @@ export function Whiteboard({
     boardScrollRef.current?.scrollTo({ top: boardScrollRef.current.scrollHeight, behavior: "smooth" });
   }, [revealed, extraItems]);
 
-  useEffect(() => {
-    if (mic.listening) setInput(mic.transcript);
-  }, [mic.transcript, mic.listening]);
+  const displayInput = mic.listening ? mic.transcript : input;
 
   const moreSteps = revealed < board.steps.length;
 
   async function send() {
-    const text = input.trim();
+    const text = displayInput.trim();
     if (!text || thinking) return;
     if (mic.listening) mic.stop();
     setInput("");
@@ -347,7 +342,7 @@ export function Whiteboard({
                   type="button"
                   onClick={() => {
                     setShowType(true);
-                    mic.listening ? mic.stop() : mic.start(input);
+                    mic.listening ? mic.stop() : mic.start(displayInput);
                   }}
                   title={mic.listening ? "Stop" : "Talk to your teacher"}
                   className={`relative grid h-11 w-11 place-items-center rounded-full shadow transition-colors ${
@@ -435,11 +430,11 @@ export function Whiteboard({
         </div>
 
         {/* type-back box (revealed by the keyboard/mic buttons) */}
-        {(showType || input) && (
+        {(showType || displayInput) && (
           <div className="rounded-2xl border border-line bg-panel/80 p-2">
             <div className="flex items-end gap-2">
               <textarea
-                value={input}
+                value={displayInput}
                 autoFocus
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -455,7 +450,7 @@ export function Whiteboard({
               <button
                 type="button"
                 onClick={() => void send()}
-                disabled={thinking || !input.trim()}
+                disabled={thinking || !displayInput.trim()}
                 className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-ember-soft to-ember-deep text-white shadow-glow transition-transform hover:scale-105 disabled:from-line disabled:to-line disabled:text-muted disabled:shadow-none disabled:hover:scale-100"
                 aria-label="Send"
               >

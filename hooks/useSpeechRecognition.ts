@@ -38,6 +38,7 @@ export function useSpeechRecognition() {
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Ctor) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSupported(true);
     const rec = new Ctor();
     rec.lang = "en-US";
