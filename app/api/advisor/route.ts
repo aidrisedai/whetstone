@@ -24,9 +24,9 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const history = body.history ?? [];
+  const history = (body.history ?? []).slice(0, 100);
   const closing = body.phase === "closing";
-  if (!Array.isArray(history) || history.length === 0) {
+  if (!Array.isArray(body.history) || body.history.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
 

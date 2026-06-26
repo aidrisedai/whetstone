@@ -18,7 +18,7 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const refinedPrompt = (body.refinedPrompt ?? "").trim();
+  const refinedPrompt = (body.refinedPrompt ?? "").trim().slice(0, 8000);
   if (!refinedPrompt) {
     return jsonError("`refinedPrompt` is required");
   }
@@ -34,6 +34,7 @@ export async function POST(req: Request): Promise<Response> {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        signal: AbortSignal.timeout(8000),
       });
       webhook = r.ok ? "sent" : "failed";
     } catch {
