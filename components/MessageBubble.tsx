@@ -36,7 +36,6 @@ export function MessageBubble({ message, typing }: { message: ChatMessage; typin
         {message.images && message.images.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {message.images.map((img, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={i}
                 src={`data:${img.mediaType};base64,${img.data}`}
