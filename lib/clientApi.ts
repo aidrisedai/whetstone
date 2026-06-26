@@ -10,7 +10,6 @@ import type {
   Checkpoint,
   CoachNote,
   CriterionSpec,
-  EditResult,
   ExportResult,
   Lesson,
 } from "./types";
@@ -107,7 +106,14 @@ export async function streamBuild(
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    if (value) onChunk(decoder.decode(value, { stream: true }));
+    if (!value) continue;
+    const text = decoder.decode(value, { stream: true });
+    // The server uses a NUL-prefixed sentinel to signal a mid-stream error
+    // without contaminating the HTML payload.
+    if (text.startsWith("\x00ERROR:")) {
+      throw new Error(text.slice(7) || "Build failed mid-stream");
+    }
+    onChunk(text);
   }
 }
 
@@ -286,21 +292,3 @@ export async function fetchExtendPart(payload: {
   return (await res.json()) as BuildPart;
 }
 
-/** Fetch targeted find-and-replace edits for a fast iteration. */
-export async function fetchEdits(payload: {
-  refinedPrompt: string;
-  projectType: string;
-  currentCode: string;
-  changeRequest: string;
-}): Promise<EditResult> {
-  const res = await fetch("/api/edit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error || `Edit failed (${res.status})`);
-  }
-  return (await res.json()) as EditResult;
-}

@@ -29,8 +29,21 @@ export async function POST(req: Request): Promise<Response> {
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
+    let hookUrl: URL;
     try {
-      const r = await fetch(hook, {
+      hookUrl = new URL(hook);
+    } catch {
+      console.warn("[export] BUILDER_WEBHOOK_URL is not a valid URL — skipping webhook.");
+      webhook = "failed";
+      return Response.json({ builderName: builder.name, builderUrl, webhook });
+    }
+    if (hookUrl.protocol !== "https:") {
+      console.warn("[export] BUILDER_WEBHOOK_URL must use https — skipping webhook.");
+      webhook = "failed";
+      return Response.json({ builderName: builder.name, builderUrl, webhook });
+    }
+    try {
+      const r = await fetch(hookUrl.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),

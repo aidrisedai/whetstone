@@ -74,7 +74,10 @@ export async function POST(req: Request): Promise<Response> {
         await messageStream.finalMessage();
         controller.close();
       } catch (err) {
-        controller.enqueue(encoder.encode(`⚠️ ${getErrorMessage(err)}`));
+        // Signal the error out-of-band so it doesn't contaminate the HTML
+        // payload. The client checks for this sentinel prefix and shows a
+        // clean error state rather than rendering a broken document.
+        controller.enqueue(encoder.encode(`\x00ERROR:${getErrorMessage(err)}`));
         controller.close();
       }
     },
