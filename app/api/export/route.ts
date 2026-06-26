@@ -30,11 +30,15 @@ export async function POST(req: Request): Promise<Response> {
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
       const r = await fetch(hook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       webhook = r.ok ? "sent" : "failed";
     } catch {
       webhook = "failed";
