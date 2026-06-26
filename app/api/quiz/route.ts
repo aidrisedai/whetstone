@@ -56,8 +56,10 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const parsed = safeParseJson<{ intro: string; questions: Omit<QuizQuestion, "id">[] }>(text);
+    if (!textBlock || textBlock.type !== "text") {
+      return jsonError("Model returned no structured output", 502);
+    }
+    const parsed = safeParseJson<{ intro: string; questions: Omit<QuizQuestion, "id">[] }>(textBlock.text);
 
     const checkpoint: Checkpoint = {
       partTitle,

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ImageAttachment } from "@/lib/types";
-import { fileToAttachment } from "@/lib/format";
+import { fileToAttachment, isAllowedImageType } from "@/lib/format";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { CloseIcon, ImageIcon, MicIcon, SendIcon } from "./icons";
 
@@ -47,7 +47,7 @@ export function Composer({
   const intake = variant === "intake";
 
   async function addFiles(files: FileList | File[]) {
-    const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const accepted = Array.from(files).filter((f) => isAllowedImageType(f.type.toLowerCase()));
     const next = await Promise.all(accepted.map(fileToAttachment));
     if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
   }

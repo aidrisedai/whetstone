@@ -64,8 +64,10 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const parsed = safeParseJson<{ boardTitle: string; steps: BoardStep[]; closing: string }>(text);
+    if (!textBlock || textBlock.type !== "text") {
+      return jsonError("Model returned no structured output", 502);
+    }
+    const parsed = safeParseJson<{ boardTitle: string; steps: BoardStep[]; closing: string }>(textBlock.text);
     const lesson: BoardLesson = {
       partTitle: part.title,
       boardTitle: parsed.boardTitle,

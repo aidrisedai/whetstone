@@ -59,8 +59,10 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const parsed = safeParseJson<BoardChatResult>(text);
+    if (!textBlock || textBlock.type !== "text") {
+      return jsonError("Model returned no structured output", 502);
+    }
+    const parsed = safeParseJson<BoardChatResult>(textBlock.text);
 
     const item =
       parsed.boardItem && parsed.boardItem.kind !== "none" && parsed.boardItem.text

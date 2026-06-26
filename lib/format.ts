@@ -1,4 +1,4 @@
-import type { CodeBeat, ImageAttachment } from "./types";
+import type { CodeBeat, ImageAttachment, ImageMediaType } from "./types";
 
 let counter = 0;
 /** Small unique id for messages (stable within a session). */
@@ -31,15 +31,32 @@ export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
   );
 }
 
+const ALLOWED_IMAGE_TYPES = new Set<ImageMediaType>([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
+
+/** Returns true if the browser File's MIME type is accepted by the Anthropic API. */
+export function isAllowedImageType(mimeType: string): mimeType is ImageMediaType {
+  return ALLOWED_IMAGE_TYPES.has(mimeType as ImageMediaType);
+}
+
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */
 export function fileToAttachment(file: File): Promise<ImageAttachment> {
   return new Promise((resolve, reject) => {
+    const mimeType = file.type.toLowerCase();
+    if (!isAllowedImageType(mimeType)) {
+      reject(new Error(`Unsupported image type "${mimeType || "unknown"}". Use JPEG, PNG, GIF, or WebP.`));
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result);
       const comma = result.indexOf(",");
       resolve({
-        mediaType: file.type || "image/png",
+        mediaType: mimeType,
         data: comma >= 0 ? result.slice(comma + 1) : result,
         name: file.name,
       });
