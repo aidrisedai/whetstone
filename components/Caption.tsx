@@ -8,16 +8,19 @@ import { useMemo } from "react";
  */
 export function Caption({ text, progress }: { text: string; progress: number }) {
   const words = useMemo(() => text.split(/(\s+)/), [text]); // keep whitespace tokens
-  const realWords = words.filter((w) => w.trim().length > 0).length;
+  // Precompute word sequence indices so render is pure (no mutation during map).
+  const wordData = useMemo(() => {
+    let count = 0;
+    return words.map((w) => ({ w, n: w.trim() ? ++count : 0 }));
+  }, [words]);
+  const realWords = wordData.filter((d) => d.n > 0).length;
   const spokenCount = Math.round(progress * realWords);
 
-  let seen = 0;
   return (
     <p className="text-center text-[17px] leading-snug sm:text-lg">
-      {words.map((w, i) => {
-        if (w.trim().length === 0) return <span key={i}>{w}</span>;
-        seen += 1;
-        const spoken = seen <= spokenCount || progress >= 1;
+      {wordData.map(({ w, n }, i) => {
+        if (!n) return <span key={i}>{w}</span>;
+        const spoken = n <= spokenCount || progress >= 1;
         return (
           <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
             {w}

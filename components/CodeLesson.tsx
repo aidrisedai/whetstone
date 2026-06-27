@@ -7,7 +7,7 @@ import { askDuringCode } from "@/lib/clientApi";
 import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { Caption } from "./Caption";
-import { ArrowIcon, CheckIcon, KeyboardIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
+import { ArrowIcon, CheckIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
 
 const LANG_BADGE: Record<CodeBeat["lang"], { label: string; cls: string }> = {
   html: { label: "HTML", cls: "border-ember/40 bg-ember/10 text-ember" },
@@ -171,13 +171,21 @@ export function CodeLesson({
     }
   }
 
-  const progress = onIntro ? 0 : onOutro ? 100 : Math.round(((i + 1) / beats.length) * 100);
   const newCount = beats.filter((b) => b.isNew).length;
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
 
-  // Render code chunks; the active chunk is spotlighted with line numbers.
-  let lineNo = 0;
+  // Precompute cumulative line offsets so render is pure (no mutation during map).
+  const lineOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    let offset = 0;
+    beats.slice(0, i + 1).forEach((b) => {
+      offsets.push(offset);
+      offset += b.code.split("\n").length;
+    });
+    return offsets;
+  }, [beats, i]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* LEFT: editor / browser */}
@@ -222,6 +230,7 @@ export function CodeLesson({
                 {beats.slice(0, i + 1).map((b, idx) => {
                   const active = idx === i;
                   const lines = b.code.split("\n");
+                  const beatOffset = lineOffsets[idx] ?? 0;
                   return (
                     <div
                       key={idx}
@@ -242,8 +251,7 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
-                        lineNo += 1;
-                        const n = lineNo;
+                        const n = beatOffset + li + 1;
                         let html = tint(ln);
                         if (active && flash && ln.includes(flash)) {
                           // wrap the flashed substring (best-effort, escaped already by tint)
@@ -255,7 +263,6 @@ export function CodeLesson({
                             <span className="w-10 shrink-0 select-none pr-3 text-right text-muted/40">{n}</span>
                             <code
                               className="tk flex-1 whitespace-pre-wrap break-words pr-3"
-                              // eslint-disable-next-line react/no-danger
                               dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }}
                             />
                           </div>
