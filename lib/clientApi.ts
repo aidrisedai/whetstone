@@ -1,4 +1,16 @@
 import { uid } from "./format";
+
+const JSON_TIMEOUT_MS = 90_000;
+
+function jsonFetch(url: string, body: unknown): Promise<Response> {
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(JSON_TIMEOUT_MS),
+  });
+}
+
 import type {
   Assessment,
   BoardItem,
@@ -32,10 +44,15 @@ export async function streamAdvisor(
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) onChunk(decoder.decode(value, { stream: true }));
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) onChunk(decoder.decode(value, { stream: true }));
+    }
+  } catch (err) {
+    reader.cancel().catch(() => {});
+    throw err;
   }
 }
 
@@ -43,11 +60,7 @@ export async function fetchScore(
   history: ChatMessage[],
   priorCriteria: CriterionSpec[] | null,
 ): Promise<Assessment> {
-  const res = await fetch("/api/score", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ history, priorCriteria }),
-  });
+  const res = await jsonFetch("/api/score", { history, priorCriteria });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Scoring failed (${res.status})`);
@@ -56,11 +69,7 @@ export async function fetchScore(
 }
 
 export async function fetchLesson(history: ChatMessage[]): Promise<Lesson> {
-  const res = await fetch("/api/lesson", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ history }),
-  });
+  const res = await jsonFetch("/api/lesson", { history });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Lesson failed (${res.status})`);
@@ -69,11 +78,7 @@ export async function fetchLesson(history: ChatMessage[]): Promise<Lesson> {
 }
 
 export async function requestExport(refinedPrompt: string): Promise<ExportResult> {
-  const res = await fetch("/api/export", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refinedPrompt }),
-  });
+  const res = await jsonFetch("/api/export", { refinedPrompt });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Export failed (${res.status})`);
@@ -104,10 +109,15 @@ export async function streamBuild(
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) onChunk(decoder.decode(value, { stream: true }));
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) onChunk(decoder.decode(value, { stream: true }));
+    }
+  } catch (err) {
+    reader.cancel().catch(() => {});
+    throw err;
   }
 }
 
@@ -117,11 +127,7 @@ export async function fetchCoach(payload: {
   step: number;
   changeRequest: string;
 }): Promise<CoachNote> {
-  const res = await fetch("/api/coach", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await jsonFetch("/api/coach", payload);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Coach failed (${res.status})`);
@@ -137,11 +143,7 @@ export async function fetchPlan(payload: {
   favoriteGame: string;
   knownConcepts: string[];
 }): Promise<BuildPlan> {
-  const res = await fetch("/api/plan", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await jsonFetch("/api/plan", payload);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Plan failed (${res.status})`);
@@ -168,11 +170,7 @@ export async function fetchBoardLesson(payload: {
   name: string;
   favoriteGame: string;
 }): Promise<BoardLesson> {
-  const res = await fetch("/api/board", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await jsonFetch("/api/board", payload);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Board lesson failed (${res.status})`);
@@ -188,11 +186,7 @@ export async function sendBoardChat(payload: {
   studentSaid: string;
   lastAsk?: string;
 }): Promise<{ reply: string; boardItem: BoardItem | null }> {
-  const res = await fetch("/api/board-chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await jsonFetch("/api/board-chat", payload);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Chat failed (${res.status})`);
@@ -212,11 +206,7 @@ export async function fetchBuildLesson(payload: {
   favoriteGame: string;
   name: string;
 }): Promise<BuildLesson> {
-  const res = await fetch("/api/lesson-build", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await jsonFetch("/api/lesson-build", payload);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Build lesson failed (${res.status})`);
@@ -233,11 +223,7 @@ export async function askDuringCode(payload: {
   fileSoFar: string;
   studentSaid: string;
 }): Promise<{ reply: string; highlightHint: string | null }> {
-  const res = await fetch("/api/code-ask", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await jsonFetch("/api/code-ask", payload);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Ask failed (${res.status})`);
@@ -254,11 +240,7 @@ export async function fetchQuiz(payload: {
   newCode: string;
   name: string;
 }): Promise<Checkpoint> {
-  const res = await fetch("/api/quiz", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await jsonFetch("/api/quiz", payload);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Quiz failed (${res.status})`);
@@ -274,11 +256,7 @@ export async function fetchExtendPart(payload: {
   currentCode: string;
   knownConcepts: string[];
 }): Promise<BuildPart> {
-  const res = await fetch("/api/extend", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await jsonFetch("/api/extend", payload);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Couldn't add that (${res.status})`);
@@ -293,11 +271,7 @@ export async function fetchEdits(payload: {
   currentCode: string;
   changeRequest: string;
 }): Promise<EditResult> {
-  const res = await fetch("/api/edit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await jsonFetch("/api/edit", payload);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Edit failed (${res.status})`);
