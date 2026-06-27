@@ -52,13 +52,17 @@ export async function POST(req: Request): Promise<Response> {
     const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
     const raw = safeParseJson<RawAssessment>(text);
 
+    if (!raw || typeof raw.clarity?.score !== "number" || typeof raw.conciseness?.score !== "number") {
+      return jsonError("Scorer returned an unexpected response shape. Please try again.", 502);
+    }
+
     const assessment = finalizeAssessment(
       {
-        projectType: raw.projectType,
+        projectType: raw.projectType ?? "unknown",
         clarity: raw.clarity,
         conciseness: raw.conciseness,
         dynamicCriteria: normalizeDynamicCriteria(raw.dynamicCriteria, priorCriteria),
-        refinedPrompt: raw.refinedPrompt,
+        refinedPrompt: raw.refinedPrompt ?? "",
       },
       threshold,
     );
