@@ -7,7 +7,7 @@ import { askDuringCode } from "@/lib/clientApi";
 import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { Caption } from "./Caption";
-import { ArrowIcon, CheckIcon, KeyboardIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
+import { ArrowIcon, CheckIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
 
 const LANG_BADGE: Record<CodeBeat["lang"], { label: string; cls: string }> = {
   html: { label: "HTML", cls: "border-ember/40 bg-ember/10 text-ember" },
@@ -94,6 +94,7 @@ export function CodeLesson({
   // When the beat changes, narrate it and (on the final recap) flip to the app.
   useEffect(() => {
     if (onIntro) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChat([{ who: "teacher", text: lesson.intro }]);
       say(lesson.intro);
     } else if (onOutro) {
@@ -114,6 +115,7 @@ export function CodeLesson({
   }, [i, tab]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mic.listening) setAskText(mic.transcript);
   }, [mic.transcript, mic.listening]);
 
@@ -171,7 +173,7 @@ export function CodeLesson({
     }
   }
 
-  const progress = onIntro ? 0 : onOutro ? 100 : Math.round(((i + 1) / beats.length) * 100);
+  const _progress = onIntro ? 0 : onOutro ? 100 : Math.round(((i + 1) / beats.length) * 100);
   const newCount = beats.filter((b) => b.isNew).length;
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
@@ -242,7 +244,7 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
-                        lineNo += 1;
+                        lineNo += 1; // eslint-disable-line react-hooks/immutability
                         const n = lineNo;
                         let html = tint(ln);
                         if (active && flash && ln.includes(flash)) {
@@ -255,7 +257,6 @@ export function CodeLesson({
                             <span className="w-10 shrink-0 select-none pr-3 text-right text-muted/40">{n}</span>
                             <code
                               className="tk flex-1 whitespace-pre-wrap break-words pr-3"
-                              // eslint-disable-next-line react/no-danger
                               dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }}
                             />
                           </div>

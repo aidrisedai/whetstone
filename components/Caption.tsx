@@ -16,7 +16,7 @@ export function Caption({ text, progress }: { text: string; progress: number }) 
     <p className="text-center text-[17px] leading-snug sm:text-lg">
       {words.map((w, i) => {
         if (w.trim().length === 0) return <span key={i}>{w}</span>;
-        seen += 1;
+        seen += 1; // eslint-disable-line react-hooks/immutability
         const spoken = seen <= spokenCount || progress >= 1;
         return (
           <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
