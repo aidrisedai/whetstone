@@ -1,5 +1,14 @@
 import type { CodeBeat, ImageAttachment } from "./types";
 
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
+type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
+
+function toAllowedImageType(raw: string): AllowedImageType {
+  return (ALLOWED_IMAGE_TYPES as readonly string[]).includes(raw)
+    ? (raw as AllowedImageType)
+    : "image/png";
+}
+
 let counter = 0;
 /** Small unique id for messages (stable within a session). */
 export function uid(prefix = "m"): string {
@@ -39,7 +48,7 @@ export function fileToAttachment(file: File): Promise<ImageAttachment> {
       const result = String(reader.result);
       const comma = result.indexOf(",");
       resolve({
-        mediaType: file.type || "image/png",
+        mediaType: toAllowedImageType(file.type),
         data: comma >= 0 ? result.slice(comma + 1) : result,
         name: file.name,
       });
