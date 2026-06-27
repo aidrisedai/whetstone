@@ -34,7 +34,8 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const messages = toAnthropicMessages(history);
     if (priorCriteria && priorCriteria.length > 0) {
-      messages.push(criteriaReuseMessage(priorCriteria));
+      // Splice before the final user message so role alternation stays valid.
+      messages.splice(messages.length - 1, 0, criteriaReuseMessage(priorCriteria));
     }
 
     // Deliberate judgment for scoring; effort/thinking only on models that support them.

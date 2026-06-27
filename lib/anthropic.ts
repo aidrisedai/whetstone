@@ -40,7 +40,9 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  // Match any opus-4.5+ or sonnet-4.6+ without hard-coding a ceiling version,
+  // so operator model overrides to newer releases keep working automatically.
+  return /^claude-opus-4-[5-9]\d*\b/.test(model) || /^claude-sonnet-4-[6-9]\d*\b/.test(model);
 }
 
 /**

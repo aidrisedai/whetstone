@@ -161,6 +161,8 @@ export function WhetstoneApp({
     setLessonLoading(false);
     setExportResult(null);
     setExported(false);
+    setAdvisorTyping(false);
+    setScoring(false);
     setError(null);
     setBusy(false);
     criteriaRef.current = null;

@@ -35,7 +35,12 @@ export async function POST(req: Request): Promise<Response> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
       });
-      webhook = r.ok ? "sent" : "failed";
+      if (r.ok) {
+        webhook = "sent";
+      } else {
+        webhook = "failed";
+        await r.body?.cancel(); // drain so the socket is returned to the pool
+      }
     } catch {
       webhook = "failed";
     }

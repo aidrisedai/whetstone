@@ -12,10 +12,11 @@ export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessagePa
     const blocks: Anthropic.ContentBlockParam[] = [];
 
     if (role === "user" && m.images?.length) {
+      const ALLOWED_MEDIA = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
       for (const img of m.images) {
+        if (!ALLOWED_MEDIA.has(img.mediaType)) continue;
         blocks.push({
           type: "image",
-          // media_type is a narrow union in the SDK types; the value is validated server-side.
           source: { type: "base64", media_type: img.mediaType, data: img.data } as never,
         });
       }
@@ -35,19 +36,20 @@ export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessagePa
 }
 
 /**
- * Append the previously-chosen dynamic dimensions so the scoring engine reuses
- * them verbatim — keeping the scoreboard stable across the whole session.
+ * Inject the previously-chosen dynamic dimensions as an assistant turn so the
+ * scoring engine reuses them verbatim. Must be spliced in BEFORE the final user
+ * message — not appended — to keep strict role alternation (user → assistant
+ * → user) required by the Anthropic API.
  */
 export function criteriaReuseMessage(prior: CriterionSpec[]): Anthropic.MessageParam {
   return {
-    role: "user",
+    role: "assistant",
     content: [
       {
         type: "text",
         text:
-          "PREVIOUSLY CHOSEN DYNAMIC DIMENSIONS — reuse these exact keys, labels, and " +
-          "bestPractice values; only update each score/rationale/suggestion to reflect the " +
-          "latest state of the idea:\n" +
+          "Previously chosen dynamic dimensions — I will reuse these exact keys, labels, " +
+          "and bestPractice values, updating only each score, rationale, and suggestion:\n" +
           JSON.stringify(prior, null, 2),
       },
     ],
