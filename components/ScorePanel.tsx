@@ -1,9 +1,10 @@
+import type { ReactNode } from "react";
 import type { Assessment } from "@/lib/types";
 import { DimensionBar } from "./DimensionBar";
 import { ScoreRing } from "./ScoreRing";
 import { ArrowIcon, SparkIcon } from "./icons";
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{children}</div>
   );
