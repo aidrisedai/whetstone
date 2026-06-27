@@ -70,6 +70,8 @@ export function CodeLesson({
   const codeScrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLDivElement>(null);
   const voiceRef = useRef(voiceOn);
+  const completingRef = useRef(false);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     voiceRef.current = voiceOn;
     if (!voiceOn) teacher.stop();
@@ -81,6 +83,17 @@ export function CodeLesson({
 
   const fullCode = useMemo(() => assembleBeats(beats), [beats]);
   const codeSoFar = onOutro ? fullCode : i < 0 ? "" : assembleBeatsUpTo(beats, i);
+
+  // Cumulative line offset per beat — lets us derive global line numbers without mutation in render.
+  const beatLineOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    let total = 0;
+    for (const b of beats) {
+      offsets.push(total);
+      total += b.code.split("\n").length;
+    }
+    return offsets;
+  }, [beats]);
 
   const say = useCallback(
     (text: string) => {
@@ -120,6 +133,8 @@ export function CodeLesson({
   const next = () => {
     teacher.stop();
     if (i >= beats.length) {
+      if (completingRef.current) return;
+      completingRef.current = true;
       const newCode = beats.filter((b) => b.isNew).map((b) => b.code).join("\n");
       onComplete(fullCode, newCode);
       return;
@@ -157,8 +172,9 @@ export function CodeLesson({
       });
       setChat((c) => [...c, { who: "teacher", text: res.reply }]);
       if (res.highlightHint && current?.code.includes(res.highlightHint)) {
+        if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
         setFlash(res.highlightHint);
-        setTimeout(() => setFlash(null), 2600);
+        flashTimerRef.current = setTimeout(() => setFlash(null), 2600);
       }
       say(res.reply);
     } catch {
@@ -176,8 +192,6 @@ export function CodeLesson({
   const newDone = beats.slice(0, Math.max(0, i + 1)).filter((b) => b.isNew).length;
   const transcript = chat.slice(-4);
 
-  // Render code chunks; the active chunk is spotlighted with line numbers.
-  let lineNo = 0;
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* LEFT: editor / browser */}
@@ -242,13 +256,18 @@ export function CodeLesson({
                         </div>
                       )}
                       {lines.map((ln, li) => {
-                        lineNo += 1;
-                        const n = lineNo;
-                        let html = tint(ln);
+                        const n = beatLineOffsets[idx] + li + 1;
+                        // Inject <mark> on the raw source line before tinting so
+                        // keyword/string span-wrapping inside tint() doesn't break the match.
+                        let html: string;
                         if (active && flash && ln.includes(flash)) {
-                          // wrap the flashed substring (best-effort, escaped already by tint)
-                          const safe = flash.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                          html = html.replace(safe, `<mark class="flash">${safe}</mark>`);
+                          const flashAt = ln.indexOf(flash);
+                          html =
+                            tint(ln.slice(0, flashAt)) +
+                            `<mark class="flash">${tint(flash)}</mark>` +
+                            tint(ln.slice(flashAt + flash.length));
+                        } else {
+                          html = tint(ln);
                         }
                         return (
                           <div key={li} className="flex">
