@@ -101,7 +101,9 @@ export function WhetstoneApp({
       setExported(true);
       setLessonLoading(true);
 
-      void requestExport(result.refinedPrompt).then(setExportResult).catch(() => {});
+      void requestExport(result.refinedPrompt)
+        .then(setExportResult)
+        .catch((err) => console.error("Export hand-off failed:", err));
       void copyToClipboard(result.refinedPrompt).catch(() => {});
 
       const closeMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
