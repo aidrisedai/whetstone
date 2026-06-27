@@ -34,6 +34,7 @@ export async function POST(req: Request): Promise<Response> {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        signal: AbortSignal.timeout(10_000),
       });
       webhook = r.ok ? "sent" : "failed";
     } catch {
