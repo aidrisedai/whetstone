@@ -26,6 +26,7 @@ export function Composer({
   const [input, setInput] = useState(initialValue);
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { supported: micSupported, listening, transcript, start, stop, reset } =
@@ -46,8 +47,21 @@ export function Composer({
 
   const intake = variant === "intake";
 
+  // Anthropic API rejects images over ~5 MB; guard at 4 MB so users see a
+  // friendly message rather than a cryptic 502 from the server.
+  const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
   async function addFiles(files: FileList | File[]) {
-    const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    setImageError(null);
+    const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const oversized = imageFiles.filter((f) => f.size > MAX_IMAGE_BYTES);
+    if (oversized.length > 0) {
+      setImageError(
+        `${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over 4 MB — please resize before attaching.`,
+      );
+    }
+    const accepted = imageFiles.filter((f) => f.size <= MAX_IMAGE_BYTES);
+    if (!accepted.length) return;
     const next = await Promise.all(accepted.map(fileToAttachment));
     if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
   }
@@ -85,6 +99,9 @@ export function Composer({
         if (e.dataTransfer.files?.length) void addFiles(e.dataTransfer.files);
       }}
     >
+      {imageError && (
+        <div className="mb-2 px-1 text-xs text-warn">{imageError}</div>
+      )}
       {images.length > 0 && (
         <div className="mb-2.5 flex flex-wrap gap-2 px-1">
           {images.map((img, i) => (
