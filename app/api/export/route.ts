@@ -29,6 +29,17 @@ export async function POST(req: Request): Promise<Response> {
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
   if (hook) {
+    // Validate the URL is an absolute HTTPS endpoint before making the outbound request.
+    let hookUrl: URL;
+    try {
+      hookUrl = new URL(hook);
+    } catch {
+      return jsonError("BUILDER_WEBHOOK_URL is not a valid URL", 500);
+    }
+    if (hookUrl.protocol !== "https:") {
+      return jsonError("BUILDER_WEBHOOK_URL must use HTTPS", 500);
+    }
+
     try {
       const r = await fetch(hook, {
         method: "POST",
