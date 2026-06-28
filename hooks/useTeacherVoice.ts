@@ -194,7 +194,7 @@ export function useTeacherVoice() {
         } else {
           setStatus(`⚠️ /api/speak HTTP ${res.status} — using browser voice`);
         }
-      } catch (e) {
+      } catch (_e) {
         setStatus(`⚠️ network error reaching /api/speak — using browser voice`);
       }
       if (myId === reqIdRef.current) {
