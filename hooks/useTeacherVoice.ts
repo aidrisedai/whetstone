@@ -182,8 +182,8 @@ export function useTeacherVoice() {
           try {
             await audio.play();
             return; // HD playing — never fall back to the robotic voice
-          } catch (e) {
-            setStatus(`⚠️ play() blocked: ${e instanceof Error ? e.name : "unknown"} — click ▶/🔊 first`);
+          } catch (playErr) {
+            setStatus(`⚠️ play() blocked: ${playErr instanceof Error ? playErr.name : "unknown"} — click ▶/🔊 first`);
             return; // do NOT speak this line robotically
           }
         }
@@ -194,7 +194,7 @@ export function useTeacherVoice() {
         } else {
           setStatus(`⚠️ /api/speak HTTP ${res.status} — using browser voice`);
         }
-      } catch (e) {
+      } catch {
         setStatus(`⚠️ network error reaching /api/speak — using browser voice`);
       }
       if (myId === reqIdRef.current) {
