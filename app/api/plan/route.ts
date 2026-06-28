@@ -49,7 +49,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const textBlock = resp.content.find((b) => b.type === "text");
     const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    return Response.json(safeParseJson(text));
+    return Response.json(safeParseJson<{ projectName: string; bigPicture: string; parts: object[] }>(text));
   } catch (err) {
     return jsonError(getErrorMessage(err), 502);
   }
