@@ -23,8 +23,12 @@ export function safeParseJson<T>(text: string): T {
   const trimmed = (text ?? "").trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   const candidate = fenced ? fenced[1] : trimmed;
-  const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
+  const objStart = candidate.indexOf("{");
+  const arrStart = candidate.indexOf("[");
+  const isArr =
+    arrStart >= 0 && (objStart < 0 || arrStart < objStart);
+  const start = isArr ? arrStart : objStart;
+  const end = isArr ? candidate.lastIndexOf("]") : candidate.lastIndexOf("}");
   const slice = start >= 0 && end >= start ? candidate.slice(start, end + 1) : candidate;
   return JSON.parse(slice) as T;
 }
