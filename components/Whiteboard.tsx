@@ -135,7 +135,9 @@ export function Whiteboard({
 }: WhiteboardProps) {
   const [revealed, setRevealed] = useState(0);
   const [extraItems, setExtraItems] = useState<BoardItem[]>([]);
-  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [chat, setChat] = useState<ChatMsg[]>([
+    { who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` },
+  ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [done, setDone] = useState(false);
@@ -175,10 +177,6 @@ export function Whiteboard({
     });
   }, [board.steps, say]);
 
-  useEffect(() => {
-    setChat([{ who: "teacher", text: `Welcome to the board! Let's plan ${part.title} together.` }]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const beginLesson = useCallback(() => {
     teacher.prime();
