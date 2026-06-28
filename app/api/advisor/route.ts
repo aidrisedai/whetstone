@@ -2,17 +2,11 @@ import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { ADVISOR_SYSTEM, advisorClosingNote } from "@/lib/prompts";
 import { demoAdvisorReply } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, STREAM_HEADERS } from "@/lib/serverUtils";
 import type { ChatMessage } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const STREAM_HEADERS = {
-  "Content-Type": "text/plain; charset=utf-8",
-  "Cache-Control": "no-store, no-transform",
-  "X-Accel-Buffering": "no",
-};
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

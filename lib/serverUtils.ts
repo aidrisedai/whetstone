@@ -1,5 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+/** Shared response headers for all streaming (text/plain) endpoints. */
+export const STREAM_HEADERS = {
+  "Content-Type": "text/plain; charset=utf-8",
+  "Cache-Control": "no-store, no-transform",
+  "X-Accel-Buffering": "no",
+} as const;
+
 /** Turn an unknown error into a short, builder-friendly message. */
 export function getErrorMessage(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) {
@@ -21,6 +28,7 @@ export function getErrorMessage(err: unknown): string {
  */
 export function safeParseJson<T>(text: string): T {
   const trimmed = (text ?? "").trim();
+  if (!trimmed) throw new Error("Model returned an empty response.");
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   const candidate = fenced ? fenced[1] : trimmed;
   const start = candidate.indexOf("{");
