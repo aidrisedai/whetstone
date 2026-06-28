@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
 import { BUILD_SYSTEM, buildUserMessage } from "@/lib/prompts";
 import { demoBuildHtml } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, validateRequest } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +30,8 @@ export async function POST(req: Request): Promise<Response> {
   const refinedPrompt = (body.refinedPrompt ?? "").trim();
   const projectType = (body.projectType ?? "App").trim();
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
+  const validationError = validateRequest({ refinedPrompt });
+  if (validationError) return validationError;
 
   const encoder = new TextEncoder();
 

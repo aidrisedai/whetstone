@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { PLAN_SCHEMA, PLAN_SYSTEM, planUserMessage } from "@/lib/prompts";
 import { demoPlan } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { getErrorMessage, jsonError, safeParseJson, validateRequest } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +26,8 @@ export async function POST(req: Request): Promise<Response> {
   const favoriteGame = (body.favoriteGame ?? "").trim();
   const knownConcepts = Array.isArray(body.knownConcepts) ? body.knownConcepts : [];
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
+  const validationError = validateRequest({ refinedPrompt, knownConcepts });
+  if (validationError) return validationError;
 
   if (isDemoMode()) {
     return Response.json(demoPlan(projectType, refinedPrompt, name, favoriteGame));
