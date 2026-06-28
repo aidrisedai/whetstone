@@ -48,7 +48,8 @@ export function Composer({
 
   async function addFiles(files: FileList | File[]) {
     const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    const next = await Promise.all(accepted.map(fileToAttachment));
+    const results = await Promise.allSettled(accepted.map(fileToAttachment));
+    const next = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
     if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
   }
 
