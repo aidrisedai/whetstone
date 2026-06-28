@@ -358,9 +358,10 @@ const boardStepSchema = {
   properties: {
     say: { type: "string" },
     items: { type: "array", items: boardItemSchema },
+    // ask is optional: an empty string means "no check-question this step"
     ask: { type: "string" },
   },
-  required: ["say", "items", "ask"],
+  required: ["say", "items"],
   additionalProperties: false,
 } as const;
 
