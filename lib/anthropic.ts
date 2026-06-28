@@ -40,7 +40,15 @@ export function reasoning(model: string, effort: Effort): Reasoning {
 }
 
 function supportsAdaptiveEffort(model: string): boolean {
-  return /^claude-opus-4-(5|6|7|8)\b/.test(model) || /^claude-sonnet-4-6\b/.test(model);
+  // Opus 4.5+, Sonnet 4.6+, and future major/minor versions support adaptive thinking + effort.
+  // Haiku 4.5 and Sonnet 4.5 do not — they are listed explicitly to stay safe.
+  const noSupport = /^claude-(haiku-4-5|sonnet-4-5)\b/.test(model);
+  const hasSupport =
+    /^claude-opus-4-[5-9]\b/.test(model) ||
+    /^claude-opus-[5-9]/.test(model) ||
+    /^claude-sonnet-4-[6-9]\b/.test(model) ||
+    /^claude-sonnet-[5-9]/.test(model);
+  return !noSupport && hasSupport;
 }
 
 /**

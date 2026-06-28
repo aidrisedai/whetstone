@@ -52,13 +52,14 @@ export async function POST(req: Request): Promise<Response> {
     const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
     const raw = safeParseJson<RawAssessment>(text);
 
+    const blankDim = { score: 0, rationale: "", suggestion: "" };
     const assessment = finalizeAssessment(
       {
-        projectType: raw.projectType,
-        clarity: raw.clarity,
-        conciseness: raw.conciseness,
+        projectType: raw.projectType ?? "",
+        clarity: raw.clarity ?? blankDim,
+        conciseness: raw.conciseness ?? blankDim,
         dynamicCriteria: normalizeDynamicCriteria(raw.dynamicCriteria, priorCriteria),
-        refinedPrompt: raw.refinedPrompt,
+        refinedPrompt: raw.refinedPrompt ?? "",
       },
       threshold,
     );
