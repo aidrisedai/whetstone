@@ -1,5 +1,17 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { ChatMessage, CriterionSpec } from "./types";
+import type { ChatMessage, CriterionSpec, ImageAttachment } from "./types";
+
+type SdkMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+const ALLOWED_MEDIA_TYPES: ReadonlySet<string> = new Set<SdkMediaType>([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
+
+function toSdkMediaType(img: ImageAttachment): SdkMediaType {
+  return ALLOWED_MEDIA_TYPES.has(img.mediaType) ? (img.mediaType as SdkMediaType) : "image/png";
+}
 
 /**
  * Convert Whetstone's chat history into Anthropic message params, mapping the
@@ -15,8 +27,7 @@ export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessagePa
       for (const img of m.images) {
         blocks.push({
           type: "image",
-          // media_type is a narrow union in the SDK types; the value is validated server-side.
-          source: { type: "base64", media_type: img.mediaType, data: img.data } as never,
+          source: { type: "base64", media_type: toSdkMediaType(img), data: img.data },
         });
       }
     }
