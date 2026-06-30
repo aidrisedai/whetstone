@@ -29,6 +29,12 @@ export async function POST(req: Request): Promise<Response> {
   if (!Array.isArray(history) || history.length === 0) {
     return jsonError("`history` must be a non-empty array");
   }
+  if (history.length > 100) return jsonError("`history` exceeds 100-message limit", 400);
+  for (const msg of history) {
+    if (typeof msg.content === "string" && msg.content.length > 20_000) {
+      return jsonError("A message in `history` exceeds 20,000 character limit", 400);
+    }
+  }
 
   const encoder = new TextEncoder();
 
