@@ -11,19 +11,21 @@ export function Caption({ text, progress }: { text: string; progress: number }) 
   const realWords = words.filter((w) => w.trim().length > 0).length;
   const spokenCount = Math.round(progress * realWords);
 
-  let seen = 0;
+  let wordIndex = 0;
+  const spans = words.map((w, i) => {
+    if (w.trim().length === 0) return <span key={i}>{w}</span>;
+    wordIndex += 1;
+    const spoken = wordIndex <= spokenCount || progress >= 1;
+    return (
+      <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
+        {w}
+      </span>
+    );
+  });
+
   return (
     <p className="text-center text-[17px] leading-snug sm:text-lg">
-      {words.map((w, i) => {
-        if (w.trim().length === 0) return <span key={i}>{w}</span>;
-        seen += 1;
-        const spoken = seen <= spokenCount || progress >= 1;
-        return (
-          <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
-            {w}
-          </span>
-        );
-      })}
+      {spans}
     </p>
   );
 }
