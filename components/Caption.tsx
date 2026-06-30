@@ -7,20 +7,28 @@ import { useMemo } from "react";
  * dark/bold, the rest are greyed. `progress` is 0..1 through the line.
  */
 export function Caption({ text, progress }: { text: string; progress: number }) {
-  const words = useMemo(() => text.split(/(\s+)/), [text]); // keep whitespace tokens
-  const realWords = words.filter((w) => w.trim().length > 0).length;
+  // Precompute which tokens are real words and their 1-based indices so the
+  // render is pure (no mutable counter inside the map).
+  const classified = useMemo(() => {
+    let count = 0;
+    return text.split(/(\s+)/).map((w) => {
+      if (w.trim().length === 0) return { word: w, idx: -1 };
+      count += 1;
+      return { word: w, idx: count };
+    });
+  }, [text]);
+
+  const realWords = classified.filter((c) => c.idx > 0).length;
   const spokenCount = Math.round(progress * realWords);
 
-  let seen = 0;
   return (
     <p className="text-center text-[17px] leading-snug sm:text-lg">
-      {words.map((w, i) => {
-        if (w.trim().length === 0) return <span key={i}>{w}</span>;
-        seen += 1;
-        const spoken = seen <= spokenCount || progress >= 1;
+      {classified.map(({ word, idx }, i) => {
+        if (idx === -1) return <span key={i}>{word}</span>;
+        const spoken = idx <= spokenCount || progress >= 1;
         return (
           <span key={i} className={spoken ? "cap-spoken" : "cap-rest"}>
-            {w}
+            {word}
           </span>
         );
       })}
