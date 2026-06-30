@@ -27,9 +27,12 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid JSON body");
   }
 
-  const refinedPrompt = (body.refinedPrompt ?? "").trim();
-  const projectType = (body.projectType ?? "App").trim();
+  const refinedPrompt = (body.refinedPrompt ?? "").trim().slice(0, 4_000);
+  const projectType = (body.projectType ?? "App").trim().slice(0, 200);
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
+  if (body.currentCode && body.currentCode.length > 200_000) {
+    return jsonError("`currentCode` exceeds 200,000 character limit", 400);
+  }
 
   const encoder = new TextEncoder();
 

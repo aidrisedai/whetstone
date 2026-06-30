@@ -1,4 +1,5 @@
 import { WhetstoneApp } from "@/components/WhetstoneApp";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { isDemoMode } from "@/lib/anthropic";
 import { activeBuilder } from "@/lib/builders";
 import { DEFAULT_THRESHOLD } from "@/lib/scoring";
@@ -9,10 +10,12 @@ export const dynamic = "force-dynamic";
 
 export default function Page() {
   return (
-    <WhetstoneApp
-      demo={isDemoMode()}
-      threshold={DEFAULT_THRESHOLD}
-      builderName={activeBuilder().name}
-    />
+    <ErrorBoundary>
+      <WhetstoneApp
+        demo={isDemoMode()}
+        threshold={DEFAULT_THRESHOLD}
+        builderName={activeBuilder().name}
+      />
+    </ErrorBoundary>
   );
 }
