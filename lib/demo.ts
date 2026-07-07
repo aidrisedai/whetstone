@@ -12,7 +12,7 @@ import type {
   EditResult,
   Lesson,
 } from "./types";
-import { finalizeAssessment } from "./scoring";
+import { finalizeAssessment } from "./scoring.ts";
 
 /**
  * Deterministic stand-ins used when no ANTHROPIC_API_KEY is configured, so the
