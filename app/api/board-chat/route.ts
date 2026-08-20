@@ -14,6 +14,7 @@ import type { BoardItem } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 interface BoardChatResult {
   reply: string;

@@ -238,3 +238,26 @@ describe("/api/speak", () => {
     }
   });
 });
+
+/**
+ * Every handler needs an explicit maxDuration. Next defaults these to the
+ * platform's function timeout (10-15s on Vercel), which the 16k-token Opus
+ * routes cannot finish inside — they'd be killed in production while passing
+ * every test and building clean.
+ */
+describe("route config", () => {
+  const ALL = [...ROUTES.map(([n, p]) => [n, p] as const), ...STREAMS.map(([n, p]) => [n, p] as const), ["speak", "./speak/route"] as const];
+
+  it.each(ALL)("/api/%s declares a maxDuration", async (_name, modPath) => {
+    const mod = (await import(modPath)) as { maxDuration?: unknown };
+    expect(typeof mod.maxDuration).toBe("number");
+    expect(mod.maxDuration as number).toBeGreaterThan(15);
+  });
+
+  it("gives the 16k-token build routes the longest budget", async () => {
+    for (const p of ["./build/route", "./lesson-build/route"]) {
+      const mod = (await import(p)) as { maxDuration: number };
+      expect(mod.maxDuration).toBeGreaterThanOrEqual(300);
+    }
+  });
+});

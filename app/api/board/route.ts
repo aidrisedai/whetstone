@@ -15,6 +15,7 @@ import type { BoardLesson, BoardStep } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);

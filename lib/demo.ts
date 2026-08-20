@@ -12,7 +12,7 @@ import type {
   EditResult,
   Lesson,
 } from "./types";
-import { finalizeAssessment } from "./scoring";
+import { clamp, finalizeAssessment } from "./scoring";
 
 /**
  * Deterministic stand-ins used when no ANTHROPIC_API_KEY is configured, so the
@@ -118,6 +118,35 @@ function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
 
+/**
+ * Feedback for a dynamic dimension, phrased to match its score.
+ *
+ * Clarity and conciseness already swap their wording as the answers improve;
+ * these did not, so a dimension sitting at 98 still read "Still thin on
+ * success criteria" — the scoreboard climbed while the advice underneath it
+ * insisted nothing had changed. In demo mode (the default with no API key)
+ * that text is the whole feedback loop, so it has to move with the number.
+ */
+function dynamicFeedback(label: string, score: number): { rationale: string; suggestion: string } {
+  const it = label.toLowerCase();
+  if (score >= 85) {
+    return {
+      rationale: `Sharp — a builder could act on your ${it} without asking a follow-up.`,
+      suggestion: `Hold this line on ${it}; don't let later answers blur it.`,
+    };
+  }
+  if (score >= 60) {
+    return {
+      rationale: `Your ${it} is taking shape, but a builder would still fill some gaps by guessing.`,
+      suggestion: `Pin down the ${it} with a concrete number, name, or example.`,
+    };
+  }
+  return {
+    rationale: `Still thin on ${it} — sharpen it to lift this score.`,
+    suggestion: `Spell out the ${it} explicitly so a builder can't guess wrong.`,
+  };
+}
+
 export function demoAssessment(
   history: ChatMessage[],
   priorCriteria: CriterionSpec[] | null,
@@ -158,12 +187,10 @@ export function demoAssessment(
         rationale: avgLen > 320 ? "You're packing several ideas into each answer." : "Tight and readable.",
         suggestion: avgLen > 320 ? "Cut to the one sentence that matters most." : "Keep trimming words that don't add signal.",
       },
-      dynamicCriteria: criteria.map((c, i) => ({
-        ...c,
-        score: base + (dynamicOffsets[i] ?? 0),
-        rationale: `Still thin on ${c.label.toLowerCase()} — sharpen it to lift this score.`,
-        suggestion: `Spell out the ${c.label.toLowerCase()} explicitly so a builder can't guess wrong.`,
-      })),
+      dynamicCriteria: criteria.map((c, i) => {
+        const score = clamp(base + (dynamicOffsets[i] ?? 0));
+        return { ...c, score, ...dynamicFeedback(c.label, score) };
+      }),
       refinedPrompt,
     },
     threshold,
