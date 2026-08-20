@@ -1,31 +1,21 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { CODE_ASK_SCHEMA, CODE_ASK_SYSTEM, codeAskUserMessage } from "@/lib/prompts";
 import { demoCodeAsk } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody, safeParseJson } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
-  let body: {
-    projectName?: string;
-    partTitle?: string;
-    beatLabel?: string;
-    beatCode?: string;
-    fileSoFar?: string;
-    studentSaid?: string;
-  };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const studentSaid = (body.studentSaid ?? "").trim();
+  const studentSaid = asTrimmed(body.studentSaid);
+  const beatCode = asText(body.beatCode);
   if (!studentSaid) return jsonError("`studentSaid` is required");
 
   if (isDemoMode()) {
-    return Response.json(demoCodeAsk(studentSaid, body.beatCode ?? ""));
+    return Response.json(demoCodeAsk(studentSaid, beatCode));
   }
 
   try {
@@ -39,11 +29,11 @@ export async function POST(req: Request): Promise<Response> {
         {
           role: "user",
           content: codeAskUserMessage({
-            projectName: body.projectName ?? "the app",
-            partTitle: body.partTitle ?? "this part",
-            beatLabel: body.beatLabel ?? "this chunk",
-            beatCode: body.beatCode ?? "",
-            fileSoFar: body.fileSoFar ?? "",
+            projectName: asTrimmed(body.projectName, "the app") || "the app",
+            partTitle: asTrimmed(body.partTitle, "this part") || "this part",
+            beatLabel: asTrimmed(body.beatLabel, "this chunk") || "this chunk",
+            beatCode,
+            fileSoFar: asText(body.fileSoFar),
             studentSaid,
           }),
         },

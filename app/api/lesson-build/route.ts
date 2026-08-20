@@ -1,53 +1,36 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { LESSON_BUILD_SCHEMA, LESSON_BUILD_SYSTEM, lessonBuildUserMessage } from "@/lib/prompts";
 import { demoBuildLesson } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import {
+  asNumber,
+  asPart,
+  asText,
+  asTrimmed,
+  getErrorMessage,
+  jsonError,
+  readJsonBody,
+  safeParseJson,
+} from "@/lib/serverUtils";
 import type { BuildLesson, CodeBeat } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface PartInput {
-  title: string;
-  whatItIs: string;
-  concept: string;
-  buildSpec: string;
-}
-
 export async function POST(req: Request): Promise<Response> {
-  let body: {
-    projectName?: string;
-    bigPicture?: string;
-    projectType?: string;
-    partNumber?: number;
-    totalParts?: number;
-    part?: PartInput;
-    currentCode?: string;
-    favoriteGame?: string;
-    name?: string;
-  };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const part = body.part;
+  const part = asPart(body.part);
   if (!part || !part.buildSpec) return jsonError("`part` with a buildSpec is required");
 
-  const projectType = (body.projectType ?? "App").trim();
-  const partNumber = typeof body.partNumber === "number" ? body.partNumber : 1;
-  const totalParts = typeof body.totalParts === "number" ? body.totalParts : 1;
+  const projectType = asTrimmed(body.projectType, "App") || "App";
+  const partNumber = asNumber(body.partNumber, 1);
+  const totalParts = asNumber(body.totalParts, 1);
+  const currentCode = asText(body.currentCode);
+  const projectName = asTrimmed(body.projectName) || projectType;
 
   if (isDemoMode()) {
-    return Response.json(
-      demoBuildLesson({
-        part,
-        partNumber,
-        currentCode: body.currentCode ?? "",
-        projectName: body.projectName ?? projectType,
-      }),
-    );
+    return Response.json(demoBuildLesson({ part, partNumber, currentCode, projectName }));
   }
 
   try {
@@ -61,15 +44,15 @@ export async function POST(req: Request): Promise<Response> {
         {
           role: "user",
           content: lessonBuildUserMessage({
-            projectName: body.projectName ?? projectType,
-            bigPicture: body.bigPicture ?? "",
+            projectName,
+            bigPicture: asText(body.bigPicture),
             projectType,
             partNumber,
             totalParts,
             part,
-            currentCode: body.currentCode ?? "",
-            favoriteGame: body.favoriteGame ?? "",
-            name: body.name ?? "",
+            currentCode,
+            favoriteGame: asTrimmed(body.favoriteGame),
+            name: asTrimmed(body.name),
           }),
         },
       ],

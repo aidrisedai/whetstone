@@ -1,7 +1,15 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { EXTEND_SCHEMA, EXTEND_SYSTEM, extendUserMessage } from "@/lib/prompts";
 import { demoExtendPart } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import {
+  asStringArray,
+  asText,
+  asTrimmed,
+  getErrorMessage,
+  jsonError,
+  readJsonBody,
+  safeParseJson,
+} from "@/lib/serverUtils";
 import { uid } from "@/lib/format";
 import type { BuildPart } from "@/lib/types";
 
@@ -9,20 +17,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
-  let body: {
-    projectName?: string;
-    refinedPrompt?: string;
-    request?: string;
-    currentCode?: string;
-    knownConcepts?: string[];
-  };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const request = (body.request ?? "").trim();
+  const request = asTrimmed(body.request);
   if (!request) return jsonError("`request` is required");
 
   if (isDemoMode()) {
@@ -39,11 +37,11 @@ export async function POST(req: Request): Promise<Response> {
         {
           role: "user",
           content: extendUserMessage({
-            projectName: body.projectName ?? "the app",
-            refinedPrompt: body.refinedPrompt ?? "",
+            projectName: asTrimmed(body.projectName, "the app") || "the app",
+            refinedPrompt: asText(body.refinedPrompt),
             request,
-            currentCode: body.currentCode ?? "",
-            knownConcepts: Array.isArray(body.knownConcepts) ? body.knownConcepts : [],
+            currentCode: asText(body.currentCode),
+            knownConcepts: asStringArray(body.knownConcepts),
           }),
         },
       ],

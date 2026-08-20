@@ -2,8 +2,7 @@ import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { ADVISOR_SYSTEM, advisorClosingNote } from "@/lib/prompts";
 import { demoAdvisorReply } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
-import type { ChatMessage } from "@/lib/types";
+import { asChatHistory, getErrorMessage, jsonError, readJsonBody } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,17 +16,13 @@ const STREAM_HEADERS = {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(req: Request): Promise<Response> {
-  let body: { history?: ChatMessage[]; phase?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const history = body.history ?? [];
+  const history = asChatHistory(body.history);
   const closing = body.phase === "closing";
-  if (!Array.isArray(history) || history.length === 0) {
-    return jsonError("`history` must be a non-empty array");
+  if (!history) {
+    return jsonError("`history` must be a non-empty array of messages");
   }
 
   const encoder = new TextEncoder();

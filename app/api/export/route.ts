@@ -1,5 +1,5 @@
 import { activeBuilder } from "@/lib/builders";
-import { jsonError } from "@/lib/serverUtils";
+import { asTrimmed, jsonError, readJsonBody } from "@/lib/serverUtils";
 import type { ExportResult } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -11,14 +11,10 @@ export const dynamic = "force-dynamic";
  * also POSTs the prompt server-to-server for a true automatic hand-off.
  */
 export async function POST(req: Request): Promise<Response> {
-  let body: { refinedPrompt?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const refinedPrompt = (body.refinedPrompt ?? "").trim();
+  const refinedPrompt = asTrimmed(body.refinedPrompt);
   if (!refinedPrompt) {
     return jsonError("`refinedPrompt` is required");
   }

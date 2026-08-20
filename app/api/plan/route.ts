@@ -1,30 +1,27 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { PLAN_SCHEMA, PLAN_SYSTEM, planUserMessage } from "@/lib/prompts";
 import { demoPlan } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import {
+  asStringArray,
+  asTrimmed,
+  getErrorMessage,
+  jsonError,
+  readJsonBody,
+  safeParseJson,
+} from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
-  let body: {
-    refinedPrompt?: string;
-    projectType?: string;
-    name?: string;
-    favoriteGame?: string;
-    knownConcepts?: string[];
-  };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const refinedPrompt = (body.refinedPrompt ?? "").trim();
-  const projectType = (body.projectType ?? "App").trim();
-  const name = (body.name ?? "").trim();
-  const favoriteGame = (body.favoriteGame ?? "").trim();
-  const knownConcepts = Array.isArray(body.knownConcepts) ? body.knownConcepts : [];
+  const refinedPrompt = asTrimmed(body.refinedPrompt);
+  const projectType = asTrimmed(body.projectType, "App") || "App";
+  const name = asTrimmed(body.name);
+  const favoriteGame = asTrimmed(body.favoriteGame);
+  const knownConcepts = asStringArray(body.knownConcepts);
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
 
   if (isDemoMode()) {

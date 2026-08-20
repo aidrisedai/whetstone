@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
 import { BUILD_SYSTEM, buildUserMessage } from "@/lib/prompts";
 import { demoBuildHtml } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
+import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,27 +15,20 @@ const STREAM_HEADERS = {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(req: Request): Promise<Response> {
-  let body: {
-    refinedPrompt?: string;
-    projectType?: string;
-    currentCode?: string;
-    changeRequest?: string;
-  };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const refinedPrompt = (body.refinedPrompt ?? "").trim();
-  const projectType = (body.projectType ?? "App").trim();
+  const refinedPrompt = asTrimmed(body.refinedPrompt);
+  const projectType = asTrimmed(body.projectType, "App") || "App";
+  const currentCode = asText(body.currentCode);
+  const changeRequest = asText(body.changeRequest);
   if (!refinedPrompt) return jsonError("`refinedPrompt` is required");
 
   const encoder = new TextEncoder();
 
   // Demo mode — stream a real, self-contained starter app line-by-line.
   if (isDemoMode()) {
-    const html = demoBuildHtml(projectType, refinedPrompt, body.changeRequest);
+    const html = demoBuildHtml(projectType, refinedPrompt, changeRequest);
     const lines = html.split("\n");
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -52,8 +45,8 @@ export async function POST(req: Request): Promise<Response> {
   const userMessage = buildUserMessage({
     refinedPrompt,
     projectType,
-    currentCode: body.currentCode,
-    changeRequest: body.changeRequest,
+    currentCode,
+    changeRequest,
   });
 
   const stream = new ReadableStream<Uint8Array>({

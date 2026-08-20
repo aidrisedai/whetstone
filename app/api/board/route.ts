@@ -1,42 +1,33 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { BOARD_SCHEMA, BOARD_SYSTEM, boardUserMessage } from "@/lib/prompts";
 import { demoBoardLesson } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import {
+  asNumber,
+  asPart,
+  asText,
+  asTrimmed,
+  getErrorMessage,
+  jsonError,
+  readJsonBody,
+  safeParseJson,
+} from "@/lib/serverUtils";
 import type { BoardLesson, BoardStep } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface PartInput {
-  title: string;
-  whatItIs: string;
-  concept: string;
-  buildSpec: string;
-}
-
 export async function POST(req: Request): Promise<Response> {
-  let body: {
-    projectName?: string;
-    bigPicture?: string;
-    part?: PartInput;
-    partNumber?: number;
-    totalParts?: number;
-    name?: string;
-    favoriteGame?: string;
-  };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const part = body.part;
-  if (!part || !part.title) return jsonError("`part` is required");
-  const partNumber = typeof body.partNumber === "number" ? body.partNumber : 1;
-  const totalParts = typeof body.totalParts === "number" ? body.totalParts : 1;
+  const part = asPart(body.part);
+  if (!part || !part.title) return jsonError("`part` with a title is required");
+  const partNumber = asNumber(body.partNumber, 1);
+  const totalParts = asNumber(body.totalParts, 1);
+  const projectName = asTrimmed(body.projectName, "your app") || "your app";
 
   if (isDemoMode()) {
-    return Response.json(demoBoardLesson(part, body.projectName ?? "your app"));
+    return Response.json(demoBoardLesson(part, projectName));
   }
 
   try {
@@ -49,13 +40,13 @@ export async function POST(req: Request): Promise<Response> {
         {
           role: "user",
           content: boardUserMessage({
-            projectName: body.projectName ?? "the app",
-            bigPicture: body.bigPicture ?? "",
+            projectName,
+            bigPicture: asText(body.bigPicture),
             part,
             partNumber,
             totalParts,
-            name: body.name ?? "",
-            favoriteGame: body.favoriteGame ?? "",
+            name: asTrimmed(body.name),
+            favoriteGame: asTrimmed(body.favoriteGame),
           }),
         },
       ],
