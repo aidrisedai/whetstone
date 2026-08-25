@@ -4,6 +4,9 @@ import type { ExportResult } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
+
+const WEBHOOK_TIMEOUT_MS = 8_000;
 
 /**
  * Hand the sharpened prompt off to the connected AI builder. Always returns a
@@ -30,6 +33,9 @@ export async function POST(req: Request): Promise<Response> {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "whetstone", builder: builder.key, prompt: refinedPrompt }),
+        // A hung webhook must not hold the export open until the platform kills
+        // it — the deep link below is the part the builder actually needs.
+        signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
       });
       webhook = r.ok ? "sent" : "failed";
     } catch {

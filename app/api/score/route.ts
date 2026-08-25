@@ -15,6 +15,7 @@ import type { Assessment } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 type RawAssessment = Omit<Assessment, "overall" | "ready" | "threshold">;
 

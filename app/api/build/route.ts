@@ -5,6 +5,7 @@ import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody } from "@/l
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const STREAM_HEADERS = {
   "Content-Type": "text/plain; charset=utf-8",
@@ -49,16 +50,24 @@ export async function POST(req: Request): Promise<Response> {
     changeRequest,
   });
 
+  // A 16k-token build is the most expensive thing Whetstone runs; if the client
+  // disappears, stop generating rather than paying for output nobody reads.
+  const abort = new AbortController();
+  req.signal.addEventListener("abort", () => abort.abort(), { once: true });
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         // No thinking/effort here: code streams immediately so the build feels alive.
-        const messageStream = getClient().messages.stream({
-          model: MODELS.builder,
-          max_tokens: 16000,
-          system: [{ type: "text", text: BUILD_SYSTEM, cache_control: { type: "ephemeral" } }],
-          messages: [{ role: "user", content: userMessage }],
-        });
+        const messageStream = getClient().messages.stream(
+          {
+            model: MODELS.builder,
+            max_tokens: 16000,
+            system: [{ type: "text", text: BUILD_SYSTEM, cache_control: { type: "ephemeral" } }],
+            messages: [{ role: "user", content: userMessage }],
+          },
+          { signal: abort.signal },
+        );
         for await (const event of messageStream) {
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
             controller.enqueue(encoder.encode(event.delta.text));
@@ -67,9 +76,18 @@ export async function POST(req: Request): Promise<Response> {
         await messageStream.finalMessage();
         controller.close();
       } catch (err) {
-        controller.enqueue(encoder.encode(`⚠️ ${getErrorMessage(err)}`));
-        controller.close();
+        // See advisor/route.ts: enqueueing onto an already-errored controller
+        // throws a second time and escapes start() as an unhandled rejection.
+        try {
+          controller.enqueue(encoder.encode(`⚠️ ${getErrorMessage(err)}`));
+          controller.close();
+        } catch {
+          /* stream already torn down. */
+        }
       }
+    },
+    cancel() {
+      abort.abort();
     },
   });
 

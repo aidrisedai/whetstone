@@ -39,7 +39,11 @@ export const BUILDERS: Record<string, BuilderTarget> = {
 };
 
 export function getBuilder(key?: string | null): BuilderTarget {
-  return (key && BUILDERS[key]) || BUILDERS.bolt;
+  // Object.hasOwn, not a bare index: `BUILDERS["constructor"]` (or "toString")
+  // finds an inherited property that is truthy but has no buildUrl, so a typo
+  // in WHETSTONE_BUILDER used to crash /api/export with a TypeError instead of
+  // quietly falling back to bolt.
+  return key && Object.hasOwn(BUILDERS, key) ? BUILDERS[key] : BUILDERS.bolt;
 }
 
 export function activeBuilder(): BuilderTarget {
