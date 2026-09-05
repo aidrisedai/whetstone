@@ -1,34 +1,32 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { QUIZ_SCHEMA, QUIZ_SYSTEM, quizUserMessage } from "@/lib/prompts";
 import { demoQuiz } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import {
+  asText,
+  asTrimmed,
+  getErrorMessage,
+  jsonError,
+  readJsonBody,
+  safeParseJson,
+} from "@/lib/serverUtils";
 import { uid } from "@/lib/format";
 import type { Checkpoint, QuizQuestion } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 export async function POST(req: Request): Promise<Response> {
-  let body: {
-    projectName?: string;
-    refinedPrompt?: string;
-    partTitle?: string;
-    concept?: string;
-    newCode?: string;
-    name?: string;
-  };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const partTitle = (body.partTitle ?? "this part").trim();
-  const newCode = (body.newCode ?? "").trim();
+  const partTitle = asTrimmed(body.partTitle, "this part") || "this part";
+  const newCode = asTrimmed(body.newCode);
+  const concept = asText(body.concept);
   if (!newCode) return jsonError("`newCode` is required to write a grounded quiz");
 
   if (isDemoMode()) {
-    return Response.json(demoQuiz(partTitle, body.concept ?? ""));
+    return Response.json(demoQuiz(partTitle, concept));
   }
 
   try {
@@ -42,12 +40,12 @@ export async function POST(req: Request): Promise<Response> {
         {
           role: "user",
           content: quizUserMessage({
-            projectName: body.projectName ?? "the app",
-            refinedPrompt: body.refinedPrompt ?? "",
+            projectName: asTrimmed(body.projectName, "the app") || "the app",
+            refinedPrompt: asText(body.refinedPrompt),
             partTitle,
-            concept: body.concept ?? "",
+            concept,
             newCode,
-            name: body.name ?? "",
+            name: asTrimmed(body.name),
           }),
         },
       ],

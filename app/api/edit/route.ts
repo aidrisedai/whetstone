@@ -1,22 +1,19 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { EDIT_SCHEMA, EDIT_SYSTEM, editUserMessage } from "@/lib/prompts";
 import { demoEdits } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody, safeParseJson } from "@/lib/serverUtils";
 import type { EditResult } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 180;
 
 export async function POST(req: Request): Promise<Response> {
-  let body: { refinedPrompt?: string; projectType?: string; currentCode?: string; changeRequest?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const currentCode = body.currentCode ?? "";
-  const changeRequest = (body.changeRequest ?? "").trim();
+  const currentCode = asText(body.currentCode);
+  const changeRequest = asTrimmed(body.changeRequest);
   if (!currentCode) return jsonError("`currentCode` is required");
   if (!changeRequest) return jsonError("`changeRequest` is required");
 

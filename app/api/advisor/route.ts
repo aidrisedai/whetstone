@@ -2,11 +2,11 @@ import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { ADVISOR_SYSTEM, advisorClosingNote } from "@/lib/prompts";
 import { demoAdvisorReply } from "@/lib/demo";
-import { getErrorMessage, jsonError } from "@/lib/serverUtils";
-import type { ChatMessage } from "@/lib/types";
+import { asChatHistory, getErrorMessage, jsonError, readJsonBody } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 const STREAM_HEADERS = {
   "Content-Type": "text/plain; charset=utf-8",
@@ -17,17 +17,13 @@ const STREAM_HEADERS = {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(req: Request): Promise<Response> {
-  let body: { history?: ChatMessage[]; phase?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const history = body.history ?? [];
+  const history = asChatHistory(body.history);
   const closing = body.phase === "closing";
-  if (!Array.isArray(history) || history.length === 0) {
-    return jsonError("`history` must be a non-empty array");
+  if (!history) {
+    return jsonError("`history` must be a non-empty array of messages");
   }
 
   const encoder = new TextEncoder();
@@ -49,17 +45,25 @@ export async function POST(req: Request): Promise<Response> {
 
   const system = closing ? `${ADVISOR_SYSTEM}\n\n${advisorClosingNote()}` : ADVISOR_SYSTEM;
 
+  // Tie generation to the client: when the browser navigates away mid-answer,
+  // cancel() aborts the upstream call instead of letting it run (and bill) on.
+  const abort = new AbortController();
+  req.signal.addEventListener("abort", () => abort.abort(), { once: true });
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const messageStream = getClient().messages.stream({
-          model: MODELS.advisor,
-          max_tokens: 2048,
-          system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-          messages: toAnthropicMessages(history),
-          // Lean reasoning keeps the conversation snappy (a sharp model needs little).
-          ...reasoning(MODELS.advisor, "low"),
-        });
+        const messageStream = getClient().messages.stream(
+          {
+            model: MODELS.advisor,
+            max_tokens: 2048,
+            system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+            messages: toAnthropicMessages(history),
+            // Lean reasoning keeps the conversation snappy (a sharp model needs little).
+            ...reasoning(MODELS.advisor, "low"),
+          },
+          { signal: abort.signal },
+        );
 
         for await (const event of messageStream) {
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
@@ -69,9 +73,19 @@ export async function POST(req: Request): Promise<Response> {
         await messageStream.finalMessage();
         controller.close();
       } catch (err) {
-        controller.enqueue(encoder.encode(`\n\n⚠️ ${getErrorMessage(err)}`));
-        controller.close();
+        // The consumer may already be gone — that's usually *why* we're here —
+        // in which case the controller is errored and enqueue/close throw again.
+        // Guard, or that second throw escapes start() as an unhandled rejection.
+        try {
+          controller.enqueue(encoder.encode(`\n\n⚠️ ${getErrorMessage(err)}`));
+          controller.close();
+        } catch {
+          /* stream already torn down; nothing left to report to. */
+        }
       }
+    },
+    cancel() {
+      abort.abort();
     },
   });
 

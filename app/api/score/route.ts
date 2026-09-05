@@ -3,26 +3,30 @@ import { criteriaReuseMessage, toAnthropicMessages } from "@/lib/messages";
 import { SCORE_SCHEMA, SCORE_SYSTEM } from "@/lib/prompts";
 import { DEFAULT_THRESHOLD, finalizeAssessment, normalizeDynamicCriteria } from "@/lib/scoring";
 import { demoAssessment } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
-import type { Assessment, ChatMessage, CriterionSpec } from "@/lib/types";
+import {
+  asChatHistory,
+  asCriteria,
+  getErrorMessage,
+  jsonError,
+  readJsonBody,
+  safeParseJson,
+} from "@/lib/serverUtils";
+import type { Assessment } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 type RawAssessment = Omit<Assessment, "overall" | "ready" | "threshold">;
 
 export async function POST(req: Request): Promise<Response> {
-  let body: { history?: ChatMessage[]; priorCriteria?: CriterionSpec[] | null };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const history = body.history ?? [];
-  const priorCriteria = body.priorCriteria ?? null;
-  if (!Array.isArray(history) || history.length === 0) {
-    return jsonError("`history` must be a non-empty array");
+  const history = asChatHistory(body.history);
+  const priorCriteria = asCriteria(body.priorCriteria);
+  if (!history) {
+    return jsonError("`history` must be a non-empty array of messages");
   }
 
   const threshold = DEFAULT_THRESHOLD;

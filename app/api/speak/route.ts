@@ -10,10 +10,11 @@
  * Optional: GOOGLE_TTS_VOICE (default "en-US-Chirp3-HD-Charon"),
  *           GOOGLE_TTS_LANG (default "en-US").
  */
-import { jsonError } from "@/lib/serverUtils";
+import { asTrimmed, jsonError, readJsonBody } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 const TTS_ENDPOINT = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
@@ -27,14 +28,10 @@ export function GET(): Response {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  let body: { text?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const text = (body.text ?? "").trim().slice(0, 2000);
+  const text = asTrimmed(body.text).slice(0, 2000);
   if (!text) return jsonError("`text` is required");
 
   // No Google key → tell the client to use its own browser voice.

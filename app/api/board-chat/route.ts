@@ -1,11 +1,20 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { BOARD_CHAT_SCHEMA, BOARD_CHAT_SYSTEM, boardChatUserMessage } from "@/lib/prompts";
 import { demoBoardChat } from "@/lib/demo";
-import { getErrorMessage, jsonError, safeParseJson } from "@/lib/serverUtils";
+import {
+  asPart,
+  asText,
+  asTrimmed,
+  getErrorMessage,
+  jsonError,
+  readJsonBody,
+  safeParseJson,
+} from "@/lib/serverUtils";
 import type { BoardItem } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 interface BoardChatResult {
   reply: string;
@@ -13,21 +22,11 @@ interface BoardChatResult {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  let body: {
-    projectName?: string;
-    part?: { title: string; concept: string };
-    boardSoFar?: string;
-    studentSaid?: string;
-    lastAsk?: string;
-  };
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+  const body = await readJsonBody(req);
+  if (!body) return jsonError("Invalid JSON body");
 
-  const studentSaid = (body.studentSaid ?? "").trim();
-  const part = body.part;
+  const studentSaid = asTrimmed(body.studentSaid);
+  const part = asPart(body.part);
   if (!studentSaid) return jsonError("`studentSaid` is required");
   if (!part) return jsonError("`part` is required");
 
@@ -46,11 +45,11 @@ export async function POST(req: Request): Promise<Response> {
         {
           role: "user",
           content: boardChatUserMessage({
-            projectName: body.projectName ?? "the app",
+            projectName: asTrimmed(body.projectName, "the app") || "the app",
             part,
-            boardSoFar: body.boardSoFar ?? "(board is being drawn)",
+            boardSoFar: asText(body.boardSoFar, "(board is being drawn)"),
             studentSaid,
-            lastAsk: body.lastAsk,
+            lastAsk: asTrimmed(body.lastAsk) || undefined,
           }),
         },
       ],

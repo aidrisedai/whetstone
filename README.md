@@ -141,11 +141,39 @@ All optional — see [`.env.example`](./.env.example).
 | `WHETSTONE_ADVISOR_MODEL` | `claude-sonnet-4-6`| Fast, responsive model for the live conversation (try `claude-haiku-4-5`). |
 | `WHETSTONE_SCORING_MODEL` | `claude-opus-4-8`  | Deliberate model for scoring + prompt synthesis (runs each turn). |
 | `WHETSTONE_LESSON_MODEL`  | `claude-opus-4-8`  | Deliberate model for the one-shot closing lesson.              |
-| `WHETSTONE_BUILDER_MODEL` | `claude-sonnet-4-6`| Fast, streamed code model that generates the app.              |
+| `WHETSTONE_BUILDER_MODEL` | `claude-opus-4-8`  | Streamed code model that generates the app.                    |
 | `WHETSTONE_COACH_MODEL`   | `claude-opus-4-8`  | Coach Spark — the build plan and per‑step teaching.            |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
 | `BUILDER_WEBHOOK_URL`     | _(unset)_          | Server‑to‑server hand‑off: the refined prompt is POSTed here.  |
+| `GOOGLE_TTS_API_KEY`      | _(unset)_          | Google Cloud TTS key — swaps the teacher to an HD voice.       |
+| `GOOGLE_TTS_ACCESS_TOKEN` | _(unset)_          | …or a short‑lived OAuth token for TTS, instead of a key.       |
+| `GOOGLE_TTS_VOICE`        | `en-US-Chirp3-HD-Charon` | Any Google TTS voice name.                               |
+| `GOOGLE_TTS_LANG`         | `en-US`            | Language code for the teacher voice.                           |
+
+With neither Google key set, the whiteboard teacher falls back to the browser's
+built‑in Web Speech voice — free, no extra setup, works everywhere.
+
+---
+
+## Deploying
+
+Whetstone is a standard Next.js app (`npm run build` → `npm start`), but two
+things need attention before it faces real users.
+
+**Function timeouts.** Every route exports an explicit `maxDuration`, because
+the defaults on most platforms (10–15s) are shorter than the work these routes
+do. `/api/build` and `/api/lesson-build` generate up to 16 000 tokens on Opus
+and are budgeted at 300s; the scoring and planning routes at 90–120s. On Vercel,
+`maxDuration` above 60s requires a Pro plan or higher — on Hobby, either stay
+under the cap or expect the long build routes to be killed mid‑generation.
+
+**There is no rate limiting or authentication.** Every endpoint is an
+unauthenticated proxy to Claude, and the two build routes can each spend 16 000
+Opus output tokens per request. Do not expose a keyed deployment to the open
+internet as‑is: put it behind auth, a gateway rate limiter, or a per‑IP limit
+first. Demo mode (no `ANTHROPIC_API_KEY`) has no such exposure — it never calls
+the API.
 
 ---
 
