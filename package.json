@@ -2,7 +2,7 @@
   "name": "whetstone",
   "version": "0.1.0",
   "private": true,
-  "description": "Whetstone — a sharp CEO advisor that sharpens teen builders' project ideas through voice, text, and image dialogue.",
+  "description": "Whetstone \u2014 a sharp CEO advisor that sharpens teen builders' project ideas through voice, text, and image dialogue.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
-    "next": "^16.3.4",
+    "next": "^16.4.5",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
@@ -23,10 +23,12 @@
     "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "nanoid": "^3.3.18",
-    "baseline-browser-mapping": "^2.11.21"
+    "baseline-browser-mapping": "^2.11.21",
+    "source-map-js": "^1.2.2",
+    "vite": "^8.3.6"
   }
 }
