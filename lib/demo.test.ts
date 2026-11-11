@@ -103,6 +103,21 @@ describe("demoAssessment", () => {
     expect(a.refinedPrompt.length).toBeGreaterThan(40);
   });
 
+  it("keeps the pitch's project type when a later answer mentions another type's keyword", () => {
+    const pitch = { id: "u1", role: "user" as const, content: "An app that helps students find study partners." };
+    const later = { id: "u2", role: "user" as const, content: "You pick a confidence level and it shows your score." };
+    expect(demoAssessment([pitch], null, 80).projectType).toBe("Web app");
+    expect(demoAssessment([pitch, later], null, 80).projectType).toBe("Web app");
+  });
+
+  it("exports the pitch as the core idea and later answers as detail", () => {
+    const pitch = { id: "u1", role: "user" as const, content: "A tracker for my swim team's lap times." };
+    const later = { id: "u2", role: "user" as const, content: "Coaches enter times after each practice." };
+    const { refinedPrompt } = demoAssessment([pitch, later], null, 80);
+    expect(refinedPrompt).toContain("Core idea: A tracker for my swim team's lap times.");
+    expect(refinedPrompt).toContain("Coaches enter times after each practice.");
+  });
+
   it("survives an empty history without throwing", () => {
     const a = demoAssessment([], null, 80);
     expect(a.overall).toBeGreaterThanOrEqual(0);
