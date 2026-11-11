@@ -156,6 +156,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
   const [board, setBoard] = useState<BoardLesson | null>(null);
   const [loadingBoard, setLoadingBoard] = useState(false);
+  const lessonBusyRef = useRef(false);
 
   const [checkpoint, setCheckpoint] = useState<Checkpoint | null>(null);
   const [quizLoading, setQuizLoading] = useState(false);
@@ -270,7 +271,10 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   }, [plan, partIndex, profile.name, profile.favoriteGame]);
 
   const startLesson = useCallback(async () => {
-    if (!plan) return;
+    // A second tap while the lesson is being written would start another build
+    // and later swap the code out from under the lesson already on screen.
+    if (!plan || lessonBusyRef.current) return;
+    lessonBusyRef.current = true;
     const part = plan.parts[partIndex];
     setLoadingLesson(true);
     setError(null);
@@ -292,6 +296,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't start the code lesson.");
     } finally {
+      lessonBusyRef.current = false;
       setLoadingLesson(false);
     }
   }, [plan, partIndex, projectType, profile.favoriteGame, profile.name]);

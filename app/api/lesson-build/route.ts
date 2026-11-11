@@ -64,6 +64,11 @@ export async function POST(req: Request): Promise<Response> {
       },
     });
 
+    // A reply cut off at the token limit is half a JSON document; say so
+    // instead of surfacing the parse error it would cause.
+    if (resp.stop_reason === "max_tokens") {
+      return jsonError("That part came out too big to write in one go — try again.", 502);
+    }
     const textBlock = resp.content.find((b) => b.type === "text");
     const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
     const parsed = safeParseJson<Omit<BuildLesson, "partTitle">>(text);

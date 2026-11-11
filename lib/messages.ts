@@ -15,7 +15,8 @@ export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessagePa
       for (const img of m.images) {
         blocks.push({
           type: "image",
-          // media_type is a narrow union in the SDK types; the value is validated server-side.
+          // media_type is a narrow union in the SDK types; asChatHistory has already
+          // dropped anything outside it.
           source: { type: "base64", media_type: img.mediaType, data: img.data } as never,
         });
       }

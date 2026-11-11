@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { MAX_IMAGES_PER_MESSAGE, isSupportedImage } from "./format";
 import type { ChatMessage, CriterionSpec, ImageAttachment, Role } from "./types";
 
 /** Turn an unknown error into a short, builder-friendly message. */
@@ -83,11 +84,13 @@ function asImages(value: unknown): ImageAttachment[] | undefined {
     if (!raw || typeof raw !== "object") return [];
     const img = raw as Record<string, unknown>;
     if (typeof img.mediaType !== "string" || typeof img.data !== "string") return [];
+    // base64 carries 3 bytes per 4 characters.
+    if (!isSupportedImage(img.mediaType, Math.floor((img.data.length * 3) / 4))) return [];
     const out: ImageAttachment = { mediaType: img.mediaType, data: img.data };
     if (typeof img.name === "string") out.name = img.name;
     return [out];
   });
-  return images.length > 0 ? images : undefined;
+  return images.length > 0 ? images.slice(0, MAX_IMAGES_PER_MESSAGE) : undefined;
 }
 
 /**

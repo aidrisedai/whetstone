@@ -14,6 +14,11 @@ import { ScorePanel } from "./ScorePanel";
 import { BuildWorkspace } from "./BuildWorkspace";
 import { MuteIcon, SoundIcon, SparkIcon } from "./icons";
 
+function isAdvisorReply(content: string): boolean {
+  const text = content.trim();
+  return text.length > 0 && !text.startsWith("⚠️");
+}
+
 export function WhetstoneApp({
   demo,
   threshold,
@@ -153,7 +158,12 @@ export function WhetstoneApp({
         images: images.length ? images : undefined,
       };
       const advisorMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
-      const nextHistory = [...messagesRef.current, userMsg];
+      // A failed advisor turn is shown as a warning bubble; it is not part of
+      // the conversation, so keep it away from the advisor and the scorer.
+      const nextHistory = [
+        ...messagesRef.current.filter((m) => m.role !== "advisor" || isAdvisorReply(m.content)),
+        userMsg,
+      ];
 
       setMessages([...messagesRef.current, userMsg, advisorMsg]);
       setAdvisorTyping(true);
