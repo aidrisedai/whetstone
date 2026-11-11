@@ -67,6 +67,7 @@ export function useTeacherVoice() {
     return () => {
       // Drop the source before revoking: a primer or clip still loading when
       // the lesson unmounts would otherwise fail against a dead blob URL.
+      reqIdRef.current += 1; // a clip still being fetched must not start playing
       el.pause();
       el.removeAttribute("src");
       el.load();

@@ -130,6 +130,23 @@ describe("asChatHistory", () => {
     expect(history?.[0].images).toEqual([{ mediaType: "image/png", data: "abc", name: "shot.png" }]);
   });
 
+  it("drops images Claude would reject, and caps the count", () => {
+    const png = { mediaType: "image/png", data: "abc" };
+    const history = asChatHistory([
+      {
+        id: "1",
+        role: "user",
+        content: "look",
+        images: [
+          { mediaType: "image/svg+xml", data: "abc" },
+          { mediaType: "image/png", data: "A".repeat(7 * 1024 * 1024) },
+          png, png, png, png, png,
+        ],
+      },
+    ]);
+    expect(history?.[0].images).toEqual([png, png, png, png]);
+  });
+
   it("omits images entirely when none survive", () => {
     const history = asChatHistory([{ id: "1", role: "user", content: "hi", images: ["nope"] }]);
     expect(history?.[0]).not.toHaveProperty("images");

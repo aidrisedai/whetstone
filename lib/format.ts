@@ -31,6 +31,21 @@ export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
   );
 }
 
+/** The image formats Claude's vision input accepts. */
+export const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+/** Per-image size ceiling for Claude's vision input. */
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_IMAGES_PER_MESSAGE = 4;
+
+/**
+ * Whether an image can be sent to the advisor. An unsupported one is rejected
+ * by the API, and since the whole history is re-sent every turn, a single bad
+ * attachment would fail every later turn of the session too.
+ */
+export function isSupportedImage(mediaType: string, bytes: number): boolean {
+  return SUPPORTED_IMAGE_TYPES.includes(mediaType) && bytes > 0 && bytes <= MAX_IMAGE_BYTES;
+}
+
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */
 export function fileToAttachment(file: File): Promise<ImageAttachment> {
   return new Promise((resolve, reject) => {

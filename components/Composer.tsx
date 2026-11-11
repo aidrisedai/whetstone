@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ImageAttachment } from "@/lib/types";
-import { fileToAttachment } from "@/lib/format";
+import {
+  MAX_IMAGES_PER_MESSAGE,
+  SUPPORTED_IMAGE_TYPES,
+  fileToAttachment,
+  isSupportedImage,
+} from "@/lib/format";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { CloseIcon, ImageIcon, MicIcon, SendIcon } from "./icons";
 
@@ -26,6 +31,7 @@ export function Composer({
   const [input, setInput] = useState(initialValue);
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [imageNote, setImageNote] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { supported: micSupported, listening, transcript, start, stop, reset } =
@@ -47,9 +53,13 @@ export function Composer({
   const intake = variant === "intake";
 
   async function addFiles(files: FileList | File[]) {
-    const accepted = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const all = Array.from(files);
+    const accepted = all.filter((f) => isSupportedImage(f.type, f.size));
+    setImageNote(
+      accepted.length < all.length ? "Images need to be PNG, JPEG, GIF or WebP, and under 5 MB." : null,
+    );
     const next = await Promise.all(accepted.map(fileToAttachment));
-    if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
+    if (next.length) setImages((prev) => [...prev, ...next].slice(0, MAX_IMAGES_PER_MESSAGE));
   }
 
   function submit() {
@@ -59,6 +69,7 @@ export function Composer({
     onSend(content, images);
     setInput("");
     setImages([]);
+    setImageNote(null);
     reset();
   }
 
@@ -85,6 +96,11 @@ export function Composer({
         if (e.dataTransfer.files?.length) void addFiles(e.dataTransfer.files);
       }}
     >
+      {imageNote && (
+        <p role="status" className="px-2 pb-2 text-xs text-warn">
+          {imageNote}
+        </p>
+      )}
       {images.length > 0 && (
         <div className="mb-2.5 flex flex-wrap gap-2 px-1">
           {images.map((img, i) => (
@@ -136,7 +152,7 @@ export function Composer({
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept={SUPPORTED_IMAGE_TYPES.join(",")}
             multiple
             hidden
             onChange={(e) => {
