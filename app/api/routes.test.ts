@@ -13,7 +13,7 @@
  */
 process.env.WHETSTONE_DEMO = "1";
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 const post = (handler: (req: Request) => Promise<Response>, body: unknown) =>
   handler(
@@ -236,6 +236,44 @@ describe("/api/speak", () => {
       expect(res.status).toBeGreaterThanOrEqual(400);
       expect(res.status).toBeLessThan(500);
     }
+  });
+});
+
+/**
+ * The webhook is the hands-free hand-off, so it must fire exactly once per
+ * export. The build workspace re-requests the deep link every time it opens;
+ * without `linkOnly` each visit re-delivered the prompt to the operator's
+ * pipeline.
+ */
+describe("/api/export webhook", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.BUILDER_WEBHOOK_URL;
+  });
+
+  const setup = () => {
+    process.env.BUILDER_WEBHOOK_URL = "https://hooks.example.test/whetstone";
+    const fetchMock = vi.fn(async () => new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  };
+
+  it("delivers the prompt on a real export", async () => {
+    const fetchMock = setup();
+    const { POST } = await import("./export/route");
+    const res = await post(POST, { refinedPrompt: "Build a habit tracker." });
+    expect(await res.json()).toMatchObject({ webhook: "sent" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the deep link without delivering when linkOnly is set", async () => {
+    const fetchMock = setup();
+    const { POST } = await import("./export/route");
+    const res = await post(POST, { refinedPrompt: "Build a habit tracker.", linkOnly: true });
+    const json = (await res.json()) as { builderUrl: string; webhook: string };
+    expect(json.webhook).toBe("skipped");
+    expect(json.builderUrl).toMatch(/^https:\/\//);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

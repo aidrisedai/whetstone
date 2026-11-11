@@ -68,11 +68,18 @@ export async function fetchLesson(history: ChatMessage[]): Promise<Lesson> {
   return (await res.json()) as Lesson;
 }
 
-export async function requestExport(refinedPrompt: string): Promise<ExportResult> {
+/**
+ * `linkOnly` fetches just the builder deep link, skipping the webhook hand-off
+ * — for callers that need the URL but are not themselves the export.
+ */
+export async function requestExport(
+  refinedPrompt: string,
+  opts: { linkOnly?: boolean } = {},
+): Promise<ExportResult> {
   const res = await fetch("/api/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refinedPrompt }),
+    body: JSON.stringify({ refinedPrompt, linkOnly: opts.linkOnly === true }),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };

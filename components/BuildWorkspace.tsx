@@ -227,7 +227,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     setProfile(p);
     setNameField(p.name);
     setGameField(p.favoriteGame);
-    requestExport(refinedPrompt)
+    requestExport(refinedPrompt, { linkOnly: true })
       .then((r) => setBuilderUrl(r.builderUrl))
       .catch(() => {});
     if (p.name) void makePlan(p);
