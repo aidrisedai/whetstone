@@ -65,6 +65,11 @@ export function useTeacherVoice() {
     audioRef.current = el;
     silentUrlRef.current = makeSilentUrl();
     return () => {
+      // Drop the source before revoking: a primer or clip still loading when
+      // the lesson unmounts would otherwise fail against a dead blob URL.
+      el.pause();
+      el.removeAttribute("src");
+      el.load();
       el.remove();
       if (silentUrlRef.current) URL.revokeObjectURL(silentUrlRef.current);
       if (lastBlobUrlRef.current) URL.revokeObjectURL(lastBlobUrlRef.current);
