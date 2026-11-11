@@ -19,7 +19,8 @@ import {
   fetchQuiz,
   requestExport,
 } from "@/lib/clientApi";
-import { downloadText } from "@/lib/format";
+import { PREVIEW_SANDBOX, downloadText, previewDoc } from "@/lib/format";
+import { conversationTurns } from "@/lib/messages";
 import {
   addConcept,
   defaultProfile,
@@ -49,11 +50,23 @@ const LOAD_LINES = [
 ];
 const LOAD_EMOJI = ["✏️", "🧩", "🍪", "⌨️", "💬", "✨"];
 
+/** What survives leaving the build for the conversation and coming back. */
+export interface BuildProgress {
+  plan: BuildPlan;
+  partIndex: number;
+  code: string;
+  lesson: Lesson | null;
+  done: boolean;
+}
+
 interface BuildWorkspaceProps {
   refinedPrompt: string;
   projectType: string;
   messages: ChatMessage[];
   builderName: string;
+  /** A build of this idea that was left earlier, to pick up again. */
+  resume?: BuildProgress | null;
+  onProgress?: (progress: BuildProgress) => void;
   onBack: () => void;
   /** Abandon this idea entirely and return to the blank pitch screen. */
   onNewIdea: () => void;
@@ -144,7 +157,16 @@ function PlanMap({ plan, partIndex }: { plan: BuildPlan; partIndex: number }) {
 
 /* ----------------------------- main ----------------------------- */
 
-export function BuildWorkspace({ refinedPrompt, projectType, messages, builderName, onBack, onNewIdea }: BuildWorkspaceProps) {
+export function BuildWorkspace({
+  refinedPrompt,
+  projectType,
+  messages,
+  builderName,
+  resume,
+  onProgress,
+  onBack,
+  onNewIdea,
+}: BuildWorkspaceProps) {
   const [stage, setStage] = useState<Stage>("planning");
   const [profile, setProfile] = useState<BuilderProfile>(defaultProfile());
   const [plan, setPlan] = useState<BuildPlan | null>(null);
@@ -233,9 +255,34 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     requestExport(refinedPrompt, { linkOnly: true })
       .then((r) => setBuilderUrl(r.builderUrl))
       .catch(() => {});
-    if (p.name) void makePlan(p);
+    if (resume) {
+      // Coming back from the conversation: pick the build up where it was left
+      // instead of planning (and paying for) the same app from scratch.
+      setPlan(resume.plan);
+      setPartIndex(resume.partIndex);
+      setCode(resume.code);
+      setLesson(resume.lesson);
+      setStage(resume.done ? "done" : "walkthrough");
+    } else if (p.name) void makePlan(p);
     else setStage("profile");
-  }, [makePlan, refinedPrompt]);
+  }, [makePlan, refinedPrompt, resume]);
+
+  // Report the build's durable state — the plan, the parts finished and the
+  // code written so far — so leaving for the conversation does not lose it.
+  useEffect(() => {
+    if (!plan) return;
+    // At the checkpoint the part's code is already written, so the build
+    // resumes after it — not by teaching the same part a second time.
+    const last = partIndex >= plan.parts.length - 1;
+    const partWritten = stage === "checkpoint";
+    onProgress?.({
+      plan,
+      partIndex: partWritten && !last ? partIndex + 1 : partIndex,
+      code,
+      lesson,
+      done: stage === "done" || (partWritten && last),
+    });
+  }, [plan, partIndex, code, lesson, stage, onProgress]);
 
   const startFromProfile = () => {
     const p: BuilderProfile = { ...profile, name: nameField.trim(), favoriteGame: gameField.trim() };
@@ -361,7 +408,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
         setStage("done");
         setLessonLoading(true);
         try {
-          setLesson(await fetchLesson(messages));
+          setLesson(await fetchLesson(conversationTurns(messages)));
         } catch {
           /* optional */
         } finally {
@@ -648,8 +695,8 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
               </div>
               <iframe
                 title="App so far"
-                sandbox="allow-scripts"
-                srcDoc={code}
+                sandbox={PREVIEW_SANDBOX}
+                srcDoc={previewDoc(code)}
                 className="h-[52vh] w-full rounded-xl border border-line bg-white"
               />
             </div>
@@ -703,11 +750,11 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
                   {"</>"} see the code
                 </button>
               </div>
-              <iframe title="Final app" sandbox="allow-scripts" srcDoc={code} className="h-[58vh] w-full bg-white" />
+              <iframe title="Final app" sandbox={PREVIEW_SANDBOX} srcDoc={previewDoc(code)} className="h-[58vh] w-full bg-white" />
             </div>
 
             <div className="flex flex-col gap-4">
-              <LessonCard lesson={lesson} loading={lessonLoading} />
+              {(lesson || lessonLoading) && <LessonCard lesson={lesson} loading={lessonLoading} />}
 
               {/* KEEP BUILDING */}
               <div className="rounded-2xl border border-ember/30 bg-gradient-to-b from-ember/10 to-panel/40 p-4">

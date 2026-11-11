@@ -31,6 +31,17 @@ export function safeParseJson<T>(text: string): T {
   return JSON.parse(slice) as T;
 }
 
+/**
+ * Parse a structured reply. One cut off at the token limit is half a JSON
+ * document, so report that plainly instead of the parse error it would cause.
+ */
+export function parseReply<T>(resp: Anthropic.Message, cutOffMessage = CUT_OFF_MESSAGE): T {
+  if (resp.stop_reason === "max_tokens") throw new Error(cutOffMessage);
+  const block = resp.content.find((b) => b.type === "text");
+  return safeParseJson<T>(block && block.type === "text" ? block.text : "");
+}
+const CUT_OFF_MESSAGE = "That answer got cut off before it finished — try again.";
+
 export function jsonError(message: string, status = 400): Response {
   return new Response(JSON.stringify({ error: message }), {
     status,

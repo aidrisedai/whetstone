@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BuildLesson, CodeBeat } from "@/lib/types";
-import { assembleBeats, assembleBeatsUpTo } from "@/lib/format";
+import { PREVIEW_SANDBOX, assembleBeats, assembleBeatsUpTo, previewDoc } from "@/lib/format";
 import { askDuringCode } from "@/lib/clientApi";
 import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
@@ -280,7 +280,7 @@ export function CodeLesson({
               </div>
             </div>
             {codeSoFar ? (
-              <iframe title="App preview" sandbox="allow-scripts" srcDoc={codeSoFar} className="w-full flex-1 bg-white" />
+              <iframe title="App preview" sandbox={PREVIEW_SANDBOX} srcDoc={previewDoc(codeSoFar)} className="w-full flex-1 bg-white" />
             ) : (
               <div className="grid flex-1 place-items-center text-sm text-muted">Your app runs here as we write it.</div>
             )}

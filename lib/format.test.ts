@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { applyEdits, assembleBeats, assembleBeatsUpTo, beatsFormValidDoc, cleanGeneratedHtml } from "./format";
+import {
+  MAX_IMAGE_BYTES,
+  applyEdits,
+  assembleBeats,
+  assembleBeatsUpTo,
+  beatsFormValidDoc,
+  cleanGeneratedHtml,
+  isSupportedImage,
+  previewDoc,
+} from "./format";
 import type { CodeBeat } from "./types";
 
 function beat(code: string, overrides: Partial<CodeBeat> = {}): CodeBeat {
@@ -81,5 +90,30 @@ describe("applyEdits", () => {
     ]);
     expect(result.applied).toBe(0);
     expect(result.code).toBe("hello");
+  });
+});
+
+describe("isSupportedImage", () => {
+  it("caps the file so its base64 form stays within the 5 MB vision limit", () => {
+    expect(Math.ceil(MAX_IMAGE_BYTES / 3) * 4).toBeLessThanOrEqual(5 * 1024 * 1024);
+    expect(isSupportedImage("image/png", MAX_IMAGE_BYTES)).toBe(true);
+    expect(isSupportedImage("image/png", 4.5 * 1024 * 1024)).toBe(false);
+  });
+});
+
+describe("previewDoc", () => {
+  it("adds the storage stand-in inside <head>, keeping the doctype first", () => {
+    const doc = previewDoc("<!DOCTYPE html><html><head><title>t</title></head><body></body></html>");
+    expect(doc.startsWith("<!DOCTYPE html><html><head><script>")).toBe(true);
+    expect(doc).toContain("<title>t</title>");
+  });
+
+  it("still adds it to a half-written document", () => {
+    expect(previewDoc("<!DOCTYPE html>\n<body><h1>Hi").startsWith("<!DOCTYPE html><script>")).toBe(true);
+    expect(previewDoc("<h1>Hi</h1>").startsWith("<script>")).toBe(true);
+  });
+
+  it("leaves an empty document empty", () => {
+    expect(previewDoc("")).toBe("");
   });
 });

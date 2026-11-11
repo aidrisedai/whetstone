@@ -2,7 +2,7 @@ import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { toAnthropicMessages } from "@/lib/messages";
 import { LESSON_SCHEMA, LESSON_SYSTEM } from "@/lib/prompts";
 import { demoLesson } from "@/lib/demo";
-import { asChatHistory, getErrorMessage, jsonError, readJsonBody, safeParseJson } from "@/lib/serverUtils";
+import { asChatHistory, getErrorMessage, jsonError, readJsonBody, parseReply } from "@/lib/serverUtils";
 import type { Lesson } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -26,16 +26,14 @@ export async function POST(req: Request): Promise<Response> {
     const tune = reasoning(MODELS.lesson, "medium");
     const resp = await getClient().messages.create({
       model: MODELS.lesson,
-      max_tokens: 1500,
+      max_tokens: 3000,
       system: [{ type: "text", text: LESSON_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: toAnthropicMessages(history),
       ...(tune.thinking ? { thinking: tune.thinking } : {}),
       output_config: { format: { type: "json_schema", schema: LESSON_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
-    const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    return Response.json(safeParseJson<Lesson>(text));
+    return Response.json(parseReply<Lesson>(resp));
   } catch (err) {
     return jsonError(getErrorMessage(err), 502);
   }

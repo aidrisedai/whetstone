@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { CODE_ASK_SCHEMA, CODE_ASK_SYSTEM, codeAskUserMessage } from "@/lib/prompts";
 import { demoCodeAsk } from "@/lib/demo";
-import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody, safeParseJson } from "@/lib/serverUtils";
+import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody, parseReply } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export async function POST(req: Request): Promise<Response> {
     const tune = reasoning(MODELS.coach, "low");
     const resp = await getClient().messages.create({
       model: MODELS.coach,
-      max_tokens: 900,
+      max_tokens: 2000,
       system: [{ type: "text", text: CODE_ASK_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [
         {
@@ -43,9 +43,7 @@ export async function POST(req: Request): Promise<Response> {
       output_config: { format: { type: "json_schema", schema: CODE_ASK_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
-    const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const parsed = safeParseJson<{ reply: string; highlightHint: string }>(text);
+    const parsed = parseReply<{ reply: string; highlightHint: string }>(resp);
     const hint = parsed.highlightHint && parsed.highlightHint !== "none" ? parsed.highlightHint : null;
     return Response.json({ reply: parsed.reply, highlightHint: hint });
   } catch (err) {

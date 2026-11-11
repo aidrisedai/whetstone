@@ -126,7 +126,7 @@ tuned for a 10–11‑year‑old who'd rather be gaming:
 
 The build target is deliberately a single self‑contained file (inline CSS +
 vanilla JS, **no external dependencies**): instant, safe (the iframe runs with
-`allow-scripts` only), portable, and genuinely *yours*.
+scripts, forms and dialogs allowed, but never same-origin access), portable, and genuinely *yours*.
 
 ---
 
@@ -208,7 +208,7 @@ deliberate model (**Opus 4.8**) handles scoring and the lesson, where judgment
 matters. The two run in parallel each turn, so scoring never blocks the chat.
 Scoring and the lesson use **structured outputs** (`output_config.format` with a
 JSON schema) so results are always valid; system prompts are cached. Adaptive
-thinking and `effort` are applied only on models that support them (Opus 4.5+ /
+thinking and `effort` are applied only on models that support them (Opus 4.6+ /
 Sonnet 4.6), so swapping in a faster model like Haiku 4.5 stays valid.
 
 **Multimodal.** Voice in/out uses the browser Web Speech API (no extra keys;

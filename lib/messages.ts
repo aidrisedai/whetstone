@@ -54,3 +54,20 @@ export function criteriaReuseMessage(prior: CriterionSpec[]): Anthropic.MessageP
     ],
   };
 }
+
+/** A real advisor reply — not the empty placeholder or the "⚠️" bubble shown for a failed turn. */
+export function isAdvisorReply(content: string): boolean {
+  const text = content.trim();
+  return text.length > 0 && !text.startsWith("⚠️");
+}
+
+/**
+ * The on-screen transcript as the model should see it: failed and empty advisor
+ * bubbles removed, and ending on the builder's turn. A history that ends on an
+ * advisor turn reads as a reply to continue, which the judgment models reject.
+ */
+export function conversationTurns(messages: ChatMessage[]): ChatMessage[] {
+  const turns = messages.filter((m) => m.role !== "advisor" || isAdvisorReply(m.content));
+  while (turns.length > 0 && turns[turns.length - 1].role === "advisor") turns.pop();
+  return turns;
+}

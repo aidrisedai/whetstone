@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { criteriaReuseMessage, toAnthropicMessages } from "./messages";
+import { conversationTurns, criteriaReuseMessage, toAnthropicMessages } from "./messages";
 import type { ChatMessage } from "./types";
 
 describe("toAnthropicMessages", () => {
@@ -43,5 +43,27 @@ describe("criteriaReuseMessage", () => {
     expect(msg.role).toBe("user");
     const [block] = msg.content as { type: string; text: string }[];
     expect(block.text).toContain(JSON.stringify(prior, null, 2));
+  });
+});
+
+describe("conversationTurns", () => {
+  const msg = (role: ChatMessage["role"], content: string): ChatMessage => ({ id: content, role, content });
+
+  it("drops failed and empty advisor bubbles and ends on the builder's turn", () => {
+    const turns = conversationTurns([
+      msg("user", "pitch"),
+      msg("advisor", "who is it for?"),
+      msg("user", "juniors"),
+      msg("advisor", "⚠️ The advisor stumbled mid-thought."),
+      msg("user", "juniors, again"),
+      msg("advisor", "sharp enough to build"),
+      msg("advisor", ""),
+    ]);
+    expect(turns.map((m) => m.content)).toEqual(["pitch", "who is it for?", "juniors", "juniors, again"]);
+  });
+
+  it("leaves a history that already ends on the builder untouched", () => {
+    const history = [msg("user", "pitch"), msg("advisor", "why?"), msg("user", "because")];
+    expect(conversationTurns(history)).toEqual(history);
   });
 });
