@@ -103,16 +103,24 @@ const DEFAULT_PROFILE = {
   ] as CriterionSpec[],
 };
 
+/**
+ * The pitch — the first thing the builder said — decides the project type.
+ *
+ * Matching against every answer let a later reply re-classify the project: a
+ * study-partner app became a "Game" the moment an answer mentioned a
+ * confidence "level". By then the client had pinned the first turn's criteria,
+ * so the scoreboard read "Tuned to game" over web-app dimensions and Build
+ * mode went on to plan a game nobody pitched.
+ */
 function detectProfile(history: ChatMessage[]) {
-  const allText = history
-    .filter((m) => m.role === "user")
-    .map((m) => m.content)
-    .join(" ");
+  const pitch = history.find((m) => m.role === "user")?.content ?? "";
   for (const p of PROJECT_PROFILES) {
-    if (p.match.test(allText)) return { type: p.type, criteria: p.criteria };
+    if (p.match.test(pitch)) return { type: p.type, criteria: p.criteria };
   }
   return DEFAULT_PROFILE;
 }
+
+const tidy = (text: string) => text.replace(/\s+/g, " ").replace(/[.\s]+$/, "").trim();
 
 function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
@@ -162,14 +170,16 @@ export function demoAssessment(
 
   const profile = detectProfile(history);
   const criteria = priorCriteria ?? profile.criteria;
-  const idea = lastUserText(history)
-    .replace(/\s+/g, " ")
-    .replace(/^build\s+/i, "")
-    .replace(/\.+$/, "")
-    .trim();
+  // The pitch is the core idea; every later answer is detail that sharpens it.
+  // (Using only the latest message exported whatever was said last as the
+  // "core idea" and threw the actual pitch away.)
+  const said = userMsgs.map((m) => tidy(m.content ?? "")).filter(Boolean);
+  const idea = (said[0] ?? "").replace(/^build\s+/i, "");
+  const details = said.slice(1).join(". ").slice(0, 900);
   const refinedPrompt =
     `Build a ${profile.type.toLowerCase()}. ` +
     (idea ? `Core idea: ${idea}. ` : "") +
+    (details ? `What the builder pinned down: ${tidy(details)}. ` : "") +
     `Target one specific user, define what a successful first session looks like, and keep v1 tightly scoped.`;
 
   const dynamicOffsets = [-3, 2, -6];
