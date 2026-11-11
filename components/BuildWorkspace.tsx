@@ -55,6 +55,8 @@ interface BuildWorkspaceProps {
   messages: ChatMessage[];
   builderName: string;
   onBack: () => void;
+  /** Abandon this idea entirely and return to the blank pitch screen. */
+  onNewIdea: () => void;
 }
 
 type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "checkpoint" | "done";
@@ -142,7 +144,7 @@ function PlanMap({ plan, partIndex }: { plan: BuildPlan; partIndex: number }) {
 
 /* ----------------------------- main ----------------------------- */
 
-export function BuildWorkspace({ refinedPrompt, projectType, messages, builderName, onBack }: BuildWorkspaceProps) {
+export function BuildWorkspace({ refinedPrompt, projectType, messages, builderName, onBack, onNewIdea }: BuildWorkspaceProps) {
   const [stage, setStage] = useState<Stage>("planning");
   const [profile, setProfile] = useState<BuilderProfile>(defaultProfile());
   const [plan, setPlan] = useState<BuildPlan | null>(null);
@@ -759,7 +761,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
                 )}
                 <button
                   type="button"
-                  onClick={onBack}
+                  onClick={onNewIdea}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:border-ember/40 hover:text-ink"
                 >
                   Build something new

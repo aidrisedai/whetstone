@@ -42,6 +42,11 @@ export function WhetstoneApp({
   const criteriaRef = useRef<CriterionSpec[] | null>(null);
   const exportedRef = useRef(false);
   const voiceRef = useRef(false);
+  // Bumped by reset(). Every async step captures it and drops its result if it
+  // has moved on — otherwise a reply, score or export still in flight when the
+  // builder hits "New idea" lands on the fresh session (the old idea's score
+  // on the new pitch, a stray closing message on the blank intake screen).
+  const sessionRef = useRef(0);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -57,27 +62,35 @@ export function WhetstoneApp({
 
   const runAdvisor = useCallback(
     async (history: ChatMessage[], closing: boolean, msgId: string) => {
+      const session = sessionRef.current;
+      const live = () => sessionRef.current === session;
       let acc = "";
       try {
         await streamAdvisor(history, closing, (chunk) => {
+          if (!live()) return;
           acc += chunk;
           updateMsg(msgId, acc);
         });
       } catch (err) {
+        if (!live()) return;
         acc = acc || "⚠️ The advisor stumbled mid-thought. Try sending that again.";
         updateMsg(msgId, acc);
         setError(err instanceof Error ? err.message : "Advisor failed");
       } finally {
-        setAdvisorTyping(false);
+        if (live()) setAdvisorTyping(false);
       }
+      if (!live()) return;
       if (voiceRef.current && acc && !acc.startsWith("⚠️")) speak(acc);
     },
     [speak, updateMsg],
   );
 
   const runScore = useCallback(async (history: ChatMessage[]): Promise<Assessment | null> => {
+    const session = sessionRef.current;
+    const live = () => sessionRef.current === session;
     try {
       const a = await fetchScore(history, criteriaRef.current);
+      if (!live()) return null;
       setAssessment(a);
       if (!criteriaRef.current && a.dynamicCriteria.length > 0) {
         criteriaRef.current = a.dynamicCriteria.map((d) => ({
@@ -88,33 +101,41 @@ export function WhetstoneApp({
       }
       return a;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Scoring failed");
+      if (live()) setError(err instanceof Error ? err.message : "Scoring failed");
       return null;
     } finally {
-      setScoring(false);
+      if (live()) setScoring(false);
     }
   }, []);
 
   const triggerExport = useCallback(
     async (history: ChatMessage[], result: Assessment) => {
+      const session = sessionRef.current;
+      const live = () => sessionRef.current === session;
       exportedRef.current = true;
       setExported(true);
       setLessonLoading(true);
 
-      void requestExport(result.refinedPrompt).then(setExportResult).catch(() => {});
+      void requestExport(result.refinedPrompt)
+        .then((r) => {
+          if (live()) setExportResult(r);
+        })
+        .catch(() => {});
       void copyToClipboard(result.refinedPrompt).catch(() => {});
 
       const closeMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
       setMessages((prev) => [...prev, closeMsg]);
       setAdvisorTyping(true);
       await runAdvisor(history, true, closeMsg.id);
+      if (!live()) return;
 
       try {
-        setLesson(await fetchLesson(history));
+        const l = await fetchLesson(history);
+        if (live()) setLesson(l);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Lesson failed");
+        if (live()) setError(err instanceof Error ? err.message : "Lesson failed");
       } finally {
-        setLessonLoading(false);
+        if (live()) setLessonLoading(false);
       }
     },
     [runAdvisor],
@@ -139,13 +160,16 @@ export function WhetstoneApp({
       setScoring(true);
       setBusy(true);
 
+      const session = sessionRef.current;
       const [, result] = await Promise.all([
         runAdvisor(nextHistory, false, advisorMsg.id),
         runScore(nextHistory),
       ]);
+      if (sessionRef.current !== session) return;
 
       if (result && result.ready && !exportedRef.current) {
         await triggerExport(nextHistory, result);
+        if (sessionRef.current !== session) return;
       }
       setBusy(false);
     },
@@ -153,9 +177,13 @@ export function WhetstoneApp({
   );
 
   const reset = useCallback(() => {
+    sessionRef.current += 1;
     cancelSpeech();
     setMode("sharpen");
+    messagesRef.current = [];
     setMessages([]);
+    setAdvisorTyping(false);
+    setScoring(false);
     setAssessment(null);
     setLesson(null);
     setLessonLoading(false);
@@ -229,6 +257,7 @@ export function WhetstoneApp({
             messages={messages}
             builderName={builderName}
             onBack={() => setMode("sharpen")}
+            onNewIdea={reset}
           />
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
