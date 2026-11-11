@@ -12,6 +12,10 @@ const WEBHOOK_TIMEOUT_MS = 8_000;
  * Hand the sharpened prompt off to the connected AI builder. Always returns a
  * deep link that prefills the builder; if BUILDER_WEBHOOK_URL is configured,
  * also POSTs the prompt server-to-server for a true automatic hand-off.
+ *
+ * `linkOnly: true` returns the deep link without the webhook. The build
+ * workspace needs the link every time it opens, and that must not re-deliver
+ * the prompt — the hand-off happens once, on the real export.
  */
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
@@ -27,7 +31,7 @@ export async function POST(req: Request): Promise<Response> {
 
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
-  if (hook) {
+  if (hook && body.linkOnly !== true) {
     try {
       const r = await fetch(hook, {
         method: "POST",
