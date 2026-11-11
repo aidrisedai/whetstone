@@ -300,7 +300,7 @@ export function Whiteboard({
 
         {/* ─── Bottom control bar (avatar · caption · mic) like the reference ─── */}
         {started && (
-          <div className="flex items-center gap-3 border-t border-black/5 bg-white/80 px-4 py-3 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-3 border-t border-black/5 bg-white/80 px-4 py-3 backdrop-blur">
             {/* teacher avatar + pause */}
             <div className="flex items-center gap-2">
               <div
@@ -321,8 +321,9 @@ export function Whiteboard({
               </button>
             </div>
 
-            {/* live caption (karaoke) */}
-            <div className="min-w-0 flex-1">
+            {/* live caption (karaoke) — on a phone it takes its own row above the
+                controls; squeezed between them it wrapped to two words a line. */}
+            <div className="order-first min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-0">
               {caption ? (
                 <Caption text={caption} progress={teacher.progress} />
               ) : (
@@ -331,7 +332,7 @@ export function Whiteboard({
             </div>
 
             {/* input affordances */}
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowType((v) => !v)}
