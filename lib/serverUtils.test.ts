@@ -7,6 +7,7 @@ import {
   asStringArray,
   asText,
   asTrimmed,
+  parseReply,
   readJsonBody,
   safeParseJson,
 } from "./serverUtils";
@@ -193,5 +194,19 @@ describe("safeParseJson", () => {
     expect(safeParseJson('{"a":1}')).toEqual({ a: 1 });
     expect(safeParseJson('```json\n{"a":1}\n```')).toEqual({ a: 1 });
     expect(safeParseJson('here you go: {"a":1} — done')).toEqual({ a: 1 });
+  });
+});
+
+describe("parseReply", () => {
+  const reply = (text: string, stop_reason: string) =>
+    ({ stop_reason, content: [{ type: "text", text }] }) as unknown as Parameters<typeof parseReply>[0];
+
+  it("parses a finished reply", () => {
+    expect(parseReply(reply('{"a":1}', "end_turn"))).toEqual({ a: 1 });
+  });
+
+  it("reports a reply cut off at the token limit in plain words", () => {
+    expect(() => parseReply(reply('{"a":', "max_tokens"))).toThrow(/cut off/);
+    expect(() => parseReply(reply('{"a":', "max_tokens"), "too big")).toThrow("too big");
   });
 });

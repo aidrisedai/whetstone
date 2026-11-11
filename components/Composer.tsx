@@ -56,7 +56,7 @@ export function Composer({
     const all = Array.from(files);
     const accepted = all.filter((f) => isSupportedImage(f.type, f.size));
     setImageNote(
-      accepted.length < all.length ? "Images need to be PNG, JPEG, GIF or WebP, and under 5 MB." : null,
+      accepted.length < all.length ? "Images need to be PNG, JPEG, GIF or WebP, and under 3.75 MB." : null,
     );
     const next = await Promise.all(accepted.map(fileToAttachment));
     if (next.length) setImages((prev) => [...prev, ...next].slice(0, MAX_IMAGES_PER_MESSAGE));

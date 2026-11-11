@@ -29,8 +29,8 @@ interface Reasoning {
 
 /**
  * Adaptive thinking and the `effort` parameter are supported on the Claude 5
- * family (Opus 5 / Sonnet 5 / Fable 5 / Mythos 5), on Opus 4.5+, and on
- * Sonnet 4.6 — but ERROR on Sonnet 4.5 / Haiku 4.5. So derive the reasoning
+ * family (Opus 5 / Sonnet 5 / Fable 5 / Mythos 5), on Opus 4.6+, and on
+ * Sonnet 4.6 — but ERROR on Opus 4.5 / Sonnet 4.5 / Haiku 4.5. So derive the reasoning
  * config from the model: capable models get adaptive thinking + effort; faster
  * models (e.g. Haiku) run lean with neither, which keeps any model swap valid.
  */
@@ -49,8 +49,8 @@ export function supportsAdaptiveEffort(model: string): boolean {
   return (
     // Claude 5 family — adaptive thinking + effort (low…max) across the board.
     /^claude-(opus|sonnet|fable|mythos)-5(-\d+)?\b/.test(model) ||
-    // Opus 4.5 through 4.8.
-    /^claude-opus-4-(5|6|7|8)\b/.test(model) ||
+    // Opus 4.6 through 4.8. Opus 4.5 has no adaptive thinking, so it runs lean.
+    /^claude-opus-4-(6|7|8)\b/.test(model) ||
     // Sonnet 4.6 (but NOT Sonnet 4.5, which errors on both parameters).
     /^claude-sonnet-4-6\b/.test(model)
   );

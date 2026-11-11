@@ -275,6 +275,14 @@ describe("/api/export webhook", () => {
     expect(json.builderUrl).toMatch(/^https:\/\//);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("refuses an oversized prompt instead of relaying it", async () => {
+    const fetchMock = setup();
+    const { POST } = await import("./export/route");
+    const res = await post(POST, { refinedPrompt: "x".repeat(20_001) });
+    expect(res.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 /**

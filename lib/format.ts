@@ -33,8 +33,12 @@ export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
 
 /** The image formats Claude's vision input accepts. */
 export const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-/** Per-image size ceiling for Claude's vision input. */
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+/**
+ * Per-image size ceiling. Claude's 5 MB limit is measured on the base64 text
+ * that is actually sent, which is a third larger than the file, so the file
+ * itself has to stay under 3.75 MB.
+ */
+export const MAX_IMAGE_BYTES = Math.floor((5 * 1024 * 1024 * 3) / 4);
 export const MAX_IMAGES_PER_MESSAGE = 4;
 
 /**
@@ -117,4 +121,37 @@ export function downloadText(filename: string, text: string, type = "text/html")
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Sandbox for the generated-app preview. Scripts run, forms submit (without
+ * `allow-forms` the browser drops the submit before the app's own handler ever
+ * sees it) and alert/confirm work. `allow-same-origin` stays off, so the app
+ * can never reach Whetstone's own page, cookies or storage.
+ */
+export const PREVIEW_SANDBOX = "allow-scripts allow-forms allow-modals";
+
+// Without `allow-same-origin`, touching localStorage throws, and one unguarded
+// read stops the whole app script. Give the preview an in-memory stand-in; the
+// saved file uses the browser's real storage.
+const STORAGE_SHIM =
+  "<script>(function(){try{window.localStorage.getItem('')}catch(e){var mk=function(){var m={};return{" +
+  "getItem:function(k){return Object.prototype.hasOwnProperty.call(m,k)?m[k]:null}," +
+  "setItem:function(k,v){m[k]=String(v)},removeItem:function(k){delete m[k]},clear:function(){m={}}," +
+  "key:function(i){return Object.keys(m)[i]||null},get length(){return Object.keys(m).length}}};" +
+  "try{Object.defineProperty(window,'localStorage',{value:mk(),configurable:true});" +
+  "Object.defineProperty(window,'sessionStorage',{value:mk(),configurable:true})}catch(_){}}})();</" +
+  "script>";
+
+/** The document to load in a preview iframe: the app's code plus the storage stand-in. */
+export function previewDoc(code: string): string {
+  if (!code.trim()) return code;
+  for (const anchor of [/<head[^>]*>/i, /<html[^>]*>/i, /<!DOCTYPE[^>]*>/i]) {
+    const m = anchor.exec(code);
+    if (m) {
+      const at = m.index + m[0].length;
+      return code.slice(0, at) + STORAGE_SHIM + code.slice(at);
+    }
+  }
+  return STORAGE_SHIM + code;
 }

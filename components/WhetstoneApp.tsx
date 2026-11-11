@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Assessment, ChatMessage, CriterionSpec, ExportResult, ImageAttachment, Lesson } from "@/lib/types";
 import { fetchLesson, fetchScore, requestExport, streamAdvisor } from "@/lib/clientApi";
 import { copyToClipboard, uid } from "@/lib/format";
+import { isAdvisorReply } from "@/lib/messages";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { Composer } from "./Composer";
 import { Conversation } from "./Conversation";
@@ -11,13 +12,8 @@ import { ExportCard } from "./ExportCard";
 import { IdeaIntake } from "./IdeaIntake";
 import { LessonCard } from "./LessonCard";
 import { ScorePanel } from "./ScorePanel";
-import { BuildWorkspace } from "./BuildWorkspace";
+import { BuildWorkspace, type BuildProgress } from "./BuildWorkspace";
 import { MuteIcon, SoundIcon, SparkIcon } from "./icons";
-
-function isAdvisorReply(content: string): boolean {
-  const text = content.trim();
-  return text.length > 0 && !text.startsWith("⚠️");
-}
 
 export function WhetstoneApp({
   demo,
@@ -52,6 +48,12 @@ export function WhetstoneApp({
   // builder hits "New idea" lands on the fresh session (the old idea's score
   // on the new pitch, a stray closing message on the blank intake screen).
   const sessionRef = useRef(0);
+  // The build in progress for this idea, kept while the builder is back in the
+  // conversation so returning to Build mode resumes it.
+  const buildRef = useRef<BuildProgress | null>(null);
+  const keepBuild = useCallback((progress: BuildProgress) => {
+    buildRef.current = progress;
+  }, []);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -203,6 +205,7 @@ export function WhetstoneApp({
     setBusy(false);
     criteriaRef.current = null;
     exportedRef.current = false;
+    buildRef.current = null;
   }, [cancelSpeech]);
 
   const started = messages.length > 0;
@@ -266,6 +269,8 @@ export function WhetstoneApp({
             projectType={assessment.projectType}
             messages={messages}
             builderName={builderName}
+            resume={buildRef.current}
+            onProgress={keepBuild}
             onBack={() => setMode("sharpen")}
             onNewIdea={reset}
           />
