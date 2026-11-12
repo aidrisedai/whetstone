@@ -16,15 +16,21 @@ function beat(code: string, overrides: Partial<CodeBeat> = {}): CodeBeat {
 }
 
 describe("assembleBeats / assembleBeatsUpTo", () => {
-  const beats = [beat("<a>"), beat("<b>"), beat("<c>")];
+  const beats = [beat("<a>\n"), beat("<b>\n"), beat("<c>\n")];
 
   it("concatenates all beats in order", () => {
-    expect(assembleBeats(beats)).toBe("<a><b><c>");
+    expect(assembleBeats(beats)).toBe("<a>\n<b>\n<c>\n");
   });
 
   it("concatenates only up to and including the given index", () => {
-    expect(assembleBeatsUpTo(beats, 1)).toBe("<a><b>");
-    expect(assembleBeatsUpTo(beats, 0)).toBe("<a>");
+    expect(assembleBeatsUpTo(beats, 1)).toBe("<a>\n<b>\n");
+    expect(assembleBeatsUpTo(beats, 0)).toBe("<a>\n");
+  });
+
+  it("ends each beat's last line so beats cannot fuse", () => {
+    const fused = [beat("const a = 1; // first"), beat("const b = 2"), beat("")];
+    expect(assembleBeats(fused)).toBe("const a = 1; // first\nconst b = 2\n");
+    expect(assembleBeatsUpTo(fused, 0)).toBe("const a = 1; // first\n");
   });
 });
 

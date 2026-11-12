@@ -12,6 +12,7 @@ import {
   parseReply,
 } from "@/lib/serverUtils";
 import type { BuildLesson, CodeBeat } from "@/lib/types";
+import { beatsFormValidDoc } from "@/lib/format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +70,11 @@ export async function POST(req: Request): Promise<Response> {
       "That part came out too big to write in one go — try again.",
     );
     const beats: CodeBeat[] = Array.isArray(parsed.beats) ? parsed.beats : [];
+    // The beats are the app from here on — every later part builds on them. A
+    // file with a section dropped or elided must not be committed as the code.
+    if (!beatsFormValidDoc(beats)) {
+      return jsonError("That part didn't come out as a complete app — try again.", 502);
+    }
     const lesson: BuildLesson = {
       partTitle: part.title,
       intro: parsed.intro,
