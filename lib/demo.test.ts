@@ -9,7 +9,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { demoAssessment, demoLesson } from "./demo";
+import { demoAssessment, demoBuildLesson, demoLesson, demoPlan, demoQuiz } from "./demo";
+import { assembleBeats, beatsFormValidDoc } from "./format";
 import type { ChatMessage } from "./types";
 
 const say = (content: string, i: number): ChatMessage => ({ id: `m${i}`, role: "user", content });
@@ -125,6 +126,27 @@ describe("demoAssessment", () => {
     expect(refinedPrompt).toContain("Coaches enter times after each practice.");
   });
 
+  it("never ends the exported detail mid-sentence when it has to cut", () => {
+    const answer = "The planner caps each day at two hours of work and shows overdue items first";
+    const a = demoAssessment(
+      [{ id: "0", role: "user", content: "A study planner" }, ...Array.from({ length: 20 }, (_, i) => ({ id: String(i + 1), role: "user" as const, content: answer }))],
+      null,
+      80,
+    );
+    const detail = a.refinedPrompt.split("What the builder pinned down: ")[1].split(". Target one")[0];
+    expect(detail.endsWith("overdue items first")).toBe(true);
+  });
+
+  it("gives a high clarity score a note that agrees with it", () => {
+    const a = demoAssessment(
+      Array.from({ length: 6 }, (_, i) => ({ id: String(i), role: "user" as const, content: "x".repeat(200) })),
+      null,
+      80,
+    );
+    expect(a.clarity.score).toBeGreaterThanOrEqual(85);
+    expect(a.clarity.rationale).not.toMatch(/coming into focus|abstract/);
+  });
+
   it("survives an empty history without throwing", () => {
     const a = demoAssessment([], null, 80);
     expect(a.overall).toBeGreaterThanOrEqual(0);
@@ -144,5 +166,80 @@ describe("demoLesson", () => {
 
   it("varies the reason with how long the builder worked", () => {
     expect(demoLesson(THIN).why).not.toBe(demoLesson(SHARP).why);
+  });
+});
+
+/**
+ * The demo plan promises three parts: a screen, a box that adds to a list, and
+ * a list that is remembered. Parts two and three used to add a placeholder
+ * banner instead, so the "finished" demo app did none of what was planned.
+ */
+describe("demo build", () => {
+  const plan = demoPlan("Web app", "", "Sam", "");
+  function buildAll() {
+    let code = "";
+    const added: string[] = [];
+    plan.parts.forEach((part, i) => {
+      const lesson = demoBuildLesson({ part, partNumber: i + 1, currentCode: code, projectName: plan.projectName });
+      expect(beatsFormValidDoc(lesson.beats)).toBe(true);
+      added.push(lesson.beats.filter((b) => b.isNew).map((b) => b.code).join(""));
+      code = assembleBeats(lesson.beats);
+    });
+    return { code, added };
+  }
+
+  it("builds what each planned part says it will", () => {
+    const { code } = buildAll();
+    expect(code).toContain('<form id="add">');
+    expect(code).toContain("items.push(text)");
+    expect(code).toContain("localStorage.setItem");
+    expect(code).toContain("items.splice(index, 1)");
+    expect(code).not.toContain("wired up in demo mode");
+    expect(code.match(/<\/body>/g)).toHaveLength(1);
+  });
+
+  it("keeps the earlier parts' code when a part is added", () => {
+    const first = demoBuildLesson({ part: plan.parts[0], partNumber: 1, currentCode: "", projectName: "X" });
+    const one = assembleBeats(first.beats);
+    const second = demoBuildLesson({ part: plan.parts[1], partNumber: 2, currentCode: one, projectName: "X" });
+    expect(assembleBeats(second.beats)).toContain(one.slice(0, one.lastIndexOf("</body>")));
+  });
+
+  it("falls back to a labelled stand-in for a part it has no code for", () => {
+    const { code } = buildAll();
+    const extra = demoBuildLesson({
+      part: { title: "Dark mode", whatItIs: "", concept: "Adding a feature", buildSpec: "" },
+      partNumber: 4,
+      currentCode: code,
+      projectName: "X",
+    });
+    expect(beatsFormValidDoc(extra.beats)).toBe(true);
+    expect(assembleBeats(extra.beats)).toContain("Dark mode — wired up in demo mode");
+  });
+
+  it("quizzes each part on the code that part wrote", () => {
+    const { added } = buildAll();
+    const seen = new Set<string>();
+    plan.parts.forEach((part, i) => {
+      const quiz = demoQuiz(part.title, part.concept, added[i]);
+      expect(quiz.questions.length).toBeGreaterThanOrEqual(2);
+      for (const q of quiz.questions) {
+        expect(q.correctIndex).toBeLessThan(q.options.length);
+        if (q.codeRef) expect(added[i]).toContain(q.codeRef);
+        expect(seen.has(q.question)).toBe(false);
+        seen.add(q.question);
+      }
+    });
+  });
+
+  it("does not always put the right answer first", () => {
+    const { added } = buildAll();
+    const answers = plan.parts.flatMap((p, i) => demoQuiz(p.title, p.concept, added[i]).questions.map((q) => q.correctIndex));
+    expect(new Set(answers).size).toBeGreaterThan(1);
+  });
+
+  it("asks general questions when the code is not the demo's own", () => {
+    const quiz = demoQuiz("Dark mode", "Saving data", "<div>something else</div>");
+    expect(quiz.questions.every((q) => !q.codeRef)).toBe(true);
   });
 });

@@ -239,5 +239,8 @@ fallback.
   Where it's missing, the mic/voice controls simply don't appear.
 - **Demo mode** is deterministic and offline‑friendly — scores climb as you give
   more substantive answers, so a handful of sharp turns will cross the bar.
+  The build phase in demo mode always teaches and builds the same small starter
+  app (a list you can add to, delete from, and that is remembered), whatever the
+  pitch was; building *your* idea needs an API key.
 - This repo includes a `SessionStart` hook (`.claude/settings.json`) that installs
   dependencies automatically in Claude Code web sessions.

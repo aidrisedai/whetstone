@@ -26,7 +26,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!newCode) return jsonError("`newCode` is required to write a grounded quiz");
 
   if (isDemoMode()) {
-    return Response.json(demoQuiz(partTitle, concept));
+    return Response.json(demoQuiz(partTitle, concept, newCode));
   }
 
   try {

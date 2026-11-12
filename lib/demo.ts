@@ -122,6 +122,13 @@ function detectProfile(history: ChatMessage[]) {
 
 const tidy = (text: string) => text.replace(/\s+/g, " ").replace(/[.\s]+$/, "").trim();
 
+function clipDetails(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("; "));
+  return stop > max / 2 ? cut.slice(0, stop) : cut.replace(/\s+\S*$/, "");
+}
+
 function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
@@ -198,7 +205,9 @@ export function demoAssessment(
   // "core idea" and threw the actual pitch away.)
   const said = userMsgs.map((m) => tidy(m.content ?? "")).filter(Boolean);
   const idea = (said[0] ?? "").replace(/^build\s+/i, "");
-  const details = said.slice(1).join(". ").slice(0, 900);
+  // Cut at the end of a sentence (or at least a word) — a hard cut left the
+  // exported prompt ending mid-sentence ("…caps each day at 2 hours of.").
+  const details = clipDetails(said.slice(1).join(". "), 900);
   const refinedPrompt =
     `Build a ${profile.type.toLowerCase()}. ` +
     (idea ? `Core idea: ${idea}. ` : "") +
@@ -210,11 +219,7 @@ export function demoAssessment(
   return finalizeAssessment(
     {
       projectType: profile.type,
-      clarity: {
-        score: base + 3,
-        rationale: turns < 3 ? "The core is still abstract — I can't picture the exact user yet." : "The goal and user are coming into focus.",
-        suggestion: "Name the one person this is for and the single job they're hiring it to do.",
-      },
+      clarity: demoClarity(base + 3, turns),
       conciseness: demoConciseness(base - 2 - (avgLen > 320 ? 6 : 0), avgLen > 320),
       dynamicCriteria: criteria.map((c, i) => {
         const score = clamp(base + (dynamicOffsets[i] ?? 0));
@@ -224,6 +229,27 @@ export function demoAssessment(
     },
     threshold,
   );
+}
+
+// Like the conciseness note, the clarity note has to agree with its score: a
+// 99 that still said "coming into focus… name the one person this is for"
+// read as a contradiction on the finished scoreboard.
+function demoClarity(score: number, turns: number) {
+  if (score >= 85) {
+    return {
+      rationale: "Clear — the user, the job and the outcome are all on the page.",
+      score,
+      suggestion: "Hold this clarity; make sure new detail doesn't bury the core idea.",
+    };
+  }
+  return {
+    score,
+    rationale:
+      turns < 3
+        ? "The core is still abstract — I can't picture the exact user yet."
+        : "The goal and user are coming into focus.",
+    suggestion: "Name the one person this is for and the single job they're hiring it to do.",
+  };
 }
 
 export function demoLesson(history: ChatMessage[]): Lesson {
@@ -476,8 +502,7 @@ export function demoBuildLesson(args: {
   const splitAt = code.lastIndexOf("</body>");
   const head = splitAt >= 0 ? code.slice(0, splitAt) : code;
   const tail = splitAt >= 0 ? code.slice(splitAt) : "";
-  const featureLabel = escapeHtml(args.part.title);
-  const newCode = `<div style="margin-top:14px;padding:10px;background:#26203a;border-radius:8px">✨ ${featureLabel} — wired up in demo mode</div>\n`;
+  const feature = demoFeature(args.part, code);
 
   return {
     partTitle: args.part.title,
@@ -490,13 +515,7 @@ export function demoBuildLesson(args: {
         "Here's everything from the earlier parts — untouched. Great code doesn't get thrown away; we build ON it. We're going to slip the new piece in right at the end.",
         false,
       ),
-      beat(
-        "✨ The new piece",
-        "html",
-        newCode,
-        `This new block is ${args.part.title}. In the real (API-key) version Coach Spark writes the actual working code here and explains every line — this is the demo stand-in so you can see the flow.`,
-        true,
-      ),
+      ...feature,
       beat("🔚 Closing it up", "html", tail, "We close the tags so the page is valid again. Every tag we open has to close — like brackets in a save file.", false),
     ],
     outro: `Nice — ${args.part.title} is in, and the rest still works. ${args.part.concept ? "You practiced: " + args.part.concept + "." : ""}`,
@@ -504,38 +523,208 @@ export function demoBuildLesson(args: {
   };
 }
 
+// The new beats for a later demo part. The two parts the demo plan promises —
+// typing things onto the list, and remembering them — are built for real, so
+// the app the builder ends up with does what the plan said it would. They
+// only fit the demo's own starter app, so anything else (a "Keep building"
+// request, or code that isn't ours) gets a clearly-labelled stand-in.
+function demoFeature(part: { title: string; concept: string }, code: string): CodeBeat[] {
+  const ours = code.includes('<ul id="list">') && code.includes("const items =");
+
+  if (ours && part.concept === "User input" && !code.includes('id="add"')) {
+    return [
+      beat(
+        "⌨️ A box to type in",
+        "html",
+        `<form id="add">\n  <input id="new-item" placeholder="Type something…" autocomplete="off">\n  <button>Add</button>\n</form>\n`,
+        "A `<form>` is a little machine for collecting what someone types. The `<input>` is the box, the `<button>` sends it. Both the box and the form get an `id` — a name tag, so our code can find them, just like the list.",
+        true,
+      ),
+      beat(
+        "🎨 Making it look right",
+        "css",
+        `<style>\n  ul{padding:0}\n  form{display:flex;gap:8px;margin-top:14px}\n  input{flex:1;padding:10px;border-radius:8px;border:1px solid #333a50;background:#161a26;color:#eee}\n  button{padding:10px 16px;border:0;border-radius:8px;background:#ff7a3d;color:#111;font-weight:700}\n</style>\n`,
+        "A bit more paint. `display:flex` lines the box and the button up side by side, and `flex:1` tells the box to take all the room that's left.",
+        true,
+      ),
+      beat(
+        "🖌️ One function that draws the list",
+        "js",
+        `<script>\n  function render(){\n    list.innerHTML = "";\n    items.forEach(function(text){\n      const li = document.createElement("li");\n      li.textContent = text;\n      list.appendChild(li);\n    });\n  }\n`,
+        "We wrap the drawing code in a function called `render`. It wipes the list clean, then draws every item in the array again. Now any time the data changes we just call `render()` and the screen catches up.",
+        true,
+      ),
+      beat(
+        "➕ Adding what you typed",
+        "js",
+        `  document.getElementById("add").addEventListener("submit", function(event){\n    event.preventDefault();\n    const box = document.getElementById("new-item");\n    const text = box.value.trim();\n    if (!text) return;\n    items.push(text);\n    box.value = "";\n    render();\n  });\n</script>\n`,
+        "`addEventListener(\"submit\", …)` means: when the form is sent — by the button OR the Enter key — run this. `preventDefault()` stops the page reloading. Then we read the box, skip it if it's empty, `push` the text into the array, clear the box and `render()`. Try it in the Browser tab!",
+        true,
+      ),
+    ];
+  }
+
+  if (ours && part.concept === "Saving data" && code.includes("function render()") && !code.includes("localStorage")) {
+    return [
+      beat(
+        "💾 Saving the list",
+        "js",
+        `<script>\n  function save(){\n    try { localStorage.setItem("items", JSON.stringify(items)); } catch (e) {}\n  }\n`,
+        "`localStorage` is a tiny notebook the browser keeps for your page, even after you close it. It only stores text, so `JSON.stringify` turns our array into text first. The `try` is a safety net: if the browser says no, the app carries on instead of crashing.",
+        true,
+      ),
+      beat(
+        "📂 Loading it back",
+        "js",
+        `  try {\n    const saved = JSON.parse(localStorage.getItem("items") || "null");\n    if (Array.isArray(saved)) {\n      items.length = 0;\n      saved.forEach(function(text){ items.push(String(text)); });\n      render();\n    }\n  } catch (e) {}\n`,
+        "When the page opens we read the notebook. `JSON.parse` turns the text back into an array. If there really is a saved list, we swap it in for the starter items and `render()`.",
+        true,
+      ),
+      beat(
+        "🗑️ Save on add, tap to delete",
+        "js",
+        `  document.getElementById("add").addEventListener("submit", save);\n  list.addEventListener("click", function(event){\n    const index = Array.prototype.indexOf.call(list.children, event.target);\n    if (index < 0) return;\n    items.splice(index, 1);\n    render();\n    save();\n  });\n</script>\n<p style="color:#8a90a6;font-size:.8rem">Tap an item to delete it.</p>\n`,
+        "Two last wires. After every add, we `save`. And when you tap a row, we work out which number row it was, `splice` it out of the array, redraw and save. Download your app and open it — your list will still be there tomorrow.",
+        true,
+      ),
+    ];
+  }
+
+  const featureLabel = escapeHtml(part.title);
+  return [
+    beat(
+      "✨ The new piece",
+      "html",
+      `<div style="margin-top:14px;padding:10px;background:#26203a;border-radius:8px">✨ ${featureLabel} — wired up in demo mode</div>\n`,
+      `This new block is ${part.title}. In the real (API-key) version Coach Spark writes the actual working code here and explains every line — this is the demo stand-in so you can see the flow.`,
+      true,
+    ),
+  ];
+}
+
 /* ---- Demo checkpoint quiz (offline stand-in) ---- */
-export function demoQuiz(partTitle: string, concept: string): Checkpoint {
+type DemoQuestion = Checkpoint["questions"][number];
+
+// Each demo part gets questions about the code that part actually wrote —
+// the same two questions after every part, always answered by option A, is a
+// quiz a kid stops reading by part two.
+const DEMO_QUESTIONS: Record<string, DemoQuestion[]> = {
+  "The screen": [
+    {
+      id: "demo-q1",
+      question: "When the code calls document.getElementById(\"list\"), what is it doing?",
+      codeRef: 'const list = document.getElementById("list");',
+      options: [
+        "Creating a brand-new list element from scratch",
+        "Grabbing the element on the page whose id is \"list\", so code can control it",
+        "Deleting the list from the page",
+      ],
+      correctIndex: 1,
+      explainCorrect: "getElementById finds the existing element by its id so you can read or change it.",
+      explainWrong: "Easy mix-up: getElementById finds something already there — it doesn't create or delete it.",
+    },
+    {
+      id: "demo-q2",
+      question: "The array has two items. How many rows does forEach put on the screen?",
+      codeRef: 'const items = ["First thing","Second thing"];',
+      options: ["Two — one for each item in the array", "One — it stops after the first", "None until you click something"],
+      correctIndex: 0,
+      explainCorrect: "forEach runs once per item, so two items means two rows.",
+      explainWrong: "Not quite — forEach runs the same code once for every item in the array.",
+    },
+  ],
+  "User input": [
+    {
+      id: "demo-q1",
+      question: "What does event.preventDefault() do when the form is sent?",
+      codeRef: "event.preventDefault();",
+      options: [
+        "It deletes what you typed",
+        "It makes the button invisible",
+        "It stops the page reloading, so our own code can handle it",
+      ],
+      correctIndex: 2,
+      explainCorrect: "A form's default is to reload the page. We stop that and add the item ourselves.",
+      explainWrong: "Not quite — a form normally reloads the page; preventDefault() stops that.",
+    },
+    {
+      id: "demo-q2",
+      question: "Why do we call render() right after items.push(text)?",
+      codeRef: "items.push(text);",
+      options: [
+        "So the screen is redrawn to match the data we just changed",
+        "Because push() doesn't work without it",
+        "To make the app run slower on purpose",
+      ],
+      correctIndex: 0,
+      explainCorrect: "Change the data, then redraw: that keeps the screen and the array in sync — a pro habit.",
+      explainWrong: "push() already changed the array; render() is what makes the screen show it.",
+    },
+  ],
+  "Saving data": [
+    {
+      id: "demo-q1",
+      question: "Why do we use JSON.stringify before saving the list?",
+      codeRef: 'localStorage.setItem("items", JSON.stringify(items));',
+      options: [
+        "To make the list shorter",
+        "Because localStorage only stores text, and this turns the array into text",
+        "To send the list to another website",
+      ],
+      correctIndex: 1,
+      explainCorrect: "localStorage keeps text only, so the array becomes text going in and an array again coming out.",
+      explainWrong: "Nothing leaves your browser — stringify just turns the array into text localStorage can keep.",
+    },
+    {
+      id: "demo-q2",
+      question: "What does items.splice(index, 1) do when you tap a row?",
+      codeRef: "items.splice(index, 1);",
+      options: ["Adds a copy of that row", "Sorts the list", "Removes that one item from the array"],
+      correctIndex: 2,
+      explainCorrect: "splice(index, 1) takes exactly one item out, starting at that position.",
+      explainWrong: "Not quite — splice(index, 1) removes one item at that position.",
+    },
+  ],
+};
+
+const DEMO_QUESTIONS_GENERIC: DemoQuestion[] = [
+  {
+    id: "demo-q1",
+    question: "When we added this part, what happened to the code from the earlier parts?",
+    options: [
+      "We threw it away and started again",
+      "We kept it and added the new piece on top",
+      "It was moved to a different file",
+    ],
+    correctIndex: 1,
+    explainCorrect: "Builders add to working code a piece at a time instead of starting over.",
+    explainWrong: "Not quite — everything you built stayed; the new piece was added to it.",
+  },
+  {
+    id: "demo-q2",
+    question: "Why does every tag we open need to be closed?",
+    options: [
+      "So the browser knows where each piece of the page ends",
+      "It makes the page load slower",
+      "It doesn't matter — tags are optional",
+    ],
+    correctIndex: 0,
+    explainCorrect: "Closing tags tell the browser where each piece ends, so the page is put together correctly.",
+    explainWrong: "Closing tags are how the browser knows where one piece ends and the next begins.",
+  },
+];
+
+/**
+ * `newCode` is the code the part just added; a concept's questions are only
+ * asked when that code is really there to be asked about.
+ */
+export function demoQuiz(partTitle: string, concept: string, newCode = ""): Checkpoint {
+  const about = DEMO_QUESTIONS[concept.trim()];
+  const grounded = about?.every((q) => !q.codeRef || newCode.includes(q.codeRef));
   return {
     partTitle,
     intro: "Quick checkpoint! Let's see what stuck. 🎯",
-    questions: [
-      {
-        id: "demo-q1",
-        question: "When the code calls document.getElementById('list'), what is it doing?",
-        codeRef: "const list = document.getElementById('list');",
-        options: [
-          "Grabbing the element on the page whose id is 'list', so code can control it",
-          "Creating a brand-new list element from scratch",
-          "Deleting the list from the page",
-        ],
-        correctIndex: 0,
-        explainCorrect: "getElementById finds the existing element by its id so you can read or change it.",
-        explainWrong: "Easy mix-up: getElementById finds something already there — it doesn't create or delete it.",
-      },
-      {
-        id: "demo-q2",
-        question: "Why do we keep the data in one array and have a single render() draw it?",
-        options: [
-          "So the screen always matches the data — change the data, re-render, done",
-          "Because arrays are the only way to store text",
-          "To make the app run slower on purpose",
-        ],
-        correctIndex: 0,
-        explainCorrect: "One source of truth + one render keeps the UI in sync with your data — a pro habit.",
-        explainWrong: "Not quite — arrays aren't the only storage; the point is keeping screen and data in sync.",
-      },
-    ],
+    questions: about && grounded ? about : DEMO_QUESTIONS_GENERIC,
   };
 }
 
