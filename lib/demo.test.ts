@@ -44,6 +44,13 @@ describe("demoAssessment", () => {
     }
   });
 
+  it("does not praise a low conciseness score", () => {
+    const thin = demoAssessment(THIN, null, 80).conciseness;
+    expect(thin.score).toBeLessThan(65);
+    expect(thin.rationale).not.toMatch(/tight and readable/i);
+    expect(demoAssessment(SHARP, null, 80).conciseness.rationale).toMatch(/tight and readable/i);
+  });
+
   it("calls a thin dimension thin", () => {
     for (const d of demoAssessment(THIN, null, 80).dynamicCriteria) {
       expect(d.score).toBeLessThan(60);

@@ -12,7 +12,7 @@ import type {
   EditResult,
   Lesson,
 } from "./types";
-import { clamp, finalizeAssessment } from "./scoring";
+import { clamp, DIMENSION_FLOOR, finalizeAssessment } from "./scoring";
 
 /**
  * Deterministic stand-ins used when no ANTHROPIC_API_KEY is configured, so the
@@ -155,6 +155,29 @@ function dynamicFeedback(label: string, score: number): { rationale: string; sug
   };
 }
 
+/**
+ * The conciseness note has to agree with its score. A two-line pitch is short,
+ * but it scores low because it says little — praising it as "tight" right next
+ * to a 37 reads as a bug on the very first scoreboard a builder sees.
+ */
+function demoConciseness(score: number, rambling: boolean): { score: number; rationale: string; suggestion: string } {
+  if (rambling) {
+    return {
+      score,
+      rationale: "You're packing several ideas into each answer.",
+      suggestion: "Cut to the one sentence that matters most.",
+    };
+  }
+  if (score < DIMENSION_FLOOR) {
+    return {
+      score,
+      rationale: "Short, but not sharp yet — few of the words carry real detail.",
+      suggestion: "Swap each general word for a specific one before you add more.",
+    };
+  }
+  return { score, rationale: "Tight and readable.", suggestion: "Keep trimming words that don't add signal." };
+}
+
 export function demoAssessment(
   history: ChatMessage[],
   priorCriteria: CriterionSpec[] | null,
@@ -192,11 +215,7 @@ export function demoAssessment(
         rationale: turns < 3 ? "The core is still abstract — I can't picture the exact user yet." : "The goal and user are coming into focus.",
         suggestion: "Name the one person this is for and the single job they're hiring it to do.",
       },
-      conciseness: {
-        score: base - 2 - (avgLen > 320 ? 6 : 0),
-        rationale: avgLen > 320 ? "You're packing several ideas into each answer." : "Tight and readable.",
-        suggestion: avgLen > 320 ? "Cut to the one sentence that matters most." : "Keep trimming words that don't add signal.",
-      },
+      conciseness: demoConciseness(base - 2 - (avgLen > 320 ? 6 : 0), avgLen > 320),
       dynamicCriteria: criteria.map((c, i) => {
         const score = clamp(base + (dynamicOffsets[i] ?? 0));
         return { ...c, score, ...dynamicFeedback(c.label, score) };
