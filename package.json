@@ -2,6 +2,9 @@
   "name": "whetstone",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.12"
+  },
   "description": "Whetstone — a sharp CEO advisor that sharpens teen builders' project ideas through voice, text, and image dialogue.",
   "scripts": {
     "dev": "next dev",

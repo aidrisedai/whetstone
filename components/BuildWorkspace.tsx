@@ -687,8 +687,10 @@ export function BuildWorkspace({
       {stage === "checkpoint" && plan && (
         <div className="flex flex-col gap-4">
           <PlanMap plan={plan} partIndex={partIndex} />
+          {/* min-w-0: a grid item is otherwise as wide as its widest line, and a
+              long line of quiz code pushed the whole page sideways on a phone. */}
           <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,420px)]">
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[11px] uppercase tracking-widest text-muted">your app so far</span>
                 <span className="font-mono text-[11px] text-good">▶ live</span>
@@ -701,7 +703,7 @@ export function BuildWorkspace({
               />
             </div>
 
-            <div>
+            <div className="min-w-0">
               {quizLoading ? (
                 <div className="grid h-full min-h-[40vh] place-items-center rounded-2xl border border-steel/30 bg-panel/40 text-center">
                   <div>
@@ -776,7 +778,7 @@ export function BuildWorkspace({
                       }
                     }}
                     rows={1}
-                    placeholder={extending ? "Planning it…" : "e.g. add a search bar, add sound, add a dark mode toggle…"}
+                    placeholder={extending ? "Planning it…" : "e.g. add a search bar…"}
                     className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-base/50 px-3 py-2 text-[15px] text-ink placeholder:text-muted/70 focus:border-ember focus:outline-none"
                   />
                   <button

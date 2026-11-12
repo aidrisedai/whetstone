@@ -87,7 +87,9 @@ export function WhetstoneApp({
         if (live()) setAdvisorTyping(false);
       }
       if (!live()) return;
-      if (voiceRef.current && acc && !acc.startsWith("⚠️")) speak(acc);
+      // A turn that failed server-side arrives as "\n\n⚠️ …", so check the
+      // trimmed text — the warning is for reading, not for reading aloud.
+      if (voiceRef.current && isAdvisorReply(acc)) speak(acc);
     },
     [speak, updateMsg],
   );
