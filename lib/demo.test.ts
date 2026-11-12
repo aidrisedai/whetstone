@@ -217,6 +217,19 @@ describe("demo build", () => {
     expect(assembleBeats(extra.beats)).toContain("Dark mode — wired up in demo mode");
   });
 
+  it("does not double the sparkle when the part title already carries one", () => {
+    const { code } = buildAll();
+    const extra = demoBuildLesson({
+      part: { title: "✨ Your New Feature", whatItIs: "", concept: "Adding a feature", buildSpec: "" },
+      partNumber: 4,
+      currentCode: code,
+      projectName: "X",
+    });
+    const html = assembleBeats(extra.beats);
+    expect(html).toContain("✨ Your New Feature — wired up in demo mode");
+    expect(html).not.toContain("✨ ✨");
+  });
+
   it("quizzes each part on the code that part wrote", () => {
     const { added } = buildAll();
     const seen = new Set<string>();

@@ -590,7 +590,8 @@ function demoFeature(part: { title: string; concept: string }, code: string): Co
     ];
   }
 
-  const featureLabel = escapeHtml(part.title);
+  // The title may already open with the sparkle ("✨ Your New Feature").
+  const featureLabel = escapeHtml(part.title.replace(/^✨\s*/, ""));
   return [
     beat(
       "✨ The new piece",
