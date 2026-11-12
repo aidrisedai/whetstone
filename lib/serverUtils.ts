@@ -23,6 +23,14 @@ export function getErrorMessage(err: unknown): string {
  */
 export function safeParseJson<T>(text: string): T {
   const trimmed = (text ?? "").trim();
+  // Clean JSON first: a string value may itself hold a code fence (a fenced
+  // example in a prompt, a snippet in an answer), which the fence match below
+  // would mistake for the wrapper.
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    /* wrapped or surrounded — dig it out below. */
+  }
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   const candidate = fenced ? fenced[1] : trimmed;
   const start = candidate.indexOf("{");
@@ -38,8 +46,12 @@ export function safeParseJson<T>(text: string): T {
 export function parseReply<T>(resp: Anthropic.Message, cutOffMessage = CUT_OFF_MESSAGE): T {
   if (resp.stop_reason === "max_tokens") throw new Error(cutOffMessage);
   const block = resp.content.find((b) => b.type === "text");
-  return safeParseJson<T>(block && block.type === "text" ? block.text : "");
+  const text = block && block.type === "text" ? block.text.trim() : "";
+  // A refusal or a reply with no text has nothing to parse.
+  if (resp.stop_reason === "refusal" || !text) throw new Error(NO_ANSWER_MESSAGE);
+  return safeParseJson<T>(text);
 }
+const NO_ANSWER_MESSAGE = "The model didn't return an answer for that — try rephrasing and send it again.";
 const CUT_OFF_MESSAGE = "That answer got cut off before it finished — try again.";
 
 export function jsonError(message: string, status = 400): Response {

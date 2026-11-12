@@ -7,16 +7,26 @@ export function uid(prefix = "m"): string {
   return `${prefix}_${Date.now().toString(36)}_${counter.toString(36)}`;
 }
 
+/**
+ * A beat is whole lines, so it has to end one. Without the line break, a beat
+ * ending in a `//` comment or an unterminated statement fuses with the next
+ * beat and breaks the whole script.
+ */
+function beatSource(beat: CodeBeat): string {
+  const code = typeof beat.code === "string" ? beat.code : "";
+  return code === "" || code.endsWith("\n") ? code : `${code}\n`;
+}
+
 /** Concatenate beats (in order) into the full source file. */
 export function assembleBeats(beats: CodeBeat[]): string {
-  return beats.map((b) => b.code).join("");
+  return beats.map(beatSource).join("");
 }
 
 /** Assemble only the beats up to and including `index` — the file "so far". */
 export function assembleBeatsUpTo(beats: CodeBeat[], index: number): string {
   return beats
     .slice(0, index + 1)
-    .map((b) => b.code)
+    .map(beatSource)
     .join("");
 }
 

@@ -55,10 +55,14 @@ export function criteriaReuseMessage(prior: CriterionSpec[]): Anthropic.MessageP
   };
 }
 
-/** A real advisor reply — not the empty placeholder or the "⚠️" bubble shown for a failed turn. */
+/**
+ * A real advisor reply — not the empty placeholder, the "⚠️" bubble shown for
+ * a failed turn, or a reply that broke off mid-stream (the server appends its
+ * warning as a final "\n\n⚠️ …" paragraph).
+ */
 export function isAdvisorReply(content: string): boolean {
   const text = content.trim();
-  return text.length > 0 && !text.startsWith("⚠️");
+  return text.length > 0 && !text.startsWith("⚠️") && !text.includes("\n\n⚠️");
 }
 
 /**

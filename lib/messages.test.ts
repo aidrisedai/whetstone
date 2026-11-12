@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conversationTurns, criteriaReuseMessage, toAnthropicMessages } from "./messages";
+import { conversationTurns, criteriaReuseMessage, isAdvisorReply, toAnthropicMessages } from "./messages";
 import type { ChatMessage } from "./types";
 
 describe("toAnthropicMessages", () => {
@@ -43,6 +43,15 @@ describe("criteriaReuseMessage", () => {
     expect(msg.role).toBe("user");
     const [block] = msg.content as { type: string; text: string }[];
     expect(block.text).toContain(JSON.stringify(prior, null, 2));
+  });
+});
+
+describe("isAdvisorReply", () => {
+  it("rejects empty, failed and broken-off turns", () => {
+    expect(isAdvisorReply("Who is it for?")).toBe(true);
+    expect(isAdvisorReply("  ")).toBe(false);
+    expect(isAdvisorReply("\n\n⚠️ The advisor hit an API error (529).")).toBe(false);
+    expect(isAdvisorReply("Good. Now tell me\n\n⚠️ The advisor hit an API error (529).")).toBe(false);
   });
 });
 

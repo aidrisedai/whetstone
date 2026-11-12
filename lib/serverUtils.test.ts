@@ -195,6 +195,11 @@ describe("safeParseJson", () => {
     expect(safeParseJson('```json\n{"a":1}\n```')).toEqual({ a: 1 });
     expect(safeParseJson('here you go: {"a":1} — done')).toEqual({ a: 1 });
   });
+
+  it("keeps a code fence that sits inside a string value", () => {
+    const reply = { reply: "Try:\n```js\nlet x = 1;\n```" };
+    expect(safeParseJson(JSON.stringify(reply))).toEqual(reply);
+  });
 });
 
 describe("parseReply", () => {
@@ -207,6 +212,11 @@ describe("parseReply", () => {
 
   it("reports a reply cut off at the token limit in plain words", () => {
     expect(() => parseReply(reply('{"a":', "max_tokens"))).toThrow(/cut off/);
+  });
+
+  it("reports a refusal or an empty reply plainly instead of a parse error", () => {
+    expect(() => parseReply(reply("", "refusal"))).toThrow(/didn't return an answer/);
+    expect(() => parseReply(reply("  ", "end_turn"))).toThrow(/didn't return an answer/);
     expect(() => parseReply(reply('{"a":', "max_tokens"), "too big")).toThrow("too big");
   });
 });
