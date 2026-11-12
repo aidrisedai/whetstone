@@ -114,15 +114,19 @@ tuned for a 10–11‑year‑old who'd rather be gaming:
   **3–5 buildable parts**, each with a fun title, a plain‑language *what it is*, an
   engineering‑manager *why we build it (and why now)*, and the **one concept**
   they'll learn. Favorite‑game analogies are woven in.
-- **Teach → approve → build, part by part.** For each part the kid sees the
-  explanation, then taps **"Build it!"** — only *then* is the code generated. The
-  first part is a full, streamed file (Sonnet 4.6); each later part is added to the
-  **same app** via fast targeted edits (with a full‑rebuild fallback), so the app
-  visibly **grows** one accepted piece at a time.
+- **Teach → build → check, part by part.** For each part Coach Spark first
+  sketches the idea on a **whiteboard** (narrated out loud, and the kid can ask
+  questions by voice or keyboard). Only then is the code written — as a
+  **narrated code lesson** that adds the part to the **same app** a few lines at
+  a time, with the running app one tab away and a "raise your hand" button for
+  questions about the code on screen. A short **checkpoint quiz** on the code
+  just written closes the part, so the app visibly **grows** one understood
+  piece at a time.
 - **Delightful feedback.** Each accepted part fires confetti, **+XP**, a level
   bar, and a quest‑map stepper — learning that feels like leveling up.
-- **Keep it.** Download the `.html`, ask for free‑form changes at the end, or open
-  the prompt in an external builder. Finish with the single transferable lesson.
+- **Keep it.** Download the `.html`, add more features with **Keep building**
+  (each one is planned, taught and built like any other part), or open the
+  prompt in an external builder. Finish with the single transferable lesson.
 
 The build target is deliberately a single self‑contained file (inline CSS +
 vanilla JS, **no external dependencies**): instant, safe (the iframe runs with
@@ -192,13 +196,18 @@ app/
     score/route.ts      # structured assessment (json_schema output)
     lesson/route.ts     # structured transferable lesson
     export/route.ts     # builder deep link + optional webhook hand‑off
-    build/route.ts      # streams the generated self‑contained app (first build)
-    edit/route.ts       # targeted find‑and‑replace edits for fast iteration
-    coach/route.ts      # structured teaching card after each build step
+    plan/route.ts       # Coach Spark's build plan (3–5 parts, no code yet)
+    board/route.ts      # whiteboard lesson for one part · board-chat: questions
+    lesson-build/route.ts  # the part's code, as narrated beats · code-ask: questions
+    quiz/route.ts       # checkpoint quiz on the code just written
+    extend/route.ts     # "Keep building": a request → one more part
+    speak/route.ts      # optional Google TTS teacher voice
+    build/ · edit/ · coach/  # earlier one-shot build flow; not called by the UI
 components/             # WhetstoneApp orchestrator, Composer, Conversation,
                         # ScorePanel/Ring/DimensionBar, ExportCard, LessonCard,
-                        # BuildWorkspace (preview + code + coach rail)…
-hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis (voice out)
+                        # BuildWorkspace → Whiteboard, CodeLesson, CheckpointQuiz…
+hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis and
+                       # useTeacherVoice (voice out)
 lib/                   # prompts, scoring (threshold logic), builders, demo, types…
 ```
 
