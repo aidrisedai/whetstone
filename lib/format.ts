@@ -52,6 +52,14 @@ export const MAX_IMAGE_BYTES = Math.floor((5 * 1024 * 1024 * 3) / 4);
 export const MAX_IMAGES_PER_MESSAGE = 4;
 
 /**
+ * Ceilings on a conversation sent to the model. A real session is a few dozen
+ * short turns; without these, one request could carry megabytes of text and
+ * bill it all to the operator's API key.
+ */
+export const MAX_HISTORY_MESSAGES = 200;
+export const MAX_MESSAGE_CHARS = 20_000;
+
+/**
  * Whether an image can be sent to the advisor. An unsupported one is rejected
  * by the API, and since the whole history is re-sent every turn, a single bad
  * attachment would fail every later turn of the session too.

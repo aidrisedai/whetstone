@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS } from "./format";
 import {
   asChatHistory,
   asCriteria,
@@ -112,6 +113,14 @@ describe("asChatHistory", () => {
     expect(asChatHistory([null, 42, {}])).toBeNull();
     expect(asChatHistory("history")).toBeNull();
     expect(asChatHistory(undefined)).toBeNull();
+  });
+
+  it("refuses a history with too many messages or an oversized message", () => {
+    const turn = { id: "1", role: "user", content: "hi" };
+    expect(asChatHistory(Array(MAX_HISTORY_MESSAGES).fill(turn))).toHaveLength(MAX_HISTORY_MESSAGES);
+    expect(asChatHistory(Array(MAX_HISTORY_MESSAGES + 1).fill(turn))).toBeNull();
+    expect(asChatHistory([{ ...turn, content: "a".repeat(MAX_MESSAGE_CHARS) }])).toHaveLength(1);
+    expect(asChatHistory([turn, { ...turn, content: "a".repeat(MAX_MESSAGE_CHARS + 1) }])).toBeNull();
   });
 
   it("keeps only well-formed image attachments", () => {

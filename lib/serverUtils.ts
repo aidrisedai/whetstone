@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { MAX_IMAGES_PER_MESSAGE, isSupportedImage } from "./format";
+import { MAX_HISTORY_MESSAGES, MAX_IMAGES_PER_MESSAGE, MAX_MESSAGE_CHARS, isSupportedImage } from "./format";
 import type { ChatMessage, CriterionSpec, ImageAttachment, Role } from "./types";
 
 /** Turn an unknown error into a short, builder-friendly message. */
@@ -117,12 +117,14 @@ function asImages(value: unknown): ImageAttachment[] | undefined {
 }
 
 /**
- * A chat history. Malformed entries are dropped rather than crashing the
+ * A chat history. Oversized ones are refused outright (null) rather than
+ * trimmed, so the model never answers a conversation it only half saw. Malformed entries are dropped rather than crashing the
  * conversion to Anthropic messages; returns null when nothing usable is left,
  * which routes report as a 400.
  */
 export function asChatHistory(value: unknown): ChatMessage[] | null {
-  if (!Array.isArray(value)) return null;
+  if (!Array.isArray(value) || value.length > MAX_HISTORY_MESSAGES) return null;
+  if (value.some((raw) => typeof raw?.content === "string" && raw.content.length > MAX_MESSAGE_CHARS)) return null;
   const history = value.flatMap((raw) => {
     if (!raw || typeof raw !== "object") return [];
     const m = raw as Record<string, unknown>;

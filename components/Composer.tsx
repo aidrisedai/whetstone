@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ImageAttachment } from "@/lib/types";
 import {
   MAX_IMAGES_PER_MESSAGE,
+  MAX_MESSAGE_CHARS,
   SUPPORTED_IMAGE_TYPES,
   fileToAttachment,
   isSupportedImage,
@@ -138,6 +139,7 @@ export function Composer({
             }
           }}
           rows={1}
+          maxLength={MAX_MESSAGE_CHARS}
           placeholder={
             placeholder ??
             (intake ? "Describe the thing you want to build…" : "Push back, refine, add detail…")
