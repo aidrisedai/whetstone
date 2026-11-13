@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { demoAssessment, demoBuildLesson, demoLesson, demoPlan, demoQuiz } from "./demo";
+import { demoAdvisorReply, demoAssessment, demoBuildLesson, demoLesson, demoPlan, demoQuiz } from "./demo";
 import { assembleBeats, beatsFormValidDoc } from "./format";
 import type { ChatMessage } from "./types";
 
@@ -254,5 +254,20 @@ describe("demo build", () => {
   it("asks general questions when the code is not the demo's own", () => {
     const quiz = demoQuiz("Dark mode", "Saving data", "<div>something else</div>");
     expect(quiz.questions.every((q) => !q.codeRef)).toBe(true);
+  });
+});
+
+describe("demoAdvisorReply — things the builder ruled out", () => {
+  it("never asks the builder to expand on something they just cut", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "A study timer for middle schoolers" },
+      { id: "m2", role: "advisor", content: "Who is it for?" },
+      { id: "m3", role: "user", content: "Sixth graders" },
+      { id: "m4", role: "advisor", content: "What do they do?" },
+      { id: "m5", role: "user", content: "Only a timer and a shop. No accounts, without any leaderboards, and we won't have notifications." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toMatch(/accounts|leaderboards|notifications/);
+    expect(reply).toContain('"timer"');
   });
 });

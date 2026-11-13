@@ -34,8 +34,12 @@ function lastUserText(history: ChatMessage[]): string {
   return "";
 }
 
+// A thing the builder just ruled out ("no accounts, no chat", "without ads")
+// is the one thing the advisor must not ask them to elaborate on.
+const RULED_OUT = /\b(?:no|not|never|without|skip|skipping|cut|cutting|drop|dropping|isn't|aren't|won't|don't|doesn't)\s+(?:(?:a|an|any|the|have|be|need|want|use|using|add|adding)\s+)*[a-z]+/g;
+
 function salientWord(text: string): string {
-  const words = text.toLowerCase().match(/[a-z]{4,}/g) || [];
+  const words = text.toLowerCase().replace(RULED_OUT, " ").match(/[a-z]{4,}/g) || [];
   const candidates = words.filter((w) => !STOPWORDS.has(w));
   if (candidates.length === 0) return "that part";
   return candidates.sort((a, b) => b.length - a.length)[0];
