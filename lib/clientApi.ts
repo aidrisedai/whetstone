@@ -15,6 +15,23 @@ import type {
   Lesson,
 } from "./types";
 
+/**
+ * A streaming route that fails answers with JSON (`{ error }`) rather than a
+ * stream. Pull the message out so the builder sees words, not a JSON blob.
+ */
+async function streamErrorText(res: Response): Promise<string> {
+  const raw = await res.text().catch(() => "");
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && typeof (parsed as { error?: unknown }).error === "string") {
+      return (parsed as { error: string }).error;
+    }
+  } catch {
+    /* plain text — use it as is. */
+  }
+  return raw;
+}
+
 /** Stream the advisor's reply, invoking `onChunk` with each text delta. */
 export async function streamAdvisor(
   history: ChatMessage[],
@@ -27,8 +44,7 @@ export async function streamAdvisor(
     body: JSON.stringify({ history, phase: closing ? "closing" : "dialogue" }),
   });
   if (!res.ok || !res.body) {
-    const msg = await res.text().catch(() => "");
-    throw new Error(msg || `Advisor request failed (${res.status})`);
+    throw new Error((await streamErrorText(res)) || `Advisor request failed (${res.status})`);
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -106,8 +122,7 @@ export async function streamBuild(
     body: JSON.stringify(payload),
   });
   if (!res.ok || !res.body) {
-    const msg = await res.text().catch(() => "");
-    throw new Error(msg || `Build request failed (${res.status})`);
+    throw new Error((await streamErrorText(res)) || `Build request failed (${res.status})`);
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

@@ -149,6 +149,7 @@ All optional — see [`.env.example`](./.env.example).
 | `WHETSTONE_COACH_MODEL`   | `claude-opus-4-8`  | Coach Spark — the build plan and per‑step teaching.            |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
+| `WHETSTONE_RATE_LIMIT`    | `300`              | API requests allowed per caller IP per minute; `0` turns it off. In‑memory, per server instance. |
 | `BUILDER_WEBHOOK_URL`     | _(unset)_          | Server‑to‑server hand‑off: the refined prompt is POSTed here.  |
 | `GOOGLE_TTS_API_KEY`      | _(unset)_          | Google Cloud TTS key — swaps the teacher to an HD voice.       |
 | `GOOGLE_TTS_ACCESS_TOKEN` | _(unset)_          | …or a short‑lived OAuth token for TTS, instead of a key.       |
