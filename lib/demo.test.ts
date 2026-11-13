@@ -270,6 +270,26 @@ describe("demoAdvisorReply — things the builder ruled out", () => {
     expect(reply).not.toMatch(/accounts|leaderboards|notifications/);
     expect(reply).toContain('"timer"');
   });
+
+  it("skips the whole ruled-out phrase, not just its first word", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "A parts tracker for my robotics team" },
+      { id: "m2", role: "advisor", content: "Who is it for?" },
+      { id: "m3", role: "user", content: "Twelve students" },
+      { id: "m4", role: "advisor", content: "What do they do?" },
+      { id: "m5", role: "user", content: "A list and a budget counter. No accounts, no chat, no vendor integrations." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toMatch(/integrations|vendor|accounts/);
+    expect(reply).toContain('"counter"');
+  });
+
+  it("still hears what comes after a joining word", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "No logins but leaderboards matter" },
+    ];
+    expect(demoAdvisorReply(history, false)).toContain('"leaderboards"');
+  });
 });
 
 describe("demoAdvisorReply — a long conversation", () => {

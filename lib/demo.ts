@@ -35,8 +35,10 @@ function lastUserText(history: ChatMessage[]): string {
 }
 
 // A thing the builder just ruled out ("no accounts, no chat", "without ads")
-// is the one thing the advisor must not ask them to elaborate on.
-const RULED_OUT = /\b(?:no|not|never|without|skip|skipping|cut|cutting|drop|dropping|isn't|aren't|won't|don't|doesn't)\s+(?:(?:a|an|any|the|have|be|need|want|use|using|add|adding)\s+)*[a-z]+/g;
+// is the one thing the advisor must not ask them to elaborate on. The cut runs
+// to the end of the phrase ("no vendor integrations"), stopping at punctuation
+// or a joining word so what they say next still counts.
+const RULED_OUT = /\b(?:no|not|never|without|skip|skipping|cut|cutting|drop|dropping|isn't|aren't|won't|don't|doesn't)(?:\s+(?!(?:and|but|or|so|yet)\b)[a-z'-]+){1,4}/g;
 
 function salientWord(text: string): string {
   const words = text.toLowerCase().replace(RULED_OUT, " ").match(/[a-z]{4,}/g) || [];
