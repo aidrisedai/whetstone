@@ -173,3 +173,34 @@ export function previewDoc(code: string): string {
   }
   return STORAGE_SHIM + code;
 }
+
+export interface TextSegment {
+  text: string;
+  code: boolean;
+}
+
+/**
+ * Split teacher text on `backtick` code spans so the UI can show the code in a
+ * code style instead of printing the backticks. An unmatched backtick is left
+ * in place as ordinary text.
+ */
+export function splitInlineCode(text: string): TextSegment[] {
+  const out: TextSegment[] = [];
+  const re = /`([^`\n]+)`/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) out.push({ text: text.slice(last, m.index), code: false });
+    out.push({ text: m[1], code: true });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last), code: false });
+  return out;
+}
+
+/** The same text with code-span backticks removed — what a voice should read. */
+export function stripInlineCode(text: string): string {
+  return splitInlineCode(text)
+    .map((s) => s.text)
+    .join("");
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { stripInlineCode } from "@/lib/format";
 import { useSpeechSynthesis } from "./useSpeechSynthesis";
 
 type VoiceKind = "hd" | "browser" | "none";
@@ -142,7 +143,7 @@ export function useTeacherVoice() {
 
   const speak = useCallback(
     async (text: string) => {
-      const t = (text ?? "").trim();
+      const t = stripInlineCode(text ?? "").trim();
       if (!t) return;
       stop();
       setProgress(0);

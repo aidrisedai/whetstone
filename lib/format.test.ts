@@ -8,6 +8,8 @@ import {
   cleanGeneratedHtml,
   isSupportedImage,
   previewDoc,
+  splitInlineCode,
+  stripInlineCode,
 } from "./format";
 import type { CodeBeat } from "./types";
 
@@ -121,5 +123,27 @@ describe("previewDoc", () => {
 
   it("leaves an empty document empty", () => {
     expect(previewDoc("")).toBe("");
+  });
+});
+
+describe("splitInlineCode", () => {
+  it("separates backtick spans from the prose around them", () => {
+    expect(splitInlineCode("A `<form>` collects `input`.")).toEqual([
+      { text: "A ", code: false },
+      { text: "<form>", code: true },
+      { text: " collects ", code: false },
+      { text: "input", code: true },
+      { text: ".", code: false },
+    ]);
+  });
+
+  it("leaves plain text and an unmatched backtick alone", () => {
+    expect(splitInlineCode("no code here")).toEqual([{ text: "no code here", code: false }]);
+    expect(splitInlineCode("a ` stray tick")).toEqual([{ text: "a ` stray tick", code: false }]);
+    expect(splitInlineCode("")).toEqual([]);
+  });
+
+  it("gives the voice the same words without the backticks", () => {
+    expect(stripInlineCode("Call `render()` again")).toBe("Call render() again");
   });
 });

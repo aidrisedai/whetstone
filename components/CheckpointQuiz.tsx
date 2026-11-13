@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Checkpoint } from "@/lib/types";
+import { RichText } from "./RichText";
 import { ArrowIcon, CheckIcon, CloseIcon, SparkIcon } from "./icons";
 
 interface CheckpointQuizProps {
@@ -80,7 +81,7 @@ export function CheckpointQuiz({ checkpoint, onDone }: CheckpointQuizProps) {
         <p className="mb-3 text-sm text-steel">{checkpoint.intro}</p>
       )}
 
-      <p className="font-display text-lg font-bold leading-snug text-ink">{q.question}</p>
+      <p className="font-display text-lg font-bold leading-snug text-ink"><RichText text={q.question} /></p>
 
       {q.codeRef && (
         <pre className="mt-2 overflow-auto rounded-lg border border-line bg-[#0c0f15] p-3 font-mono text-[12px] leading-relaxed text-ink">
@@ -115,7 +116,7 @@ export function CheckpointQuiz({ checkpoint, onDone }: CheckpointQuizProps) {
                   optionLetters[idx]
                 )}
               </span>
-              <span>{opt}</span>
+              <span><RichText text={opt} /></span>
             </button>
           );
         })}
@@ -130,8 +131,8 @@ export function CheckpointQuiz({ checkpoint, onDone }: CheckpointQuizProps) {
           <div className="mb-0.5 font-semibold">
             {correct ? "Nailed it! ✅" : "Not quite — but now you've got it 💡"}
           </div>
-          <p className="text-muted">{correct ? q.explainCorrect : q.explainWrong}</p>
-          {!correct && <p className="mt-1 text-ink">{q.explainCorrect}</p>}
+          <p className="text-muted"><RichText text={correct ? q.explainCorrect : q.explainWrong} /></p>
+          {!correct && <p className="mt-1 text-ink"><RichText text={q.explainCorrect} /></p>}
         </div>
       )}
 

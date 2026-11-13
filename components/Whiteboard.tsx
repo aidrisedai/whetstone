@@ -6,6 +6,7 @@ import { sendBoardChat } from "@/lib/clientApi";
 import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { Caption } from "./Caption";
+import { RichText } from "./RichText";
 import { ArrowIcon, BookIcon, KeyboardIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
 
 interface WhiteboardProps {
@@ -415,7 +416,7 @@ export function Whiteboard({
                     : "rounded-tl-sm border border-line bg-panel text-ink"
                 }`}
               >
-                {m.text}
+                {m.who === "teacher" ? <RichText text={m.text} /> : m.text}
               </div>
             </div>
           ))}
