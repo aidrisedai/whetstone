@@ -173,12 +173,15 @@ and are budgeted at 300s; the scoring and planning routes at 90–120s. On Verce
 `maxDuration` above 60s requires a Pro plan or higher — on Hobby, either stay
 under the cap or expect the long build routes to be killed mid‑generation.
 
-**There is no rate limiting or authentication.** Every endpoint is an
-unauthenticated proxy to Claude, and the two build routes can each spend 16 000
-Opus output tokens per request. Do not expose a keyed deployment to the open
-internet as‑is: put it behind auth, a gateway rate limiter, or a per‑IP limit
-first. Demo mode (no `ANTHROPIC_API_KEY`) has no such exposure — it never calls
-the API.
+**There is no authentication, and the built-in rate limit is only a backstop.**
+Every endpoint is an unauthenticated proxy to Claude, and the two build routes
+can each spend 16 000 Opus output tokens per request. A per‑IP limit
+(`WHETSTONE_RATE_LIMIT`, default 300 requests a minute) stops runaway loops and
+casual abuse, but it counts in memory per server instance and trusts the
+forwarding headers, so it is not a billing cap. Do not expose a keyed deployment
+to the open internet as‑is: put it behind auth or a gateway rate limiter, and
+set a spend limit on the API key. Demo mode (no `ANTHROPIC_API_KEY`) has no such
+exposure — it never calls the API.
 
 ---
 
