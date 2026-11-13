@@ -52,7 +52,20 @@ const PUSHBACKS = [
   (k: string) => `Good, that's tighter. But what does "done" look like? Give me the moment a user thinks "yes, this worked."`,
   (k: string) => `Now you're getting somewhere. Where does the data or content behind "${k}" actually come from?`,
   (k: string) => `Cleaner. So what are you deliberately NOT building in v1? Name the thing you're cutting.`,
+  (k: string) => `Walk me through the first thirty seconds with "${k}": what does someone see, and what do they tap first?`,
+  (k: string) => `What's the riskiest guess in this plan — the one that sinks it if you're wrong? How would you find out this week?`,
+  (k: string) => `Who is the first real person you'll hand this to, and what will you watch them do with it?`,
 ];
+
+// Once the list runs out, keep rotating through the last few instead of asking
+// the final question over and over for as long as the builder keeps talking.
+const PUSHBACK_LOOP = 3;
+
+function pushbackIndex(turns: number): number {
+  const i = Math.max(0, turns - 1);
+  if (i < PUSHBACKS.length) return i;
+  return PUSHBACKS.length - PUSHBACK_LOOP + ((i - PUSHBACKS.length) % PUSHBACK_LOOP);
+}
 
 export function demoAdvisorReply(history: ChatMessage[], closing: boolean): string {
   if (closing) {
@@ -64,8 +77,7 @@ export function demoAdvisorReply(history: ChatMessage[], closing: boolean): stri
   if (hasImage && turns <= 2) {
     return `I can see the sketch — the layout reads like a feed with a big action button. But a screen isn't a decision: tell me what a user is supposed to DO on it in the first ten seconds.`;
   }
-  const pick = PUSHBACKS[Math.min(turns - 1, PUSHBACKS.length - 1)] ?? PUSHBACKS[0];
-  return pick(k);
+  return PUSHBACKS[pushbackIndex(turns)](k);
 }
 
 const PROJECT_PROFILES: { match: RegExp; type: string; criteria: CriterionSpec[] }[] = [

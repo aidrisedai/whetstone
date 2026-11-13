@@ -271,3 +271,18 @@ describe("demoAdvisorReply — things the builder ruled out", () => {
     expect(reply).toContain('"timer"');
   });
 });
+
+describe("demoAdvisorReply — a long conversation", () => {
+  it("never asks the same question twice in a row", () => {
+    const history: ChatMessage[] = [];
+    let previous = "";
+    for (let turn = 0; turn < 20; turn++) {
+      history.push({ id: `u${turn}`, role: "user", content: `Answer ${turn} about the parts tracker` });
+      const reply = demoAdvisorReply(history, false);
+      expect(reply.length).toBeGreaterThan(0);
+      expect(reply).not.toBe(previous);
+      history.push({ id: `a${turn}`, role: "advisor", content: reply });
+      previous = reply;
+    }
+  });
+});
