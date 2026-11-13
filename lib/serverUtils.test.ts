@@ -1,6 +1,8 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS } from "./format";
 import {
+  getErrorMessage,
   asChatHistory,
   asCriteria,
   asNumber,
@@ -227,5 +229,26 @@ describe("parseReply", () => {
     expect(() => parseReply(reply("", "refusal"))).toThrow(/didn't return an answer/);
     expect(() => parseReply(reply("  ", "end_turn"))).toThrow(/didn't return an answer/);
     expect(() => parseReply(reply('{"a":', "max_tokens"), "too big")).toThrow("too big");
+  });
+});
+
+describe("getErrorMessage", () => {
+  it("says the advisor is unreachable when there was no reply at all", () => {
+    const msg = getErrorMessage(new Anthropic.APIConnectionError({ message: "Connection error." }));
+    expect(msg).toMatch(/couldn't reach the advisor/i);
+    expect(msg).not.toContain("?)");
+  });
+
+  it("covers timeouts the same way", () => {
+    expect(getErrorMessage(new Anthropic.APIConnectionTimeoutError())).toMatch(/couldn't reach the advisor/i);
+  });
+
+  it("keeps the status on errors that have one", () => {
+    const err = Anthropic.APIError.generate(500, { error: { message: "boom" } }, "boom", new Headers());
+    expect(getErrorMessage(err)).toContain("(500)");
+  });
+
+  it("passes plain errors through", () => {
+    expect(getErrorMessage(new Error("That answer got cut off"))).toBe("That answer got cut off");
   });
 });

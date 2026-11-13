@@ -10,6 +10,11 @@ export function getErrorMessage(err: unknown): string {
   if (err instanceof Anthropic.RateLimitError) {
     return "The advisor is rate-limited right now. Give it a few seconds and try again.";
   }
+  // No reply at all (network down, DNS, timeout): there is no status to show,
+  // and "API error (?)" tells the builder nothing.
+  if (err instanceof Anthropic.APIConnectionError) {
+    return "Couldn't reach the advisor — check the connection and try again in a moment.";
+  }
   if (err instanceof Anthropic.APIError) {
     return `The advisor hit an API error (${err.status ?? "?"}). Try again in a moment.`;
   }
