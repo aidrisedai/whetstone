@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { COACH_SCHEMA, COACH_SYSTEM, coachUserMessage } from "@/lib/prompts";
 import { demoCoach } from "@/lib/demo";
-import { asNumber, asTrimmed, getErrorMessage, jsonError, readJsonBody, parseReply } from "@/lib/serverUtils";
+import { asNumber, asTrimmed, getErrorMessage, jsonError, readJsonBody, textLimitError, parseReply } from "@/lib/serverUtils";
 import type { CoachNote } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -11,6 +11,8 @@ export const maxDuration = 90;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const refinedPrompt = asTrimmed(body.refinedPrompt);
   const projectType = asTrimmed(body.projectType, "App") || "App";

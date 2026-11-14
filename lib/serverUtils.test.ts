@@ -13,6 +13,9 @@ import {
   parseReply,
   readJsonBody,
   safeParseJson,
+  textLength,
+  textLimitError,
+  MAX_REQUEST_TEXT_CHARS,
 } from "./serverUtils";
 
 /** Build a Request the way a route receives one. */
@@ -38,6 +41,32 @@ describe("readJsonBody", () => {
     expect(await readJsonBody(post("42"))).toBeNull();
     expect(await readJsonBody(post('"hi"'))).toBeNull();
     expect(await readJsonBody(post("[1,2]"))).toBeNull();
+  });
+});
+
+describe("textLength / textLimitError", () => {
+  it("adds up strings at any depth and ignores everything else", () => {
+    expect(textLength({ a: "abc", b: 42, c: null, d: [true, "de", { e: "f" }] })).toBe(6);
+    expect(textLength("solo")).toBe(4);
+    expect(textLength(undefined)).toBe(0);
+  });
+
+  it("survives nesting deeper than the call stack", () => {
+    let deep: unknown = "x";
+    for (let i = 0; i < 200_000; i++) deep = [deep];
+    expect(textLength(deep)).toBe(1);
+  });
+
+  it("lets a normal request through, including a full app's code", () => {
+    expect(textLimitError({ refinedPrompt: "Build a habit tracker.", currentCode: "x".repeat(120_000) })).toBeNull();
+    expect(textLimitError({ currentCode: "x".repeat(MAX_REQUEST_TEXT_CHARS) })).toBeNull();
+  });
+
+  it("answers 413 with a readable message once the text adds up past the ceiling", async () => {
+    const half = "x".repeat(MAX_REQUEST_TEXT_CHARS / 2);
+    const res = textLimitError({ part: { title: half, buildSpec: half }, name: "x" });
+    expect(res?.status).toBe(413);
+    expect(((await res!.json()) as { error: string }).error).toMatch(/more text/);
   });
 });
 

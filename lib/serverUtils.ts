@@ -85,6 +85,35 @@ export async function readJsonBody(req: Request): Promise<Record<string, unknown
   }
 }
 
+/**
+ * Ceiling on the text one build/coach request may carry. The largest honest
+ * field is the app's own code — a few tens of thousands of characters — so
+ * this leaves generous headroom while keeping megabytes of pasted text from
+ * being billed to the operator's API key. (Conversations have their own
+ * limits in `asChatHistory`.)
+ */
+export const MAX_REQUEST_TEXT_CHARS = 400_000;
+
+/** Total length of every string anywhere inside a parsed JSON value. */
+export function textLength(value: unknown): number {
+  let total = 0;
+  // An explicit stack, so a deeply nested body can't overflow the call stack.
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (typeof next === "string") total += next.length;
+    else if (Array.isArray(next)) pending.push(...next);
+    else if (next && typeof next === "object") pending.push(...Object.values(next));
+  }
+  return total;
+}
+
+/** A 413 for a body carrying more text than any real request does, else null. */
+export function textLimitError(body: Record<string, unknown>): Response | null {
+  if (textLength(body) <= MAX_REQUEST_TEXT_CHARS) return null;
+  return jsonError("That's more text than Whetstone can take in one go — trim it down and try again.", 413);
+}
+
 /** A string field, verbatim — anything that isn't a string becomes `fallback`. */
 export function asText(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;

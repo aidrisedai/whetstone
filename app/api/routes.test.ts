@@ -152,6 +152,18 @@ const ROUTES: Array<[string, string, Record<string, unknown>, string[]]> = [
   ],
 ];
 
+/** `body` with every text field (and the first chat message) blown up to half a megabyte. */
+function oversized(body: Record<string, unknown>): Record<string, unknown> {
+  const huge = "x".repeat(500_000);
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (typeof value === "string") out[key] = huge;
+    else if (key === "history" && Array.isArray(value)) out[key] = [{ role: "user", content: huge }, ...value.slice(1)];
+    else out[key] = value;
+  }
+  return out;
+}
+
 /** The two streaming routes answer with text, not JSON, so they get their own checks. */
 const STREAMS: Array<[string, string, Record<string, unknown>]> = [
   ["advisor", "./advisor/route", { history, phase: "dialogue" }],
@@ -177,6 +189,13 @@ describe.each(ROUTES)("POST /api/%s", (_name, modPath, validBody, keys) => {
       expect(res.status).toBeGreaterThanOrEqual(400);
       expect(res.status).toBeLessThan(500);
     }
+  });
+
+  it("refuses megabytes of text instead of passing them to the model", async () => {
+    const res = await post(POST, oversized(validBody));
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+    expect(((await res.json()) as { error?: string }).error).toBeTruthy();
   });
 
   it("never 500s when a field carries the wrong type", async () => {
@@ -205,6 +224,12 @@ describe.each(STREAMS)("POST /api/%s (streaming)", (_name, modPath, validBody) =
     expect(res.headers.get("Content-Type")).toMatch(/text\/plain/);
     const text = await res.text();
     expect(text.trim().length).toBeGreaterThan(20);
+  });
+
+  it("refuses megabytes of text without streaming", async () => {
+    const res = await post(POST, oversized(validBody));
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
   });
 
   it("rejects a malformed body without streaming", async () => {

@@ -178,7 +178,10 @@ Every endpoint is an unauthenticated proxy to Claude, and the two build routes
 can each spend 16 000 Opus output tokens per request. A per‑IP limit
 (`WHETSTONE_RATE_LIMIT`, default 300 requests a minute) stops runaway loops and
 casual abuse, but it counts in memory per server instance and trusts the
-forwarding headers, so it is not a billing cap. Do not expose a keyed deployment
+forwarding headers, so it is not a billing cap. Requests are also size‑capped
+(a conversation at 200 messages of 20 000 characters, a build or coach request
+at 400 000 characters of text) so one call can't carry megabytes of input to the
+model — which bounds a single request, not the total. Do not expose a keyed deployment
 to the open internet as‑is: put it behind auth or a gateway rate limiter, and
 set a spend limit on the API key. Demo mode (no `ANTHROPIC_API_KEY`) has no such
 exposure — it never calls the API.

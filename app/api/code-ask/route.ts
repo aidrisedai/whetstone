@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { CODE_ASK_SCHEMA, CODE_ASK_SYSTEM, codeAskUserMessage } from "@/lib/prompts";
 import { demoCodeAsk } from "@/lib/demo";
-import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody, parseReply } from "@/lib/serverUtils";
+import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody, textLimitError, parseReply } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +10,8 @@ export const maxDuration = 60;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const studentSaid = asTrimmed(body.studentSaid);
   const beatCode = asText(body.beatCode);

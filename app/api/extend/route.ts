@@ -8,6 +8,7 @@ import {
   getErrorMessage,
   jsonError,
   readJsonBody,
+  textLimitError,
   parseReply,
 } from "@/lib/serverUtils";
 import { uid } from "@/lib/format";
@@ -20,6 +21,8 @@ export const maxDuration = 90;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const request = asTrimmed(body.request);
   if (!request) return jsonError("`request` is required");

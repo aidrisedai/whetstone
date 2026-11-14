@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS } from "@/lib/anthropic";
 import { BUILD_SYSTEM, buildUserMessage } from "@/lib/prompts";
 import { demoBuildHtml } from "@/lib/demo";
-import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody } from "@/lib/serverUtils";
+import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody, textLimitError } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +18,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const refinedPrompt = asTrimmed(body.refinedPrompt);
   const projectType = asTrimmed(body.projectType, "App") || "App";

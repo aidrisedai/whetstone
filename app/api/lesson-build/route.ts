@@ -9,6 +9,7 @@ import {
   getErrorMessage,
   jsonError,
   readJsonBody,
+  textLimitError,
   parseReply,
 } from "@/lib/serverUtils";
 import type { BuildLesson, CodeBeat } from "@/lib/types";
@@ -21,6 +22,8 @@ export const maxDuration = 300;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const part = asPart(body.part);
   if (!part || !part.buildSpec) return jsonError("`part` with a buildSpec is required");

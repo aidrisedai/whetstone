@@ -7,6 +7,7 @@ import {
   getErrorMessage,
   jsonError,
   readJsonBody,
+  textLimitError,
   parseReply,
 } from "@/lib/serverUtils";
 
@@ -17,6 +18,8 @@ export const maxDuration = 120;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const refinedPrompt = asTrimmed(body.refinedPrompt);
   const projectType = asTrimmed(body.projectType, "App") || "App";
