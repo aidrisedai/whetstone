@@ -67,6 +67,19 @@ export function WhetstoneApp({
     if (!voiceOut) cancelSpeech();
   }, [voiceOut, cancelSpeech]);
 
+  // Only the builder profile is saved; the conversation, the plan and the app
+  // being built live in memory. So once there is a session, make the browser
+  // ask before a refresh or a closed tab throws it away.
+  const inSession = messages.length > 0;
+  useEffect(() => {
+    if (!inSession) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [inSession]);
+
   const updateMsg = useCallback((id: string, content: string) => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content } : m)));
   }, []);
