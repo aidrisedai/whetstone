@@ -420,7 +420,7 @@ export function demoPlan(
     : "";
   return {
     projectName: projectType ? `${projectType} Quest` : "Your App Quest",
-    bigPicture: `${who}we're building your ${(projectType || "app").toLowerCase()} one piece at a time — and you'll get every single part.${gameBit}`,
+    bigPicture: `${who}${name ? "we're" : "We're"} building your ${(projectType || "app").toLowerCase()} one piece at a time — and you'll get every single part.${gameBit}`,
     parts: [
       {
         title: "🏗️ The Stage",

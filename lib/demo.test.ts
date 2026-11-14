@@ -176,6 +176,11 @@ describe("demoLesson", () => {
  */
 describe("demo build", () => {
   const plan = demoPlan("Web app", "", "Sam", "");
+
+  it("opens the plan with a proper sentence whether or not the builder gave a name", () => {
+    expect(plan.bigPicture).toMatch(/^Sam, we're building your web app/);
+    expect(demoPlan("Web app", "", "", "").bigPicture).toMatch(/^We're building your web app/);
+  });
   function buildAll() {
     let code = "";
     const added: string[] = [];
