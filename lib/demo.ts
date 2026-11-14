@@ -40,8 +40,13 @@ function lastUserText(history: ChatMessage[]): string {
 // or a joining word so what they say next still counts.
 const RULED_OUT = /\b(?:no|not|never|without|skip|skipping|cut|cutting|drop|dropping|isn't|aren't|won't|don't|doesn't)(?:\s+(?!(?:and|but|or|so|yet)\b)[a-z'-]+){1,4}/g;
 
+// The other way builders cut things is as a labelled list ("Out of scope:
+// vendor integrations and notifications."). Everything in that sentence is cut.
+const SCOPED_OUT = /[^.;!?\n]*\b(?:out of scope|off the table|not in scope)\b[^.;!?\n]*/g;
+
 function salientWord(text: string): string {
-  const words = text.toLowerCase().replace(RULED_OUT, " ").match(/[a-z]{4,}/g) || [];
+  const kept = text.toLowerCase().replace(SCOPED_OUT, " ").replace(RULED_OUT, " ");
+  const words = kept.match(/[a-z]{4,}/g) || [];
   const candidates = words.filter((w) => !STOPWORDS.has(w));
   if (candidates.length === 0) return "that part";
   return candidates.sort((a, b) => b.length - a.length)[0];

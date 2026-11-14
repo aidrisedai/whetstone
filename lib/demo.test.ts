@@ -289,6 +289,15 @@ describe("demoAdvisorReply — things the builder ruled out", () => {
     expect(reply).toContain('"counter"');
   });
 
+  it("treats an 'out of scope' list as cut, and still hears the next sentence", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "Out of scope: vendor integrations and notifications. It must load on school wifi." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toMatch(/integrations|notifications|vendor/);
+    expect(reply).toContain('"school"');
+  });
+
   it("still hears what comes after a joining word", () => {
     const history: ChatMessage[] = [
       { id: "m1", role: "user", content: "No logins but leaderboards matter" },
