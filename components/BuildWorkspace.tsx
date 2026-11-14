@@ -213,6 +213,9 @@ export function BuildWorkspace({
     return () => clearInterval(id);
   }, [loadingLesson, loadingBoard]);
 
+  // A project counts once, however many features are added to it afterwards.
+  const projectCounted = useRef(false);
+
   const awardXp = useCallback((delta: number, patch?: Partial<BuilderProfile>) => {
     setProfile((prev) => {
       const np: BuilderProfile = { ...prev, ...patch, xp: prev.xp + delta };
@@ -235,6 +238,7 @@ export function BuildWorkspace({
         });
         if (!pl.parts.length) throw new Error("The plan came back empty — try again.");
         setPlan(pl);
+        projectCounted.current = false;
         setPartIndex(0);
         setCode("");
         setStage("walkthrough");
@@ -404,7 +408,10 @@ export function BuildWorkspace({
 
       if (!plan) return;
       if (partIndex >= plan.parts.length - 1) {
-        awardXp(0, { projectsBuilt: profile.projectsBuilt + 1 });
+        if (!projectCounted.current) {
+          projectCounted.current = true;
+          awardXp(0, { projectsBuilt: profile.projectsBuilt + 1 });
+        }
         setStage("done");
         setLessonLoading(true);
         try {
