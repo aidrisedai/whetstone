@@ -30,6 +30,10 @@ export function WhetstoneApp({
   const [lessonLoading, setLessonLoading] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [exported, setExported] = useState(false);
+  // The advisor's closing message. The export and lesson cards sit right after
+  // it in the thread, where the builder is already looking — pinned above the
+  // conversation they landed off-screen, a scroll away from the moment they mark.
+  const [closingId, setClosingId] = useState<string | null>(null);
   const [advisorTyping, setAdvisorTyping] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -134,6 +138,7 @@ export function WhetstoneApp({
 
       const closeMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
       setMessages((prev) => [...prev, closeMsg]);
+      setClosingId(closeMsg.id);
       setAdvisorTyping(true);
       await runAdvisor(history, true, closeMsg.id);
       if (!live()) return;
@@ -203,6 +208,7 @@ export function WhetstoneApp({
     setLessonLoading(false);
     setExportResult(null);
     setExported(false);
+    setClosingId(null);
     setError(null);
     setBusy(false);
     criteriaRef.current = null;
@@ -279,13 +285,23 @@ export function WhetstoneApp({
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <section className="flex min-w-0 flex-col gap-5">
-              {exported && assessment && (
-                <ExportCard refinedPrompt={assessment.refinedPrompt} result={exportResult} />
-              )}
-              {exported && <LessonCard lesson={lesson} loading={lessonLoading} />}
-
               <div className="min-h-[40vh]">
-                <Conversation messages={messages} advisorTyping={advisorTyping} />
+                <Conversation
+                  messages={messages}
+                  advisorTyping={advisorTyping}
+                  asideAfterId={closingId}
+                  asideKey={`${exported}-${Boolean(exportResult)}-${lessonLoading}-${Boolean(lesson)}`}
+                  aside={
+                    exported && (
+                      <>
+                        {assessment && (
+                          <ExportCard refinedPrompt={assessment.refinedPrompt} result={exportResult} />
+                        )}
+                        <LessonCard lesson={lesson} loading={lessonLoading} />
+                      </>
+                    )
+                  }
+                />
               </div>
 
               {error && (
