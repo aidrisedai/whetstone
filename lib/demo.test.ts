@@ -118,6 +118,15 @@ describe("demoAssessment", () => {
     expect(demoAssessment([pitch, later], null, 80).projectType).toBe("Web app");
   });
 
+  it("does not call a quiz or study app a game because it keeps a score", () => {
+    const type = (text: string) => demoAssessment([say(text, 0)], null, 80).projectType;
+    expect(type("A flashcard web app where students see a score out of 10")).toBe("Web app");
+    expect(type("An app to level up my Spanish vocabulary")).toBe("Web app");
+    expect(type("A site that lets my band play back practice recordings")).toBe("Web app");
+    expect(type("A game where you learn chemistry by mixing potions")).toBe("Game");
+    expect(type("Puzzles for two players on one phone")).toBe("Game");
+  });
+
   it("exports the pitch as the core idea and later answers as detail", () => {
     const pitch = { id: "u1", role: "user" as const, content: "A tracker for my swim team's lap times." };
     const later = { id: "u2", role: "user" as const, content: "Coaches enter times after each practice." };
