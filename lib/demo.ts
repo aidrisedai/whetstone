@@ -120,6 +120,13 @@ const PROJECT_PROFILES: { match: RegExp; type: string; criteria: CriterionSpec[]
   },
 ];
 
+// "Build a game", "Build an AI assistant" — lower-casing the whole type and
+// always using "a" opened the exported prompt with "Build a ai assistant".
+function withArticle(type: string): string {
+  const noun = type.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase());
+  return `${/^[aeiou]/i.test(noun) ? "an" : "a"} ${noun}`;
+}
+
 const DEFAULT_PROFILE = {
   type: "Web app",
   criteria: [
@@ -235,7 +242,7 @@ export function demoAssessment(
   // exported prompt ending mid-sentence ("…caps each day at 2 hours of.").
   const details = clipDetails(said.slice(1).join(". "), 900);
   const refinedPrompt =
-    `Build a ${profile.type.toLowerCase()}. ` +
+    `Build ${withArticle(profile.type)}. ` +
     (idea ? `Core idea: ${idea}. ` : "") +
     (details ? `What the builder pinned down: ${tidy(details)}. ` : "") +
     `Target one specific user, define what a successful first session looks like, and keep v1 tightly scoped.`;

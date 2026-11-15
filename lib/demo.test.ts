@@ -107,8 +107,17 @@ describe("demoAssessment", () => {
 
   it("builds a refined prompt that names the project type", () => {
     const a = demoAssessment(SHARP, null, 80);
-    expect(a.refinedPrompt).toContain(a.projectType.toLowerCase());
+    expect(a.refinedPrompt.toLowerCase()).toContain(a.projectType.toLowerCase());
     expect(a.refinedPrompt.length).toBeGreaterThan(40);
+  });
+
+  it("opens the refined prompt with the right article for the project type", () => {
+    const open = (pitch: string) =>
+      demoAssessment([{ id: "u1", role: "user" as const, content: pitch }], null, 80).refinedPrompt.split(". ")[0];
+    expect(open("An AI study buddy that quizzes me from my notes")).toBe("Build an AI assistant");
+    expect(open("A game where you mix potions")).toBe("Build a game");
+    expect(open("A tracker for my swim team's lap times")).toBe("Build a data tool");
+    expect(open("A page where neighbors swap books")).toBe("Build a web app");
   });
 
   it("keeps the pitch's project type when a later answer mentions another type's keyword", () => {
