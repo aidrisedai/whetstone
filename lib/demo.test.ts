@@ -333,6 +333,19 @@ describe("demoAdvisorReply — things the builder ruled out", () => {
   });
 });
 
+describe("demoAdvisorReply — the word it quotes back", () => {
+  it("quotes something from the pitch, not a pronoun that happens to be long", () => {
+    const history: ChatMessage[] = [
+      { id: "m0", role: "user", content: "A flashcard app for biology exams." },
+      { id: "a0", role: "advisor", content: "Who is it for?" },
+      { id: "m1", role: "user", content: "It is for 10th graders who fail biology quizzes because they reread notes instead of testing themselves." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toContain('"themselves"');
+    expect(reply).not.toContain('"instead"');
+  });
+});
+
 describe("demoAdvisorReply — a long conversation", () => {
   it("never asks the same question twice in a row", () => {
     const history: ChatMessage[] = [];

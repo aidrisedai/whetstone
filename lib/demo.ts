@@ -25,6 +25,11 @@ const STOPWORDS = new Set([
   "this","that","with","your","have","want","make","like","just","really","about",
   "would","could","there","their","which","while","being","going","thing","things",
   "people","something","because","build","building","idea","project","need","help",
+  // Pronouns and filler are long but never the subject of the pitch.
+  "themselves","yourself","yourselves","myself","ourselves","itself","himself","herself",
+  "someone","anyone","everyone","everybody","somebody","anybody","anything","everything",
+  "these","those","where","should","instead","already","without","before","after",
+  "into","from","they","them","what","when","will","also","only","been","were","does",
 ]);
 
 function lastUserText(history: ChatMessage[]): string {
