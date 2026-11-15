@@ -199,6 +199,10 @@ describe("demo build", () => {
     expect(plan.bigPicture).toMatch(/^Sam, we're building your web app/);
     expect(demoPlan("Web app", "", "", "").bigPicture).toMatch(/^We're building your web app/);
   });
+
+  it("keeps \"AI\" capitalised in the plan's opening line", () => {
+    expect(demoPlan("AI assistant", "", "", "").bigPicture).toMatch(/^We're building your AI assistant/);
+  });
   function buildAll() {
     let code = "";
     const added: string[] = [];
