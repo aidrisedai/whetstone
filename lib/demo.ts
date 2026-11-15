@@ -58,16 +58,20 @@ function salientWord(text: string): string {
   return candidates.sort((a, b) => b.length - a.length)[0];
 }
 
+// Only the opening question quotes the builder's own word back: any word in a
+// pitch can be "doing hidden work". The later questions are about the product,
+// and the longest word of an answer rarely names it ("10th graders" became
+// 'when someone uses "graders"'), so they name the project type instead.
 const PUSHBACKS = [
-  (k: string) => `Okay — but "${k}" is doing a lot of hidden work here. Who exactly is this for, and what can they do with it that they can't do today?`,
-  (k: string) => `I hear the ambition. Now make it sharp: when someone uses "${k}", what's the ONE thing they walk away having done?`,
-  (k: string) => `You're describing features, not a decision. If you could only ship one piece of "${k}" first, which one — and why that one?`,
-  (k: string) => `Good, that's tighter. But what does "done" look like? Give me the moment a user thinks "yes, this worked."`,
-  (k: string) => `Now you're getting somewhere. Where does the data or content behind "${k}" actually come from?`,
-  (k: string) => `Cleaner. So what are you deliberately NOT building in v1? Name the thing you're cutting.`,
-  (k: string) => `Walk me through the first thirty seconds with "${k}": what does someone see, and what do they tap first?`,
-  (k: string) => `What's the riskiest guess in this plan — the one that sinks it if you're wrong? How would you find out this week?`,
-  (k: string) => `Who is the first real person you'll hand this to, and what will you watch them do with it?`,
+  (k: string, _thing: string) => `Okay — but "${k}" is doing a lot of hidden work here. Who exactly is this for, and what can they do with it that they can't do today?`,
+  (_k: string, thing: string) => `I hear the ambition. Now make it sharp: when someone uses your ${thing}, what's the ONE thing they walk away having done?`,
+  (_k: string, thing: string) => `You're describing features, not a decision. If you could only ship one piece of your ${thing} first, which one — and why that one?`,
+  () => `Good, that's tighter. But what does "done" look like? Give me the moment a user thinks "yes, this worked."`,
+  (_k: string, thing: string) => `Now you're getting somewhere. Where does the data or content behind your ${thing} actually come from?`,
+  () => `Cleaner. So what are you deliberately NOT building in v1? Name the thing you're cutting.`,
+  (_k: string, thing: string) => `Walk me through the first thirty seconds with your ${thing}: what does someone see, and what do they tap first?`,
+  () => `What's the riskiest guess in this plan — the one that sinks it if you're wrong? How would you find out this week?`,
+  () => `Who is the first real person you'll hand this to, and what will you watch them do with it?`,
 ];
 
 // Once the list runs out, keep rotating through the last few instead of asking
@@ -90,7 +94,7 @@ export function demoAdvisorReply(history: ChatMessage[], closing: boolean): stri
   if (hasImage && turns <= 2) {
     return `I can see the sketch — the layout reads like a feed with a big action button. But a screen isn't a decision: tell me what a user is supposed to DO on it in the first ten seconds.`;
   }
-  return PUSHBACKS[pushbackIndex(turns)](k);
+  return PUSHBACKS[pushbackIndex(turns)](k, lowerNoun(detectProfile(history).type));
 }
 
 const PROJECT_PROFILES: { match: RegExp; type: string; criteria: CriterionSpec[] }[] = [
@@ -127,8 +131,12 @@ const PROJECT_PROFILES: { match: RegExp; type: string; criteria: CriterionSpec[]
 
 // "Build a game", "Build an AI assistant" — lower-casing the whole type and
 // always using "a" opened the exported prompt with "Build a ai assistant".
+function lowerNoun(type: string): string {
+  return type.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase());
+}
+
 function withArticle(type: string): string {
-  const noun = type.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase());
+  const noun = lowerNoun(type);
   return `${/^[aeiou]/i.test(noun) ? "an" : "a"} ${noun}`;
 }
 

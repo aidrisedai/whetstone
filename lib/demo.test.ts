@@ -291,7 +291,7 @@ describe("demoAdvisorReply — things the builder ruled out", () => {
     ];
     const reply = demoAdvisorReply(history, false);
     expect(reply).not.toMatch(/accounts|leaderboards|notifications/);
-    expect(reply).toContain('"timer"');
+    expect(reply).toContain("your web app");
   });
 
   it("skips the whole ruled-out phrase, not just its first word", () => {
@@ -304,7 +304,7 @@ describe("demoAdvisorReply — things the builder ruled out", () => {
     ];
     const reply = demoAdvisorReply(history, false);
     expect(reply).not.toMatch(/integrations|vendor|accounts/);
-    expect(reply).toContain('"counter"');
+    expect(reply).toContain("your data tool");
   });
 
   it("treats an 'out of scope' list as cut, and still hears the next sentence", () => {
@@ -343,6 +343,22 @@ describe("demoAdvisorReply — the word it quotes back", () => {
     const reply = demoAdvisorReply(history, false);
     expect(reply).not.toContain('"themselves"');
     expect(reply).not.toContain('"instead"');
+  });
+
+  it("asks about the product by its type once past the pitch, not by a word from the last answer", () => {
+    const history: ChatMessage[] = [
+      { id: "m0", role: "user", content: "A flashcard web app for high school students who cram before biology tests." },
+      { id: "a0", role: "advisor", content: "Who is it for?" },
+      { id: "m1", role: "user", content: "It is for 10th graders in AP Biology." },
+    ];
+    expect(demoAdvisorReply(history, false)).toContain("when someone uses your web app,");
+    history.push(
+      { id: "a1", role: "advisor", content: "What do they walk away with?" },
+      { id: "m2", role: "user", content: "A student finishes a 10-card round in under 3 minutes." },
+    );
+    const third = demoAdvisorReply(history, false);
+    expect(third).toContain("one piece of your web app first");
+    expect(third).not.toContain('"finishes"');
   });
 });
 
