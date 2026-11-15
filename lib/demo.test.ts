@@ -298,6 +298,15 @@ describe("demoAdvisorReply — things the builder ruled out", () => {
     expect(reply).toContain('"school"');
   });
 
+  it("treats a 'not doing:' list as cut, and still hears the next sentence", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "Must-have: an overdue list. Not doing: vendor integrations and notifications. It must load on school wifi." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toMatch(/integrations|notifications|vendor/);
+    expect(reply).toContain('"overdue"');
+  });
+
   it("still hears what comes after a joining word", () => {
     const history: ChatMessage[] = [
       { id: "m1", role: "user", content: "No logins but leaderboards matter" },

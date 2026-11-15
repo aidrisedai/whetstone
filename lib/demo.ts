@@ -41,8 +41,9 @@ function lastUserText(history: ChatMessage[]): string {
 const RULED_OUT = /\b(?:no|not|never|without|skip|skipping|cut|cutting|drop|dropping|isn't|aren't|won't|don't|doesn't)(?:\s+(?!(?:and|but|or|so|yet)\b)[a-z'-]+){1,4}/g;
 
 // The other way builders cut things is as a labelled list ("Out of scope:
-// vendor integrations and notifications."). Everything in that sentence is cut.
-const SCOPED_OUT = /[^.;!?\n]*\b(?:out of scope|off the table|not in scope)\b[^.;!?\n]*/g;
+// vendor integrations and notifications.", "Not doing: vendor integrations.").
+// Everything in that sentence is cut.
+const SCOPED_OUT = /[^.;!?\n]*\b(?:(?:out of scope|off the table|not in scope)\b|(?:not|never|won't|skip|skipping|cut|cutting|drop|dropping)(?:\s+[a-z'-]+){0,2}\s*:)[^.;!?\n]*/g;
 
 function salientWord(text: string): string {
   const kept = text.toLowerCase().replace(SCOPED_OUT, " ").replace(RULED_OUT, " ");
