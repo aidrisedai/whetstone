@@ -136,6 +136,12 @@ describe("demoAssessment", () => {
     expect(type("Puzzles for two players on one phone")).toBe("Game");
   });
 
+  it("does not call an app a game because its pitch says player", () => {
+    const type = (text: string) => demoAssessment([say(text, 0)], null, 80).projectType;
+    expect(type("A study app with two-player flashcard duels for chemistry")).toBe("Web app");
+    expect(type("A music player for my band's practice recordings")).toBe("Web app");
+  });
+
   it("exports the pitch as the core idea and later answers as detail", () => {
     const pitch = { id: "u1", role: "user" as const, content: "A tracker for my swim team's lap times." };
     const later = { id: "u2", role: "user" as const, content: "Coaches enter times after each practice." };

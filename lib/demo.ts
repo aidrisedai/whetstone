@@ -99,9 +99,10 @@ export function demoAdvisorReply(history: ChatMessage[], closing: boolean): stri
 
 const PROJECT_PROFILES: { match: RegExp; type: string; criteria: CriterionSpec[] }[] = [
   {
-    // Only words that name a game. "score", "level" and "play" turn up in pitches
-    // for quiz, study and music apps, which were then scored and planned as games.
-    match: /\b(games?|gaming|players?|puzzles?|arcade|platformer)\b/i,
+    // Only words that name a game. "score", "level", "play" and "player" turn up
+    // in pitches for quiz, study and music apps ("two-player flashcard duels",
+    // "a music player"), which were then scored and planned as games.
+    match: /\b(games?|gaming|puzzles?|arcade|platformer)\b/i,
     type: "Game",
     criteria: [
       { key: "core_mechanic", label: "Core mechanic", bestPractice: "core_mechanic" },
