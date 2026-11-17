@@ -43,13 +43,35 @@ export function Composer({
     if (listening) setInput(transcript);
   }, [transcript, listening]);
 
-  // Auto-grow the textarea.
+  // Auto-grow the textarea. The text re-wraps whenever the box changes width
+  // (the scoreboard arriving beside it, a phone rotating), so re-measure then
+  // too — otherwise a wrapped line is left clipped under a one-line box.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, variant === "intake" ? 220 : 160)}px`;
-  }, [input, variant]);
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, variant === "intake" ? 220 : 160)}px`;
+    };
+    fit();
+    // A web font landing late re-wraps the text without changing the width.
+    let live = true;
+    document.fonts?.ready.then(() => live && fit());
+    let width = el.clientWidth;
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            if (el.clientWidth === width) return;
+            width = el.clientWidth;
+            fit();
+          });
+    observer?.observe(el);
+    return () => {
+      live = false;
+      observer?.disconnect();
+    };
+  }, [input, variant, placeholder]);
 
   const intake = variant === "intake";
 
