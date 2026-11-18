@@ -196,6 +196,16 @@ export function BuildWorkspace({
   const [extending, setExtending] = useState(false);
   const [showCode, setShowCode] = useState(false);
 
+  // Escape closes the code viewer, the way every other popup behaves.
+  useEffect(() => {
+    if (!showCode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowCode(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showCode]);
+
   const [nameField, setNameField] = useState("");
   const [gameField, setGameField] = useState("");
   const [loadMsg, setLoadMsg] = useState(0);
@@ -465,7 +475,13 @@ export function BuildWorkspace({
 
       {/* Code viewer modal */}
       {showCode && code && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-base/80 p-4 backdrop-blur" onClick={() => setShowCode(false)}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Your full code"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-base/80 p-4 backdrop-blur"
+          onClick={() => setShowCode(false)}
+        >
           <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="font-display text-lg font-bold text-ink">Your full code</h3>
