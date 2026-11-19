@@ -74,6 +74,20 @@ const PUSHBACKS = [
   () => `Who is the first real person you'll hand this to, and what will you watch them do with it?`,
 ];
 
+// By the time the "what are you cutting?" question comes up, many builders have
+// already said ("no login, no sharing"). Asking them to name a cut right after
+// they listed three reads as not listening, so that turn asks something else.
+const CUT_QUESTION = 5;
+const NAMED_A_CUT = /\b(?:no|without|won't (?:have|build|add|do)|not (?:building|doing|adding)|skip(?:ping)?|cut(?:ting)?|drop(?:ping)?)\s+[a-z]/i;
+const AFTER_CUTS = (_k: string, thing: string) =>
+  `Cleaner — and you've already drawn the line on what's out. So of what's left in your ${thing}, which part has to feel great on day one?`;
+
+function namedACut(history: ChatMessage[]): boolean {
+  return history.some(
+    (m) => m.role === "user" && (NAMED_A_CUT.test(m.content || "") || (m.content || "").toLowerCase().search(SCOPED_OUT) !== -1),
+  );
+}
+
 // Once the list runs out, keep rotating through the last few instead of asking
 // the final question over and over for as long as the builder keeps talking.
 const PUSHBACK_LOOP = 3;
@@ -94,7 +108,9 @@ export function demoAdvisorReply(history: ChatMessage[], closing: boolean): stri
   if (hasImage && turns <= 2) {
     return `I can see the sketch — the layout reads like a feed with a big action button. But a screen isn't a decision: tell me what a user is supposed to DO on it in the first ten seconds.`;
   }
-  return PUSHBACKS[pushbackIndex(turns)](k, lowerNoun(detectProfile(history).type));
+  const index = pushbackIndex(turns);
+  const ask = index === CUT_QUESTION && namedACut(history) ? AFTER_CUTS : PUSHBACKS[index];
+  return ask(k, lowerNoun(detectProfile(history).type));
 }
 
 const PROJECT_PROFILES: { match: RegExp; type: string; criteria: CriterionSpec[] }[] = [

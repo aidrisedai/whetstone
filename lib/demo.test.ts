@@ -386,3 +386,24 @@ describe("demoAdvisorReply — a long conversation", () => {
     }
   });
 });
+
+describe("demoAdvisorReply — the 'what are you cutting?' question", () => {
+  const upTo = (answers: string[]): ChatMessage[] =>
+    answers.flatMap((content, i) => [
+      ...(i ? [{ id: `a${i}`, role: "advisor" as const, content: "And then?" }] : []),
+      { id: `u${i}`, role: "user" as const, content },
+    ]);
+
+  it("asks it when the builder has not cut anything yet", () => {
+    const history = upTo(["A flashcard app", "For 10th graders", "Flip and rate", "A finished deck", "Cards I type in", "It looks calm"]);
+    expect(demoAdvisorReply(history, false)).toContain("NOT building");
+  });
+
+  it("does not ask it of a builder who already named their cuts", () => {
+    const history = upTo(["A flashcard app", "For 10th graders", "Flip and rate. No login, no sharing.", "A finished deck", "Cards I type in", "Nothing else. No accounts, no leaderboard."]);
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toContain("NOT building");
+    expect(reply).toContain("your web app");
+    expect(reply).not.toMatch(/login|sharing|accounts|leaderboard/);
+  });
+});
