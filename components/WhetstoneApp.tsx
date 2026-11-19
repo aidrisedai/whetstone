@@ -200,12 +200,18 @@ export function WhetstoneApp({
       if (sessionRef.current !== session) return;
 
       if (result && result.ready && !exportedRef.current) {
+        // The advisor answers while the score is still being worked out, so on
+        // the turn that clears the bar it has just asked one more question.
+        // Take it back: the closing message is the reply to this turn, and a
+        // question nobody is meant to answer shouldn't sit above it.
+        cancelSpeech();
+        setMessages((prev) => prev.filter((m) => m.id !== advisorMsg.id));
         await triggerExport(nextHistory, result);
         if (sessionRef.current !== session) return;
       }
       setBusy(false);
     },
-    [busy, runAdvisor, runScore, triggerExport],
+    [busy, cancelSpeech, runAdvisor, runScore, triggerExport],
   );
 
   const reset = useCallback(() => {
