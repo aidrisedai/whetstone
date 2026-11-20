@@ -170,6 +170,23 @@ const DEFAULT_PROFILE = {
 };
 
 /**
+ * A pitch can mention games without being one: "a website where kids can trade
+ * used video games", "an app to track my game collection". Those name another
+ * product first and only then say what it is for, and they were scored on
+ * "Core mechanic" and "Win / lose state" and exported as "Build a game".
+ * A product you play ("an app where you play a puzzle game", "a site that is
+ * a trivia game") is still a game.
+ */
+const PRODUCT_FOR_GAMES =
+  /\b(web ?sites?|sites?|web ?pages?|apps?|marketplace|store|shop|tracker|forum|blog|tool|platform|wiki|database)\b[^.!?]*?\b(where|that|for|to|which|so)\b[^.!?]*?\b(games?|gaming|puzzles?)\b/i;
+const PLAYED_AS_A_GAME =
+  /\b(is|it's|as|like|play\w*)\s+(?:(?:an?|the|my|mini|little|\w+-player)\s+)*(?:[\w-]+\s+)?(games?|puzzles?|platformer)\b/i;
+
+function isAboutGames(pitch: string): boolean {
+  return PRODUCT_FOR_GAMES.test(pitch) && !PLAYED_AS_A_GAME.test(pitch);
+}
+
+/**
  * The pitch — the first thing the builder said — decides the project type.
  *
  * Matching against every answer let a later reply re-classify the project: a
@@ -181,6 +198,7 @@ const DEFAULT_PROFILE = {
 function detectProfile(history: ChatMessage[]) {
   const pitch = history.find((m) => m.role === "user")?.content ?? "";
   for (const p of PROJECT_PROFILES) {
+    if (p.type === "Game" && isAboutGames(pitch)) continue;
     if (p.match.test(pitch)) return { type: p.type, criteria: p.criteria };
   }
   return DEFAULT_PROFILE;

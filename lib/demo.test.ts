@@ -142,6 +142,16 @@ describe("demoAssessment", () => {
     expect(type("A music player for my band's practice recordings")).toBe("Web app");
   });
 
+  it("does not call a product about games a game", () => {
+    const type = (text: string) => demoAssessment([say(text, 0)], null, 80).projectType;
+    expect(type("A website where kids in my neighborhood can trade used video games")).toBe("Web app");
+    expect(type("A site that reviews indie games for my school paper")).toBe("Web app");
+    expect(type("An app to track my video game collection")).toBe("Data tool");
+    expect(type("An app where you play a puzzle game to learn fractions")).toBe("Game");
+    expect(type("A website that is a two-player trivia game")).toBe("Game");
+    expect(type("A puzzle game app for my little sister")).toBe("Game");
+  });
+
   it("exports the pitch as the core idea and later answers as detail", () => {
     const pitch = { id: "u1", role: "user" as const, content: "A tracker for my swim team's lap times." };
     const later = { id: "u2", role: "user" as const, content: "Coaches enter times after each practice." };
