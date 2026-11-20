@@ -57,7 +57,12 @@ function salientWord(text: string): string {
   // Nothing worth quoting ("x", "an app", "something for them"): say so with an
   // empty string, so the advisor doesn't put words in the builder's mouth.
   if (candidates.length === 0) return "";
-  return candidates.sort((a, b) => b.length - a.length)[0];
+  const word = candidates.sort((a, b) => b.length - a.length)[0];
+  // Quote a name the way the builder wrote it ("HomeworkBuddy", not
+  // "homeworkbuddy"). A word that is only capitalised for starting a sentence
+  // stays lowercase.
+  const asWritten = text.match(new RegExp(`\\b${word}\\b`, "i"))?.[0];
+  return asWritten && /[A-Z]/.test(asWritten.slice(1)) ? asWritten : word;
 }
 
 // Only the opening question quotes the builder's own word back: any word in a

@@ -390,6 +390,19 @@ describe("demoAdvisorReply — the word it quotes back", () => {
   });
 });
 
+describe("demoAdvisorReply — a name the builder made up", () => {
+  it("quotes it back with the builder's own capitals", () => {
+    const pitch = "A web app called HomeworkBuddy for students who forget work.";
+    const reply = demoAdvisorReply([{ id: "m0", role: "user", content: pitch }], false);
+    expect(reply).toContain('"HomeworkBuddy"');
+  });
+
+  it("keeps an ordinary word lowercase even when it starts the sentence", () => {
+    const reply = demoAdvisorReply([{ id: "m0", role: "user", content: "Leaderboards for my team." }], false);
+    expect(reply).toContain('"leaderboards"');
+  });
+});
+
 describe("demoAdvisorReply — a long conversation", () => {
   it("never asks the same question twice in a row", () => {
     const history: ChatMessage[] = [];
