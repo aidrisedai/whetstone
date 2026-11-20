@@ -355,6 +355,14 @@ describe("demoAdvisorReply — the word it quotes back", () => {
     expect(reply).not.toContain('"instead"');
   });
 
+  it("quotes nothing when the pitch has no word worth quoting", () => {
+    for (const pitch of ["x", "an app", "something for them"]) {
+      const reply = demoAdvisorReply([{ id: "m0", role: "user", content: pitch }], false);
+      expect(reply).not.toContain('"');
+      expect(reply).toContain("Who exactly is this for");
+    }
+  });
+
   it("asks about the product by its type once past the pitch, not by a word from the last answer", () => {
     const history: ChatMessage[] = [
       { id: "m0", role: "user", content: "A flashcard web app for high school students who cram before biology tests." },

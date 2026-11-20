@@ -54,7 +54,9 @@ function salientWord(text: string): string {
   const kept = text.toLowerCase().replace(SCOPED_OUT, " ").replace(RULED_OUT, " ");
   const words = kept.match(/[a-z]{4,}/g) || [];
   const candidates = words.filter((w) => !STOPWORDS.has(w));
-  if (candidates.length === 0) return "that part";
+  // Nothing worth quoting ("x", "an app", "something for them"): say so with an
+  // empty string, so the advisor doesn't put words in the builder's mouth.
+  if (candidates.length === 0) return "";
   return candidates.sort((a, b) => b.length - a.length)[0];
 }
 
@@ -63,7 +65,8 @@ function salientWord(text: string): string {
 // and the longest word of an answer rarely names it ("10th graders" became
 // 'when someone uses "graders"'), so they name the project type instead.
 const PUSHBACKS = [
-  (k: string, _thing: string) => `Okay — but "${k}" is doing a lot of hidden work here. Who exactly is this for, and what can they do with it that they can't do today?`,
+  (k: string, _thing: string) =>
+    `Okay — but ${k ? `"${k}" is doing a lot of hidden work here` : "there's not much to go on yet"}. Who exactly is this for, and what can they do with it that they can't do today?`,
   (_k: string, thing: string) => `I hear the ambition. Now make it sharp: when someone uses your ${thing}, what's the ONE thing they walk away having done?`,
   (_k: string, thing: string) => `You're describing features, not a decision. If you could only ship one piece of your ${thing} first, which one — and why that one?`,
   () => `Good, that's tighter. But what does "done" look like? Give me the moment a user thinks "yes, this worked."`,
