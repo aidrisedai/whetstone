@@ -233,6 +233,8 @@ function clamp01(n: number): number {
  */
 function dynamicFeedback(label: string, score: number): { rationale: string; suggestion: string } {
   const it = label.toLowerCase();
+  // "Success criteria", "Edge cases", "Scope & constraints" are plural.
+  const plural = /(criteria|s)$/.test(it);
   if (score >= 85) {
     return {
       rationale: `Sharp — a builder could act on your ${it} without asking a follow-up.`,
@@ -241,12 +243,12 @@ function dynamicFeedback(label: string, score: number): { rationale: string; sug
   }
   if (score >= 60) {
     return {
-      rationale: `Your ${it} is taking shape, but a builder would still fill some gaps by guessing.`,
+      rationale: `Your ${it} ${plural ? "are" : "is"} taking shape, but a builder would still fill some gaps by guessing.`,
       suggestion: `Pin down the ${it} with a concrete number, name, or example.`,
     };
   }
   return {
-    rationale: `Still thin on ${it} — sharpen it to lift this score.`,
+    rationale: `Still thin on ${it} — sharpen ${plural ? "them" : "it"} to lift this score.`,
     suggestion: `Spell out the ${it} explicitly so a builder can't guess wrong.`,
   };
 }

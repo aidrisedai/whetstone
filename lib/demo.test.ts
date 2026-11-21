@@ -80,6 +80,18 @@ describe("demoAssessment", () => {
     }
   });
 
+  it("treats a plural dimension as plural", () => {
+    // "Your success criteria is taking shape" was on the scoreboard every session.
+    const seen = [THIN, SHARP, SHARP.slice(0, 3), SHARP.slice(0, 5)].flatMap(
+      (h) => demoAssessment(h, null, 80).dynamicCriteria,
+    );
+    for (const d of seen) {
+      expect(d.rationale).not.toMatch(/(criteria|constraints|cases|sources) is /i);
+      expect(d.rationale).not.toMatch(/(criteria|constraints|cases|sources) — sharpen it/i);
+    }
+    expect(seen.some((d) => /criteria (are taking shape|— sharpen them)/i.test(d.rationale))).toBe(true);
+  });
+
   it("names the dimension in its own feedback", () => {
     for (const d of demoAssessment(SHARP, null, 80).dynamicCriteria) {
       expect(d.rationale.toLowerCase()).toContain(d.label.toLowerCase());
