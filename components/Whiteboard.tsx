@@ -166,14 +166,18 @@ export function Whiteboard({
     [teacher],
   );
 
+  // The count lives in a ref as well, so a step is announced from the click
+  // itself. Announcing it inside the state updater said every line twice under
+  // `npm run dev`, where React runs updaters a second time to check them.
+  const revealedRef = useRef(0);
   const revealNext = useCallback(() => {
-    setRevealed((r) => {
-      if (r >= board.steps.length) return r;
-      const step = board.steps[r];
-      setChat((c) => [...c, { who: "teacher", text: step.say }]);
-      say(step.say);
-      return r + 1;
-    });
+    const r = revealedRef.current;
+    if (r >= board.steps.length) return;
+    const step = board.steps[r];
+    revealedRef.current = r + 1;
+    setRevealed(r + 1);
+    setChat((c) => [...c, { who: "teacher", text: step.say }]);
+    say(step.say);
   }, [board.steps, say]);
 
   useEffect(() => {
