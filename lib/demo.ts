@@ -192,6 +192,15 @@ function isAboutGames(pitch: string): boolean {
 }
 
 /**
+ * Saying where an app keeps its data does not make it a data tool. A thorough
+ * pitch often ends "data is saved in localStorage", and that one word turned a
+ * homework planner pitched as "a web app" into "Data tool Quest", scored on
+ * "Data & sources" instead of audience and scope.
+ */
+const WHERE_DATA_LIVES =
+  /\b(?:(?:the|all|its|their|my|your|our|no|any)\s+)?data\s+(?:is|are|gets?|will be|stays?|lives?|should be|can be)\s+(?:\w+\s+)?(?:saved|stored|kept|held|in|on)\b|\b(?:sav|stor|keep|hold)(?:e|es|ing|s)?\s+(?:(?:the|all|its|their|my|your|our|any)\s+)*data\b/gi;
+
+/**
  * The pitch — the first thing the builder said — decides the project type.
  *
  * Matching against every answer let a later reply re-classify the project: a
@@ -204,7 +213,8 @@ function detectProfile(history: ChatMessage[]) {
   const pitch = history.find((m) => m.role === "user")?.content ?? "";
   for (const p of PROJECT_PROFILES) {
     if (p.type === "Game" && isAboutGames(pitch)) continue;
-    if (p.match.test(pitch)) return { type: p.type, criteria: p.criteria };
+    const text = p.type === "Data tool" ? pitch.replace(WHERE_DATA_LIVES, " ") : pitch;
+    if (p.match.test(text)) return { type: p.type, criteria: p.criteria };
   }
   return DEFAULT_PROFILE;
 }

@@ -154,6 +154,16 @@ describe("demoAssessment", () => {
     expect(type("A music player for my band's practice recordings")).toBe("Web app");
   });
 
+  it("does not call an app a data tool for saying where its data is kept", () => {
+    const type = (text: string) => demoAssessment([say(text, 0)], null, 80).projectType;
+    expect(
+      type("StudyBuddy is a web app for 9th graders who forget assignments. Data is saved in localStorage."),
+    ).toBe("Web app");
+    expect(type("A recipe box for my family. It stores all its data in the browser, no accounts.")).toBe("Web app");
+    expect(type("A site that turns my running data into charts")).toBe("Data tool");
+    expect(type("A dashboard for our club's fundraising. Data is stored in a Google Sheet.")).toBe("Data tool");
+  });
+
   it("does not call a product about games a game", () => {
     const type = (text: string) => demoAssessment([say(text, 0)], null, 80).projectType;
     expect(type("A website where kids in my neighborhood can trade used video games")).toBe("Web app");
