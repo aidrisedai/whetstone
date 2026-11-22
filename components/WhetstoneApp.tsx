@@ -235,13 +235,26 @@ export function WhetstoneApp({
     buildRef.current = null;
   }, [cancelSpeech]);
 
+  // The logo and "New idea" sit in the header on every screen, one stray tap
+  // away mid-build. A refresh already asks before it throws the session away;
+  // these did not, and wiped the conversation, the plan and the half-built app.
+  const askReset = useCallback(() => {
+    if (
+      messagesRef.current.length > 0 &&
+      !window.confirm("Start a new idea? This conversation and anything you've built so far will be cleared.")
+    ) {
+      return;
+    }
+    reset();
+  }, [reset]);
+
   const started = messages.length > 0;
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b border-line/70 bg-base/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <button type="button" onClick={reset} className="flex items-center gap-2.5 text-left">
+          <button type="button" onClick={askReset} className="flex items-center gap-2.5 text-left">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-ember-soft to-ember-deep text-base shadow-glow">
               <SparkIcon className="h-5 w-5" />
             </span>
@@ -277,7 +290,7 @@ export function WhetstoneApp({
             {started && (
               <button
                 type="button"
-                onClick={reset}
+                onClick={askReset}
                 className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:border-ember/40 hover:text-ink"
               >
                 New idea
