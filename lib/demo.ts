@@ -732,7 +732,7 @@ const DEMO_QUESTIONS: Record<string, DemoQuestion[]> = {
       options: ["Two — one for each item in the array", "One — it stops after the first", "None until you click something"],
       correctIndex: 0,
       explainCorrect: "`forEach` runs once per item, so two items means two rows.",
-      explainWrong: "Not quite — `forEach` runs the same code once for every item in the array.",
+      explainWrong: "`forEach` runs the same code once for every item in the array.",
     },
   ],
   "User input": [
@@ -747,7 +747,7 @@ const DEMO_QUESTIONS: Record<string, DemoQuestion[]> = {
       ],
       correctIndex: 2,
       explainCorrect: "A form's default is to reload the page. We stop that and add the item ourselves.",
-      explainWrong: "Not quite — a form normally reloads the page; `preventDefault()` stops that.",
+      explainWrong: "A form normally reloads the page; `preventDefault()` stops that.",
     },
     {
       id: "demo-q2",
@@ -784,7 +784,7 @@ const DEMO_QUESTIONS: Record<string, DemoQuestion[]> = {
       options: ["Adds a copy of that row", "Sorts the list", "Removes that one item from the array"],
       correctIndex: 2,
       explainCorrect: "`splice(index, 1)` takes exactly one item out, starting at that position.",
-      explainWrong: "Not quite — `splice(index, 1)` removes one item at that position.",
+      explainWrong: "`splice(index, 1)` removes one item at that position.",
     },
   ],
 };
@@ -800,7 +800,7 @@ const DEMO_QUESTIONS_GENERIC: DemoQuestion[] = [
     ],
     correctIndex: 1,
     explainCorrect: "Builders add to working code a piece at a time instead of starting over.",
-    explainWrong: "Not quite — everything you built stayed; the new piece was added to it.",
+    explainWrong: "Everything you built stayed; the new piece was added to it.",
   },
   {
     id: "demo-q2",
