@@ -15,7 +15,8 @@ export function toAnthropicMessages(history: ChatMessage[]): Anthropic.MessagePa
       for (const img of m.images) {
         blocks.push({
           type: "image",
-          // media_type is a narrow union in the SDK types; the value is validated server-side.
+          // media_type is a narrow union in the SDK types; asChatHistory has already
+          // dropped anything outside it.
           source: { type: "base64", media_type: img.mediaType, data: img.data } as never,
         });
       }
@@ -52,4 +53,25 @@ export function criteriaReuseMessage(prior: CriterionSpec[]): Anthropic.MessageP
       },
     ],
   };
+}
+
+/**
+ * A real advisor reply — not the empty placeholder, the "⚠️" bubble shown for
+ * a failed turn, or a reply that broke off mid-stream (the server appends its
+ * warning as a final "\n\n⚠️ …" paragraph).
+ */
+export function isAdvisorReply(content: string): boolean {
+  const text = content.trim();
+  return text.length > 0 && !text.startsWith("⚠️") && !text.includes("\n\n⚠️");
+}
+
+/**
+ * The on-screen transcript as the model should see it: failed and empty advisor
+ * bubbles removed, and ending on the builder's turn. A history that ends on an
+ * advisor turn reads as a reply to continue, which the judgment models reject.
+ */
+export function conversationTurns(messages: ChatMessage[]): ChatMessage[] {
+  const turns = messages.filter((m) => m.role !== "advisor" || isAdvisorReply(m.content));
+  while (turns.length > 0 && turns[turns.length - 1].role === "advisor") turns.pop();
+  return turns;
 }

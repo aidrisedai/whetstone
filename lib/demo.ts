@@ -12,7 +12,7 @@ import type {
   EditResult,
   Lesson,
 } from "./types";
-import { clamp, finalizeAssessment } from "./scoring";
+import { clamp, DIMENSION_FLOOR, finalizeAssessment } from "./scoring";
 
 /**
  * Deterministic stand-ins used when no ANTHROPIC_API_KEY is configured, so the
@@ -25,6 +25,11 @@ const STOPWORDS = new Set([
   "this","that","with","your","have","want","make","like","just","really","about",
   "would","could","there","their","which","while","being","going","thing","things",
   "people","something","because","build","building","idea","project","need","help",
+  // Pronouns and filler are long but never the subject of the pitch.
+  "themselves","yourself","yourselves","myself","ourselves","itself","himself","herself",
+  "someone","anyone","everyone","everybody","somebody","anybody","anything","everything",
+  "these","those","where","should","instead","already","without","before","after",
+  "into","from","they","them","what","when","will","also","only","been","were","does",
 ]);
 
 function lastUserText(history: ChatMessage[]): string {
@@ -34,21 +39,72 @@ function lastUserText(history: ChatMessage[]): string {
   return "";
 }
 
+// A thing the builder just ruled out ("no accounts, no chat", "without ads")
+// is the one thing the advisor must not ask them to elaborate on. The cut runs
+// to the end of the phrase ("no vendor integrations"), stopping at punctuation
+// or a joining word so what they say next still counts.
+const RULED_OUT = /\b(?:no|not|never|without|skip|skipping|cut|cutting|drop|dropping|isn't|aren't|won't|don't|doesn't)(?:\s+(?!(?:and|but|or|so|yet)\b)[a-z'-]+){1,4}/g;
+
+// The other way builders cut things is as a labelled list ("Out of scope:
+// vendor integrations and notifications.", "Not doing: vendor integrations.").
+// Everything in that sentence is cut.
+const SCOPED_OUT = /[^.;!?\n]*\b(?:(?:out of scope|off the table|not in scope)\b|(?:not|never|won't|skip|skipping|cut|cutting|drop|dropping)(?:\s+[a-z'-]+){0,2}\s*:)[^.;!?\n]*/g;
+
 function salientWord(text: string): string {
-  const words = text.toLowerCase().match(/[a-z]{4,}/g) || [];
+  const kept = text.toLowerCase().replace(SCOPED_OUT, " ").replace(RULED_OUT, " ");
+  const words = kept.match(/[a-z]{4,}/g) || [];
   const candidates = words.filter((w) => !STOPWORDS.has(w));
-  if (candidates.length === 0) return "that part";
-  return candidates.sort((a, b) => b.length - a.length)[0];
+  // Nothing worth quoting ("x", "an app", "something for them"): say so with an
+  // empty string, so the advisor doesn't put words in the builder's mouth.
+  if (candidates.length === 0) return "";
+  const word = candidates.sort((a, b) => b.length - a.length)[0];
+  // Quote a name the way the builder wrote it ("HomeworkBuddy", not
+  // "homeworkbuddy"). A word that is only capitalised for starting a sentence
+  // stays lowercase.
+  const asWritten = text.match(new RegExp(`\\b${word}\\b`, "i"))?.[0];
+  return asWritten && /[A-Z]/.test(asWritten.slice(1)) ? asWritten : word;
 }
 
+// Only the opening question quotes the builder's own word back: any word in a
+// pitch can be "doing hidden work". The later questions are about the product,
+// and the longest word of an answer rarely names it ("10th graders" became
+// 'when someone uses "graders"'), so they name the project type instead.
 const PUSHBACKS = [
-  (k: string) => `Okay — but "${k}" is doing a lot of hidden work here. Who exactly is this for, and what can they do with it that they can't do today?`,
-  (k: string) => `I hear the ambition. Now make it sharp: when someone uses "${k}", what's the ONE thing they walk away having done?`,
-  (k: string) => `You're describing features, not a decision. If you could only ship one piece of "${k}" first, which one — and why that one?`,
-  (k: string) => `Good, that's tighter. But what does "done" look like? Give me the moment a user thinks "yes, this worked."`,
-  (k: string) => `Now you're getting somewhere. Where does the data or content behind "${k}" actually come from?`,
-  (k: string) => `Cleaner. So what are you deliberately NOT building in v1? Name the thing you're cutting.`,
+  (k: string, _thing: string) =>
+    `Okay — but ${k ? `"${k}" is doing a lot of hidden work here` : "there's not much to go on yet"}. Who exactly is this for, and what can they do with it that they can't do today?`,
+  (_k: string, thing: string) => `I hear the ambition. Now make it sharp: when someone uses your ${thing}, what's the ONE thing they walk away having done?`,
+  (_k: string, thing: string) => `You're describing features, not a decision. If you could only ship one piece of your ${thing} first, which one — and why that one?`,
+  () => `Good, that's tighter. But what does "done" look like? Give me the moment a user thinks "yes, this worked."`,
+  (_k: string, thing: string) => `Now you're getting somewhere. Where does the data or content behind your ${thing} actually come from?`,
+  () => `Cleaner. So what are you deliberately NOT building in v1? Name the thing you're cutting.`,
+  (_k: string, thing: string) => `Walk me through the first thirty seconds with your ${thing}: what does someone see, and what do they tap first?`,
+  () => `What's the riskiest guess in this plan — the one that sinks it if you're wrong? How would you find out this week?`,
+  () => `Who is the first real person you'll hand this to, and what will you watch them do with it?`,
 ];
+
+// By the time the "what are you cutting?" question comes up, many builders have
+// already said ("no login, no sharing"). Asking them to name a cut right after
+// they listed three reads as not listening, so that turn asks something else.
+const CUT_QUESTION = 5;
+const NAMED_A_CUT = /\b(?:no|without|won't (?:have|build|add|do)|not (?:building|doing|adding)|skip(?:ping)?|cut(?:ting)?|drop(?:ping)?)\s+[a-z]/i;
+const AFTER_CUTS = (_k: string, thing: string) =>
+  `Cleaner — and you've already drawn the line on what's out. So of what's left in your ${thing}, which part has to feel great on day one?`;
+
+function namedACut(history: ChatMessage[]): boolean {
+  return history.some(
+    (m) => m.role === "user" && (NAMED_A_CUT.test(m.content || "") || (m.content || "").toLowerCase().search(SCOPED_OUT) !== -1),
+  );
+}
+
+// Once the list runs out, keep rotating through the last few instead of asking
+// the final question over and over for as long as the builder keeps talking.
+const PUSHBACK_LOOP = 3;
+
+function pushbackIndex(turns: number): number {
+  const i = Math.max(0, turns - 1);
+  if (i < PUSHBACKS.length) return i;
+  return PUSHBACKS.length - PUSHBACK_LOOP + ((i - PUSHBACKS.length) % PUSHBACK_LOOP);
+}
 
 export function demoAdvisorReply(history: ChatMessage[], closing: boolean): string {
   if (closing) {
@@ -60,13 +116,17 @@ export function demoAdvisorReply(history: ChatMessage[], closing: boolean): stri
   if (hasImage && turns <= 2) {
     return `I can see the sketch — the layout reads like a feed with a big action button. But a screen isn't a decision: tell me what a user is supposed to DO on it in the first ten seconds.`;
   }
-  const pick = PUSHBACKS[Math.min(turns - 1, PUSHBACKS.length - 1)] ?? PUSHBACKS[0];
-  return pick(k);
+  const index = pushbackIndex(turns);
+  const ask = index === CUT_QUESTION && namedACut(history) ? AFTER_CUTS : PUSHBACKS[index];
+  return ask(k, lowerNoun(detectProfile(history).type));
 }
 
 const PROJECT_PROFILES: { match: RegExp; type: string; criteria: CriterionSpec[] }[] = [
   {
-    match: /\b(game|play|player|level|score|puzzle|arcade)\b/i,
+    // Only words that name a game. "score", "level", "play" and "player" turn up
+    // in pitches for quiz, study and music apps ("two-player flashcard duels",
+    // "a music player"), which were then scored and planned as games.
+    match: /\b(games?|gaming|puzzles?|arcade|platformer)\b/i,
     type: "Game",
     criteria: [
       { key: "core_mechanic", label: "Core mechanic", bestPractice: "core_mechanic" },
@@ -94,6 +154,17 @@ const PROJECT_PROFILES: { match: RegExp; type: string; criteria: CriterionSpec[]
   },
 ];
 
+// "Build a game", "Build an AI assistant" — lower-casing the whole type and
+// always using "a" opened the exported prompt with "Build a ai assistant".
+function lowerNoun(type: string): string {
+  return type.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase());
+}
+
+function withArticle(type: string): string {
+  const noun = lowerNoun(type);
+  return `${/^[aeiou]/i.test(noun) ? "an" : "a"} ${noun}`;
+}
+
 const DEFAULT_PROFILE = {
   type: "Web app",
   criteria: [
@@ -103,15 +174,58 @@ const DEFAULT_PROFILE = {
   ] as CriterionSpec[],
 };
 
+/**
+ * A pitch can mention games without being one: "a website where kids can trade
+ * used video games", "an app to track my game collection". Those name another
+ * product first and only then say what it is for, and they were scored on
+ * "Core mechanic" and "Win / lose state" and exported as "Build a game".
+ * A product you play ("an app where you play a puzzle game", "a site that is
+ * a trivia game") is still a game.
+ */
+const PRODUCT_FOR_GAMES =
+  /\b(web ?sites?|sites?|web ?pages?|apps?|marketplace|store|shop|tracker|forum|blog|tool|platform|wiki|database)\b[^.!?]*?\b(where|that|for|to|which|so)\b[^.!?]*?\b(games?|gaming|puzzles?)\b/i;
+const PLAYED_AS_A_GAME =
+  /\b(is|it's|as|like|play\w*)\s+(?:(?:an?|the|my|mini|little|\w+-player)\s+)*(?:[\w-]+\s+)?(games?|puzzles?|platformer)\b/i;
+
+function isAboutGames(pitch: string): boolean {
+  return PRODUCT_FOR_GAMES.test(pitch) && !PLAYED_AS_A_GAME.test(pitch);
+}
+
+/**
+ * Saying where an app keeps its data does not make it a data tool. A thorough
+ * pitch often ends "data is saved in localStorage", and that one word turned a
+ * homework planner pitched as "a web app" into "Data tool Quest", scored on
+ * "Data & sources" instead of audience and scope.
+ */
+const WHERE_DATA_LIVES =
+  /\b(?:(?:the|all|its|their|my|your|our|no|any)\s+)?data\s+(?:is|are|gets?|will be|stays?|lives?|should be|can be)\s+(?:\w+\s+)?(?:saved|stored|kept|held|in|on)\b|\b(?:sav|stor|keep|hold)(?:e|es|ing|s)?\s+(?:(?:the|all|its|their|my|your|our|any)\s+)*data\b/gi;
+
+/**
+ * The pitch — the first thing the builder said — decides the project type.
+ *
+ * Matching against every answer let a later reply re-classify the project: a
+ * study-partner app became a "Game" the moment an answer mentioned a
+ * confidence "level". By then the client had pinned the first turn's criteria,
+ * so the scoreboard read "Tuned to game" over web-app dimensions and Build
+ * mode went on to plan a game nobody pitched.
+ */
 function detectProfile(history: ChatMessage[]) {
-  const allText = history
-    .filter((m) => m.role === "user")
-    .map((m) => m.content)
-    .join(" ");
+  const pitch = history.find((m) => m.role === "user")?.content ?? "";
   for (const p of PROJECT_PROFILES) {
-    if (p.match.test(allText)) return { type: p.type, criteria: p.criteria };
+    if (p.type === "Game" && isAboutGames(pitch)) continue;
+    const text = p.type === "Data tool" ? pitch.replace(WHERE_DATA_LIVES, " ") : pitch;
+    if (p.match.test(text)) return { type: p.type, criteria: p.criteria };
   }
   return DEFAULT_PROFILE;
+}
+
+const tidy = (text: string) => text.replace(/\s+/g, " ").replace(/[.\s]+$/, "").trim();
+
+function clipDetails(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("; "));
+  return stop > max / 2 ? cut.slice(0, stop) : cut.replace(/\s+\S*$/, "");
 }
 
 function clamp01(n: number): number {
@@ -129,6 +243,8 @@ function clamp01(n: number): number {
  */
 function dynamicFeedback(label: string, score: number): { rationale: string; suggestion: string } {
   const it = label.toLowerCase();
+  // "Success criteria", "Edge cases", "Scope & constraints" are plural.
+  const plural = /(criteria|s)$/.test(it);
   if (score >= 85) {
     return {
       rationale: `Sharp — a builder could act on your ${it} without asking a follow-up.`,
@@ -137,14 +253,37 @@ function dynamicFeedback(label: string, score: number): { rationale: string; sug
   }
   if (score >= 60) {
     return {
-      rationale: `Your ${it} is taking shape, but a builder would still fill some gaps by guessing.`,
+      rationale: `Your ${it} ${plural ? "are" : "is"} taking shape, but a builder would still fill some gaps by guessing.`,
       suggestion: `Pin down the ${it} with a concrete number, name, or example.`,
     };
   }
   return {
-    rationale: `Still thin on ${it} — sharpen it to lift this score.`,
+    rationale: `Still thin on ${it} — sharpen ${plural ? "them" : "it"} to lift this score.`,
     suggestion: `Spell out the ${it} explicitly so a builder can't guess wrong.`,
   };
+}
+
+/**
+ * The conciseness note has to agree with its score. A two-line pitch is short,
+ * but it scores low because it says little — praising it as "tight" right next
+ * to a 37 reads as a bug on the very first scoreboard a builder sees.
+ */
+function demoConciseness(score: number, rambling: boolean): { score: number; rationale: string; suggestion: string } {
+  if (rambling) {
+    return {
+      score,
+      rationale: "You're packing several ideas into each answer.",
+      suggestion: "Cut to the one sentence that matters most.",
+    };
+  }
+  if (score < DIMENSION_FLOOR) {
+    return {
+      score,
+      rationale: "Short, but not sharp yet — few of the words carry real detail.",
+      suggestion: "Swap each general word for a specific one before you add more.",
+    };
+  }
+  return { score, rationale: "Tight and readable.", suggestion: "Keep trimming words that don't add signal." };
 }
 
 export function demoAssessment(
@@ -162,14 +301,18 @@ export function demoAssessment(
 
   const profile = detectProfile(history);
   const criteria = priorCriteria ?? profile.criteria;
-  const idea = lastUserText(history)
-    .replace(/\s+/g, " ")
-    .replace(/^build\s+/i, "")
-    .replace(/\.+$/, "")
-    .trim();
+  // The pitch is the core idea; every later answer is detail that sharpens it.
+  // (Using only the latest message exported whatever was said last as the
+  // "core idea" and threw the actual pitch away.)
+  const said = userMsgs.map((m) => tidy(m.content ?? "")).filter(Boolean);
+  const idea = (said[0] ?? "").replace(/^build\s+/i, "");
+  // Cut at the end of a sentence (or at least a word) — a hard cut left the
+  // exported prompt ending mid-sentence ("…caps each day at 2 hours of.").
+  const details = clipDetails(said.slice(1).join(". "), 900);
   const refinedPrompt =
-    `Build a ${profile.type.toLowerCase()}. ` +
+    `Build ${withArticle(profile.type)}. ` +
     (idea ? `Core idea: ${idea}. ` : "") +
+    (details ? `What the builder pinned down: ${tidy(details)}. ` : "") +
     `Target one specific user, define what a successful first session looks like, and keep v1 tightly scoped.`;
 
   const dynamicOffsets = [-3, 2, -6];
@@ -177,16 +320,8 @@ export function demoAssessment(
   return finalizeAssessment(
     {
       projectType: profile.type,
-      clarity: {
-        score: base + 3,
-        rationale: turns < 3 ? "The core is still abstract — I can't picture the exact user yet." : "The goal and user are coming into focus.",
-        suggestion: "Name the one person this is for and the single job they're hiring it to do.",
-      },
-      conciseness: {
-        score: base - 2 - (avgLen > 320 ? 6 : 0),
-        rationale: avgLen > 320 ? "You're packing several ideas into each answer." : "Tight and readable.",
-        suggestion: avgLen > 320 ? "Cut to the one sentence that matters most." : "Keep trimming words that don't add signal.",
-      },
+      clarity: demoClarity(base + 3, turns),
+      conciseness: demoConciseness(base - 2 - (avgLen > 320 ? 6 : 0), avgLen > 320),
       dynamicCriteria: criteria.map((c, i) => {
         const score = clamp(base + (dynamicOffsets[i] ?? 0));
         return { ...c, score, ...dynamicFeedback(c.label, score) };
@@ -195,6 +330,27 @@ export function demoAssessment(
     },
     threshold,
   );
+}
+
+// Like the conciseness note, the clarity note has to agree with its score: a
+// 99 that still said "coming into focus… name the one person this is for"
+// read as a contradiction on the finished scoreboard.
+function demoClarity(score: number, turns: number) {
+  if (score >= 85) {
+    return {
+      rationale: "Clear — the user, the job and the outcome are all on the page.",
+      score,
+      suggestion: "Hold this clarity; make sure new detail doesn't bury the core idea.",
+    };
+  }
+  return {
+    score,
+    rationale:
+      turns < 3
+        ? "The core is still abstract — I can't picture the exact user yet."
+        : "The goal and user are coming into focus.",
+    suggestion: "Name the one person this is for and the single job they're hiring it to do.",
+  };
 }
 
 export function demoLesson(history: ChatMessage[]): Lesson {
@@ -347,7 +503,7 @@ export function demoPlan(
     : "";
   return {
     projectName: projectType ? `${projectType} Quest` : "Your App Quest",
-    bigPicture: `${who}we're building your ${(projectType || "app").toLowerCase()} one piece at a time — and you'll get every single part.${gameBit}`,
+    bigPicture: `${who}${name ? "we're" : "We're"} building your ${lowerNoun(projectType || "app")} one piece at a time — and you'll get every single part.${gameBit}`,
     parts: [
       {
         title: "🏗️ The Stage",
@@ -447,8 +603,7 @@ export function demoBuildLesson(args: {
   const splitAt = code.lastIndexOf("</body>");
   const head = splitAt >= 0 ? code.slice(0, splitAt) : code;
   const tail = splitAt >= 0 ? code.slice(splitAt) : "";
-  const featureLabel = escapeHtml(args.part.title);
-  const newCode = `<div style="margin-top:14px;padding:10px;background:#26203a;border-radius:8px">✨ ${featureLabel} — wired up in demo mode</div>\n`;
+  const feature = demoFeature(args.part, code);
 
   return {
     partTitle: args.part.title,
@@ -461,13 +616,7 @@ export function demoBuildLesson(args: {
         "Here's everything from the earlier parts — untouched. Great code doesn't get thrown away; we build ON it. We're going to slip the new piece in right at the end.",
         false,
       ),
-      beat(
-        "✨ The new piece",
-        "html",
-        newCode,
-        `This new block is ${args.part.title}. In the real (API-key) version Coach Spark writes the actual working code here and explains every line — this is the demo stand-in so you can see the flow.`,
-        true,
-      ),
+      ...feature,
       beat("🔚 Closing it up", "html", tail, "We close the tags so the page is valid again. Every tag we open has to close — like brackets in a save file.", false),
     ],
     outro: `Nice — ${args.part.title} is in, and the rest still works. ${args.part.concept ? "You practiced: " + args.part.concept + "." : ""}`,
@@ -475,38 +624,209 @@ export function demoBuildLesson(args: {
   };
 }
 
+// The new beats for a later demo part. The two parts the demo plan promises —
+// typing things onto the list, and remembering them — are built for real, so
+// the app the builder ends up with does what the plan said it would. They
+// only fit the demo's own starter app, so anything else (a "Keep building"
+// request, or code that isn't ours) gets a clearly-labelled stand-in.
+function demoFeature(part: { title: string; concept: string }, code: string): CodeBeat[] {
+  const ours = code.includes('<ul id="list">') && code.includes("const items =");
+
+  if (ours && part.concept === "User input" && !code.includes('id="add"')) {
+    return [
+      beat(
+        "⌨️ A box to type in",
+        "html",
+        `<form id="add">\n  <input id="new-item" placeholder="Type something…" autocomplete="off">\n  <button>Add</button>\n</form>\n`,
+        "A `<form>` is a little machine for collecting what someone types. The `<input>` is the box, the `<button>` sends it. Both the box and the form get an `id` — a name tag, so our code can find them, just like the list.",
+        true,
+      ),
+      beat(
+        "🎨 Making it look right",
+        "css",
+        `<style>\n  ul{padding:0}\n  form{display:flex;gap:8px;margin-top:14px}\n  input{flex:1;padding:10px;border-radius:8px;border:1px solid #333a50;background:#161a26;color:#eee}\n  button{padding:10px 16px;border:0;border-radius:8px;background:#ff7a3d;color:#111;font-weight:700}\n</style>\n`,
+        "A bit more paint. `display:flex` lines the box and the button up side by side, and `flex:1` tells the box to take all the room that's left.",
+        true,
+      ),
+      beat(
+        "🖌️ One function that draws the list",
+        "js",
+        `<script>\n  function render(){\n    list.innerHTML = "";\n    items.forEach(function(text){\n      const li = document.createElement("li");\n      li.textContent = text;\n      list.appendChild(li);\n    });\n  }\n`,
+        "We wrap the drawing code in a function called `render`. It wipes the list clean, then draws every item in the array again. Now any time the data changes we just call `render()` and the screen catches up.",
+        true,
+      ),
+      beat(
+        "➕ Adding what you typed",
+        "js",
+        `  document.getElementById("add").addEventListener("submit", function(event){\n    event.preventDefault();\n    const box = document.getElementById("new-item");\n    const text = box.value.trim();\n    if (!text) return;\n    items.push(text);\n    box.value = "";\n    render();\n  });\n</script>\n`,
+        "`addEventListener(\"submit\", …)` means: when the form is sent — by the button OR the Enter key — run this. `preventDefault()` stops the page reloading. Then we read the box, skip it if it's empty, `push` the text into the array, clear the box and `render()`. Try it in the Browser tab!",
+        true,
+      ),
+    ];
+  }
+
+  if (ours && part.concept === "Saving data" && code.includes("function render()") && !code.includes("localStorage")) {
+    return [
+      beat(
+        "💾 Saving the list",
+        "js",
+        `<script>\n  function save(){\n    try { localStorage.setItem("items", JSON.stringify(items)); } catch (e) {}\n  }\n`,
+        "`localStorage` is a tiny notebook the browser keeps for your page, even after you close it. It only stores text, so `JSON.stringify` turns our array into text first. The `try` is a safety net: if the browser says no, the app carries on instead of crashing.",
+        true,
+      ),
+      beat(
+        "📂 Loading it back",
+        "js",
+        `  try {\n    const saved = JSON.parse(localStorage.getItem("items") || "null");\n    if (Array.isArray(saved)) {\n      items.length = 0;\n      saved.forEach(function(text){ items.push(String(text)); });\n      render();\n    }\n  } catch (e) {}\n`,
+        "When the page opens we read the notebook. `JSON.parse` turns the text back into an array. If there really is a saved list, we swap it in for the starter items and `render()`.",
+        true,
+      ),
+      beat(
+        "🗑️ Save on add, tap to delete",
+        "js",
+        `  document.getElementById("add").addEventListener("submit", save);\n  list.addEventListener("click", function(event){\n    const index = Array.prototype.indexOf.call(list.children, event.target);\n    if (index < 0) return;\n    items.splice(index, 1);\n    render();\n    save();\n  });\n</script>\n<p style="color:#8a90a6;font-size:.8rem">Tap an item to delete it.</p>\n`,
+        "Two last wires. After every add, we `save`. And when you tap a row, we work out which number row it was, `splice` it out of the array, redraw and save. Download your app and open it — your list will still be there tomorrow.",
+        true,
+      ),
+    ];
+  }
+
+  // The title may already open with the sparkle ("✨ Your New Feature").
+  const featureLabel = escapeHtml(part.title.replace(/^✨\s*/, ""));
+  return [
+    beat(
+      "✨ The new piece",
+      "html",
+      `<div style="margin-top:14px;padding:10px;background:#26203a;border-radius:8px">✨ ${featureLabel} — wired up in demo mode</div>\n`,
+      `This new block is ${part.title}. In the real (API-key) version Coach Spark writes the actual working code here and explains every line — this is the demo stand-in so you can see the flow.`,
+      true,
+    ),
+  ];
+}
+
 /* ---- Demo checkpoint quiz (offline stand-in) ---- */
-export function demoQuiz(partTitle: string, concept: string): Checkpoint {
+type DemoQuestion = Checkpoint["questions"][number];
+
+// Each demo part gets questions about the code that part actually wrote —
+// the same two questions after every part, always answered by option A, is a
+// quiz a kid stops reading by part two.
+const DEMO_QUESTIONS: Record<string, DemoQuestion[]> = {
+  "The screen": [
+    {
+      id: "demo-q1",
+      question: "When the code calls `document.getElementById(\"list\")`, what is it doing?",
+      codeRef: 'const list = document.getElementById("list");',
+      options: [
+        "Creating a brand-new list element from scratch",
+        "Grabbing the element on the page whose id is \"list\", so code can control it",
+        "Deleting the list from the page",
+      ],
+      correctIndex: 1,
+      explainCorrect: "`getElementById` finds the existing element by its id so you can read or change it.",
+      explainWrong: "Easy mix-up: `getElementById` finds something already there — it doesn't create or delete it.",
+    },
+    {
+      id: "demo-q2",
+      question: "The array has two items. How many rows does `forEach` put on the screen?",
+      codeRef: 'const items = ["First thing","Second thing"];',
+      options: ["Two — one for each item in the array", "One — it stops after the first", "None until you click something"],
+      correctIndex: 0,
+      explainCorrect: "`forEach` runs once per item, so two items means two rows.",
+      explainWrong: "`forEach` runs the same code once for every item in the array.",
+    },
+  ],
+  "User input": [
+    {
+      id: "demo-q1",
+      question: "What does `event.preventDefault()` do when the form is sent?",
+      codeRef: "event.preventDefault();",
+      options: [
+        "It deletes what you typed",
+        "It makes the button invisible",
+        "It stops the page reloading, so our own code can handle it",
+      ],
+      correctIndex: 2,
+      explainCorrect: "A form's default is to reload the page. We stop that and add the item ourselves.",
+      explainWrong: "A form normally reloads the page; `preventDefault()` stops that.",
+    },
+    {
+      id: "demo-q2",
+      question: "Why do we call `render()` right after `items.push(text)`?",
+      codeRef: "items.push(text);",
+      options: [
+        "So the screen is redrawn to match the data we just changed",
+        "Because `push()` doesn't work without it",
+        "To make the app run slower on purpose",
+      ],
+      correctIndex: 0,
+      explainCorrect: "Change the data, then redraw: that keeps the screen and the array in sync — a pro habit.",
+      explainWrong: "`push()` already changed the array; `render()` is what makes the screen show it.",
+    },
+  ],
+  "Saving data": [
+    {
+      id: "demo-q1",
+      question: "Why do we use `JSON.stringify` before saving the list?",
+      codeRef: 'localStorage.setItem("items", JSON.stringify(items));',
+      options: [
+        "To make the list shorter",
+        "Because `localStorage` only stores text, and this turns the array into text",
+        "To send the list to another website",
+      ],
+      correctIndex: 1,
+      explainCorrect: "`localStorage` keeps text only, so the array becomes text going in and an array again coming out.",
+      explainWrong: "Nothing leaves your browser — `stringify` just turns the array into text `localStorage` can keep.",
+    },
+    {
+      id: "demo-q2",
+      question: "What does `items.splice(index, 1)` do when you tap a row?",
+      codeRef: "items.splice(index, 1);",
+      options: ["Adds a copy of that row", "Sorts the list", "Removes that one item from the array"],
+      correctIndex: 2,
+      explainCorrect: "`splice(index, 1)` takes exactly one item out, starting at that position.",
+      explainWrong: "`splice(index, 1)` removes one item at that position.",
+    },
+  ],
+};
+
+const DEMO_QUESTIONS_GENERIC: DemoQuestion[] = [
+  {
+    id: "demo-q1",
+    question: "When we added this part, what happened to the code from the earlier parts?",
+    options: [
+      "We threw it away and started again",
+      "We kept it and added the new piece on top",
+      "It was moved to a different file",
+    ],
+    correctIndex: 1,
+    explainCorrect: "Builders add to working code a piece at a time instead of starting over.",
+    explainWrong: "Everything you built stayed; the new piece was added to it.",
+  },
+  {
+    id: "demo-q2",
+    question: "Why does every tag we open need to be closed?",
+    options: [
+      "So the browser knows where each piece of the page ends",
+      "It makes the page load slower",
+      "It doesn't matter — tags are optional",
+    ],
+    correctIndex: 0,
+    explainCorrect: "Closing tags tell the browser where each piece ends, so the page is put together correctly.",
+    explainWrong: "Closing tags are how the browser knows where one piece ends and the next begins.",
+  },
+];
+
+/**
+ * `newCode` is the code the part just added; a concept's questions are only
+ * asked when that code is really there to be asked about.
+ */
+export function demoQuiz(partTitle: string, concept: string, newCode = ""): Checkpoint {
+  const about = DEMO_QUESTIONS[concept.trim()];
+  const grounded = about?.every((q) => !q.codeRef || newCode.includes(q.codeRef));
   return {
     partTitle,
     intro: "Quick checkpoint! Let's see what stuck. 🎯",
-    questions: [
-      {
-        id: "demo-q1",
-        question: "When the code calls document.getElementById('list'), what is it doing?",
-        codeRef: "const list = document.getElementById('list');",
-        options: [
-          "Grabbing the element on the page whose id is 'list', so code can control it",
-          "Creating a brand-new list element from scratch",
-          "Deleting the list from the page",
-        ],
-        correctIndex: 0,
-        explainCorrect: "getElementById finds the existing element by its id so you can read or change it.",
-        explainWrong: "Easy mix-up: getElementById finds something already there — it doesn't create or delete it.",
-      },
-      {
-        id: "demo-q2",
-        question: "Why do we keep the data in one array and have a single render() draw it?",
-        options: [
-          "So the screen always matches the data — change the data, re-render, done",
-          "Because arrays are the only way to store text",
-          "To make the app run slower on purpose",
-        ],
-        correctIndex: 0,
-        explainCorrect: "One source of truth + one render keeps the UI in sync with your data — a pro habit.",
-        explainWrong: "Not quite — arrays aren't the only storage; the point is keeping screen and data in sync.",
-      },
-    ],
+    questions: about && grounded ? about : DEMO_QUESTIONS_GENERIC,
   };
 }
 
