@@ -58,6 +58,9 @@ export function useSpeechSynthesis() {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const synth = window.speechSynthesis;
     synth.cancel();
+    // cancel() empties the queue but leaves a paused engine paused, which would
+    // queue everything after it in silence.
+    synth.resume();
     const utterance = new SpeechSynthesisUtterance(text);
     if (!voiceRef.current) voiceRef.current = pickVoice(synth.getVoices());
     if (voiceRef.current) utterance.voice = voiceRef.current;

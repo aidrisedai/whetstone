@@ -7,7 +7,8 @@ import {
   getErrorMessage,
   jsonError,
   readJsonBody,
-  safeParseJson,
+  textLimitError,
+  parseReply,
 } from "@/lib/serverUtils";
 import { uid } from "@/lib/format";
 import type { Checkpoint, QuizQuestion } from "@/lib/types";
@@ -19,6 +20,8 @@ export const maxDuration = 120;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const partTitle = asTrimmed(body.partTitle, "this part") || "this part";
   const newCode = asTrimmed(body.newCode);
@@ -26,7 +29,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!newCode) return jsonError("`newCode` is required to write a grounded quiz");
 
   if (isDemoMode()) {
-    return Response.json(demoQuiz(partTitle, concept));
+    return Response.json(demoQuiz(partTitle, concept, newCode));
   }
 
   try {
@@ -34,7 +37,7 @@ export async function POST(req: Request): Promise<Response> {
     const tune = reasoning(MODELS.coach, "medium");
     const resp = await getClient().messages.create({
       model: MODELS.coach,
-      max_tokens: 2500,
+      max_tokens: 5000,
       system: [{ type: "text", text: QUIZ_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [
         {
@@ -53,9 +56,7 @@ export async function POST(req: Request): Promise<Response> {
       output_config: { format: { type: "json_schema", schema: QUIZ_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
-    const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const parsed = safeParseJson<{ intro: string; questions: Omit<QuizQuestion, "id">[] }>(text);
+    const parsed = parseReply<{ intro: string; questions: Omit<QuizQuestion, "id">[] }>(resp);
 
     const checkpoint: Checkpoint = {
       partTitle,
