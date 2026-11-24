@@ -12,7 +12,13 @@ const WEBHOOK_TIMEOUT_MS = 8_000;
  * Hand the sharpened prompt off to the connected AI builder. Always returns a
  * deep link that prefills the builder; if BUILDER_WEBHOOK_URL is configured,
  * also POSTs the prompt server-to-server for a true automatic hand-off.
+ *
+ * `linkOnly: true` returns the deep link without the webhook. The build
+ * workspace needs the link every time it opens, and that must not re-deliver
+ * the prompt — the hand-off happens once, on the real export.
  */
+const MAX_PROMPT_CHARS = 20_000;
+
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
@@ -21,13 +27,18 @@ export async function POST(req: Request): Promise<Response> {
   if (!refinedPrompt) {
     return jsonError("`refinedPrompt` is required");
   }
+  // A sharpened prompt is a few thousand characters. Anything far beyond that
+  // is not one, and must not be relayed to the operator's webhook.
+  if (refinedPrompt.length > MAX_PROMPT_CHARS) {
+    return jsonError("`refinedPrompt` is too long", 413);
+  }
 
   const builder = activeBuilder();
   const builderUrl = builder.buildUrl(refinedPrompt);
 
   let webhook: ExportResult["webhook"] = "skipped";
   const hook = process.env.BUILDER_WEBHOOK_URL;
-  if (hook) {
+  if (hook && body.linkOnly !== true) {
     try {
       const r = await fetch(hook, {
         method: "POST",

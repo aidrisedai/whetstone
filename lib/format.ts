@@ -7,16 +7,26 @@ export function uid(prefix = "m"): string {
   return `${prefix}_${Date.now().toString(36)}_${counter.toString(36)}`;
 }
 
+/**
+ * A beat is whole lines, so it has to end one. Without the line break, a beat
+ * ending in a `//` comment or an unterminated statement fuses with the next
+ * beat and breaks the whole script.
+ */
+function beatSource(beat: CodeBeat): string {
+  const code = typeof beat.code === "string" ? beat.code : "";
+  return code === "" || code.endsWith("\n") ? code : `${code}\n`;
+}
+
 /** Concatenate beats (in order) into the full source file. */
 export function assembleBeats(beats: CodeBeat[]): string {
-  return beats.map((b) => b.code).join("");
+  return beats.map(beatSource).join("");
 }
 
 /** Assemble only the beats up to and including `index` — the file "so far". */
 export function assembleBeatsUpTo(beats: CodeBeat[], index: number): string {
   return beats
     .slice(0, index + 1)
-    .map((b) => b.code)
+    .map(beatSource)
     .join("");
 }
 
@@ -29,6 +39,33 @@ export function beatsFormValidDoc(beats: CodeBeat[]): boolean {
     /<\/html>\s*$/i.test(full) &&
     full.includes("<body")
   );
+}
+
+/** The image formats Claude's vision input accepts. */
+export const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+/**
+ * Per-image size ceiling. Claude's 5 MB limit is measured on the base64 text
+ * that is actually sent, which is a third larger than the file, so the file
+ * itself has to stay under 3.75 MB.
+ */
+export const MAX_IMAGE_BYTES = Math.floor((5 * 1024 * 1024 * 3) / 4);
+export const MAX_IMAGES_PER_MESSAGE = 4;
+
+/**
+ * Ceilings on a conversation sent to the model. A real session is a few dozen
+ * short turns; without these, one request could carry megabytes of text and
+ * bill it all to the operator's API key.
+ */
+export const MAX_HISTORY_MESSAGES = 200;
+export const MAX_MESSAGE_CHARS = 20_000;
+
+/**
+ * Whether an image can be sent to the advisor. An unsupported one is rejected
+ * by the API, and since the whole history is re-sent every turn, a single bad
+ * attachment would fail every later turn of the session too.
+ */
+export function isSupportedImage(mediaType: string, bytes: number): boolean {
+  return SUPPORTED_IMAGE_TYPES.includes(mediaType) && bytes > 0 && bytes <= MAX_IMAGE_BYTES;
 }
 
 /** Read an uploaded image file into a base64 attachment (prefix stripped). */
@@ -102,4 +139,68 @@ export function downloadText(filename: string, text: string, type = "text/html")
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Sandbox for the generated-app preview. Scripts run, forms submit (without
+ * `allow-forms` the browser drops the submit before the app's own handler ever
+ * sees it) and alert/confirm work. `allow-same-origin` stays off, so the app
+ * can never reach Whetstone's own page, cookies or storage.
+ */
+export const PREVIEW_SANDBOX = "allow-scripts allow-forms allow-modals";
+
+// Without `allow-same-origin`, touching localStorage throws, and one unguarded
+// read stops the whole app script. Give the preview an in-memory stand-in; the
+// saved file uses the browser's real storage.
+const STORAGE_SHIM =
+  "<script>(function(){try{window.localStorage.getItem('')}catch(e){var mk=function(){var m={};return{" +
+  "getItem:function(k){return Object.prototype.hasOwnProperty.call(m,k)?m[k]:null}," +
+  "setItem:function(k,v){m[k]=String(v)},removeItem:function(k){delete m[k]},clear:function(){m={}}," +
+  "key:function(i){return Object.keys(m)[i]||null},get length(){return Object.keys(m).length}}};" +
+  "try{Object.defineProperty(window,'localStorage',{value:mk(),configurable:true});" +
+  "Object.defineProperty(window,'sessionStorage',{value:mk(),configurable:true})}catch(_){}}})();</" +
+  "script>";
+
+/** The document to load in a preview iframe: the app's code plus the storage stand-in. */
+export function previewDoc(code: string): string {
+  if (!code.trim()) return code;
+  for (const anchor of [/<head[^>]*>/i, /<html[^>]*>/i, /<!DOCTYPE[^>]*>/i]) {
+    const m = anchor.exec(code);
+    if (m) {
+      const at = m.index + m[0].length;
+      return code.slice(0, at) + STORAGE_SHIM + code.slice(at);
+    }
+  }
+  return STORAGE_SHIM + code;
+}
+
+export interface TextSegment {
+  text: string;
+  code: boolean;
+}
+
+/**
+ * Split teacher text on `backtick` code spans so the UI can show the code in a
+ * code style instead of printing the backticks. An unmatched backtick is left
+ * in place as ordinary text.
+ */
+export function splitInlineCode(text: string): TextSegment[] {
+  const out: TextSegment[] = [];
+  const re = /`([^`\n]+)`/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) out.push({ text: text.slice(last, m.index), code: false });
+    out.push({ text: m[1], code: true });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last), code: false });
+  return out;
+}
+
+/** The same text with code-span backticks removed — what a voice should read. */
+export function stripInlineCode(text: string): string {
+  return splitInlineCode(text)
+    .map((s) => s.text)
+    .join("");
 }

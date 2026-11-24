@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Assessment, ChatMessage, CriterionSpec, ExportResult, ImageAttachment, Lesson } from "@/lib/types";
 import { fetchLesson, fetchScore, requestExport, streamAdvisor } from "@/lib/clientApi";
 import { copyToClipboard, uid } from "@/lib/format";
+import { isAdvisorReply } from "@/lib/messages";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { Composer } from "./Composer";
 import { Conversation } from "./Conversation";
@@ -11,7 +12,7 @@ import { ExportCard } from "./ExportCard";
 import { IdeaIntake } from "./IdeaIntake";
 import { LessonCard } from "./LessonCard";
 import { ScorePanel } from "./ScorePanel";
-import { BuildWorkspace } from "./BuildWorkspace";
+import { BuildWorkspace, type BuildProgress } from "./BuildWorkspace";
 import { MuteIcon, SoundIcon, SparkIcon } from "./icons";
 
 export function WhetstoneApp({
@@ -29,6 +30,10 @@ export function WhetstoneApp({
   const [lessonLoading, setLessonLoading] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [exported, setExported] = useState(false);
+  // The advisor's closing message. The export and lesson cards sit right after
+  // it in the thread, where the builder is already looking — pinned above the
+  // conversation they landed off-screen, a scroll away from the moment they mark.
+  const [closingId, setClosingId] = useState<string | null>(null);
   const [advisorTyping, setAdvisorTyping] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -42,6 +47,17 @@ export function WhetstoneApp({
   const criteriaRef = useRef<CriterionSpec[] | null>(null);
   const exportedRef = useRef(false);
   const voiceRef = useRef(false);
+  // Bumped by reset(). Every async step captures it and drops its result if it
+  // has moved on — otherwise a reply, score or export still in flight when the
+  // builder hits "New idea" lands on the fresh session (the old idea's score
+  // on the new pitch, a stray closing message on the blank intake screen).
+  const sessionRef = useRef(0);
+  // The build in progress for this idea, kept while the builder is back in the
+  // conversation so returning to Build mode resumes it.
+  const buildRef = useRef<BuildProgress | null>(null);
+  const keepBuild = useCallback((progress: BuildProgress) => {
+    buildRef.current = progress;
+  }, []);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -51,33 +67,56 @@ export function WhetstoneApp({
     if (!voiceOut) cancelSpeech();
   }, [voiceOut, cancelSpeech]);
 
+  // Only the builder profile is saved; the conversation, the plan and the app
+  // being built live in memory. So once there is a session, make the browser
+  // ask before a refresh or a closed tab throws it away.
+  const inSession = messages.length > 0;
+  useEffect(() => {
+    if (!inSession) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [inSession]);
+
   const updateMsg = useCallback((id: string, content: string) => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content } : m)));
   }, []);
 
   const runAdvisor = useCallback(
     async (history: ChatMessage[], closing: boolean, msgId: string) => {
+      const session = sessionRef.current;
+      const live = () => sessionRef.current === session;
       let acc = "";
       try {
         await streamAdvisor(history, closing, (chunk) => {
+          if (!live()) return;
           acc += chunk;
           updateMsg(msgId, acc);
         });
       } catch (err) {
+        if (!live()) return;
         acc = acc || "⚠️ The advisor stumbled mid-thought. Try sending that again.";
         updateMsg(msgId, acc);
         setError(err instanceof Error ? err.message : "Advisor failed");
       } finally {
-        setAdvisorTyping(false);
+        if (live()) setAdvisorTyping(false);
       }
-      if (voiceRef.current && acc && !acc.startsWith("⚠️")) speak(acc);
+      if (!live()) return;
+      // A turn that failed server-side arrives as "\n\n⚠️ …", so check the
+      // trimmed text — the warning is for reading, not for reading aloud.
+      if (voiceRef.current && isAdvisorReply(acc)) speak(acc);
     },
     [speak, updateMsg],
   );
 
   const runScore = useCallback(async (history: ChatMessage[]): Promise<Assessment | null> => {
+    const session = sessionRef.current;
+    const live = () => sessionRef.current === session;
     try {
       const a = await fetchScore(history, criteriaRef.current);
+      if (!live()) return null;
       setAssessment(a);
       if (!criteriaRef.current && a.dynamicCriteria.length > 0) {
         criteriaRef.current = a.dynamicCriteria.map((d) => ({
@@ -88,33 +127,42 @@ export function WhetstoneApp({
       }
       return a;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Scoring failed");
+      if (live()) setError(err instanceof Error ? err.message : "Scoring failed");
       return null;
     } finally {
-      setScoring(false);
+      if (live()) setScoring(false);
     }
   }, []);
 
   const triggerExport = useCallback(
     async (history: ChatMessage[], result: Assessment) => {
+      const session = sessionRef.current;
+      const live = () => sessionRef.current === session;
       exportedRef.current = true;
       setExported(true);
       setLessonLoading(true);
 
-      void requestExport(result.refinedPrompt).then(setExportResult).catch(() => {});
+      void requestExport(result.refinedPrompt)
+        .then((r) => {
+          if (live()) setExportResult(r);
+        })
+        .catch(() => {});
       void copyToClipboard(result.refinedPrompt).catch(() => {});
 
       const closeMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
       setMessages((prev) => [...prev, closeMsg]);
+      setClosingId(closeMsg.id);
       setAdvisorTyping(true);
       await runAdvisor(history, true, closeMsg.id);
+      if (!live()) return;
 
       try {
-        setLesson(await fetchLesson(history));
+        const l = await fetchLesson(history);
+        if (live()) setLesson(l);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Lesson failed");
+        if (live()) setError(err instanceof Error ? err.message : "Lesson failed");
       } finally {
-        setLessonLoading(false);
+        if (live()) setLessonLoading(false);
       }
     },
     [runAdvisor],
@@ -132,40 +180,73 @@ export function WhetstoneApp({
         images: images.length ? images : undefined,
       };
       const advisorMsg: ChatMessage = { id: uid("a"), role: "advisor", content: "" };
-      const nextHistory = [...messagesRef.current, userMsg];
+      // A failed advisor turn is shown as a warning bubble; it is not part of
+      // the conversation, so keep it away from the advisor and the scorer.
+      const nextHistory = [
+        ...messagesRef.current.filter((m) => m.role !== "advisor" || isAdvisorReply(m.content)),
+        userMsg,
+      ];
 
       setMessages([...messagesRef.current, userMsg, advisorMsg]);
       setAdvisorTyping(true);
       setScoring(true);
       setBusy(true);
 
+      const session = sessionRef.current;
       const [, result] = await Promise.all([
         runAdvisor(nextHistory, false, advisorMsg.id),
         runScore(nextHistory),
       ]);
+      if (sessionRef.current !== session) return;
 
       if (result && result.ready && !exportedRef.current) {
+        // The advisor answers while the score is still being worked out, so on
+        // the turn that clears the bar it has just asked one more question.
+        // Take it back: the closing message is the reply to this turn, and a
+        // question nobody is meant to answer shouldn't sit above it.
+        cancelSpeech();
+        setMessages((prev) => prev.filter((m) => m.id !== advisorMsg.id));
         await triggerExport(nextHistory, result);
+        if (sessionRef.current !== session) return;
       }
       setBusy(false);
     },
-    [busy, runAdvisor, runScore, triggerExport],
+    [busy, cancelSpeech, runAdvisor, runScore, triggerExport],
   );
 
   const reset = useCallback(() => {
+    sessionRef.current += 1;
     cancelSpeech();
     setMode("sharpen");
+    messagesRef.current = [];
     setMessages([]);
+    setAdvisorTyping(false);
+    setScoring(false);
     setAssessment(null);
     setLesson(null);
     setLessonLoading(false);
     setExportResult(null);
     setExported(false);
+    setClosingId(null);
     setError(null);
     setBusy(false);
     criteriaRef.current = null;
     exportedRef.current = false;
+    buildRef.current = null;
   }, [cancelSpeech]);
+
+  // The logo and "New idea" sit in the header on every screen, one stray tap
+  // away mid-build. A refresh already asks before it throws the session away;
+  // these did not, and wiped the conversation, the plan and the half-built app.
+  const askReset = useCallback(() => {
+    if (
+      messagesRef.current.length > 0 &&
+      !window.confirm("Start a new idea? This conversation and anything you've built so far will be cleared.")
+    ) {
+      return;
+    }
+    reset();
+  }, [reset]);
 
   const started = messages.length > 0;
 
@@ -173,7 +254,7 @@ export function WhetstoneApp({
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b border-line/70 bg-base/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <button type="button" onClick={reset} className="flex items-center gap-2.5 text-left">
+          <button type="button" onClick={askReset} className="flex items-center gap-2.5 text-left">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-ember-soft to-ember-deep text-base shadow-glow">
               <SparkIcon className="h-5 w-5" />
             </span>
@@ -209,7 +290,7 @@ export function WhetstoneApp({
             {started && (
               <button
                 type="button"
-                onClick={reset}
+                onClick={askReset}
                 className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:border-ember/40 hover:text-ink"
               >
                 New idea
@@ -228,18 +309,31 @@ export function WhetstoneApp({
             projectType={assessment.projectType}
             messages={messages}
             builderName={builderName}
+            resume={buildRef.current}
+            onProgress={keepBuild}
             onBack={() => setMode("sharpen")}
+            onNewIdea={reset}
           />
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <section className="flex min-w-0 flex-col gap-5">
-              {exported && assessment && (
-                <ExportCard refinedPrompt={assessment.refinedPrompt} result={exportResult} />
-              )}
-              {exported && <LessonCard lesson={lesson} loading={lessonLoading} />}
-
               <div className="min-h-[40vh]">
-                <Conversation messages={messages} advisorTyping={advisorTyping} />
+                <Conversation
+                  messages={messages}
+                  advisorTyping={advisorTyping}
+                  asideAfterId={closingId}
+                  asideKey={`${exported}-${Boolean(exportResult)}-${lessonLoading}-${Boolean(lesson)}`}
+                  aside={
+                    exported && (
+                      <>
+                        {assessment && (
+                          <ExportCard refinedPrompt={assessment.refinedPrompt} result={exportResult} />
+                        )}
+                        <LessonCard lesson={lesson} loading={lessonLoading} />
+                      </>
+                    )
+                  }
+                />
               </div>
 
               {error && (
