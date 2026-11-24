@@ -6,6 +6,7 @@ import { sendBoardChat } from "@/lib/clientApi";
 import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { Caption } from "./Caption";
+import { RichText } from "./RichText";
 import { ArrowIcon, BookIcon, KeyboardIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
 
 interface WhiteboardProps {
@@ -165,14 +166,18 @@ export function Whiteboard({
     [teacher],
   );
 
+  // The count lives in a ref as well, so a step is announced from the click
+  // itself. Announcing it inside the state updater said every line twice under
+  // `npm run dev`, where React runs updaters a second time to check them.
+  const revealedRef = useRef(0);
   const revealNext = useCallback(() => {
-    setRevealed((r) => {
-      if (r >= board.steps.length) return r;
-      const step = board.steps[r];
-      setChat((c) => [...c, { who: "teacher", text: step.say }]);
-      say(step.say);
-      return r + 1;
-    });
+    const r = revealedRef.current;
+    if (r >= board.steps.length) return;
+    const step = board.steps[r];
+    revealedRef.current = r + 1;
+    setRevealed(r + 1);
+    setChat((c) => [...c, { who: "teacher", text: step.say }]);
+    say(step.say);
   }, [board.steps, say]);
 
   useEffect(() => {
@@ -300,7 +305,7 @@ export function Whiteboard({
 
         {/* ─── Bottom control bar (avatar · caption · mic) like the reference ─── */}
         {started && (
-          <div className="flex items-center gap-3 border-t border-black/5 bg-white/80 px-4 py-3 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-3 border-t border-black/5 bg-white/80 px-4 py-3 backdrop-blur">
             {/* teacher avatar + pause */}
             <div className="flex items-center gap-2">
               <div
@@ -321,8 +326,9 @@ export function Whiteboard({
               </button>
             </div>
 
-            {/* live caption (karaoke) */}
-            <div className="min-w-0 flex-1">
+            {/* live caption (karaoke) — on a phone it takes its own row above the
+                controls; squeezed between them it wrapped to two words a line. */}
+            <div className="order-first min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-0">
               {caption ? (
                 <Caption text={caption} progress={teacher.progress} />
               ) : (
@@ -331,7 +337,7 @@ export function Whiteboard({
             </div>
 
             {/* input affordances */}
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowType((v) => !v)}
@@ -414,7 +420,7 @@ export function Whiteboard({
                     : "rounded-tl-sm border border-line bg-panel text-ink"
                 }`}
               >
-                {m.text}
+                {m.who === "teacher" ? <RichText text={m.text} /> : m.text}
               </div>
             </div>
           ))}

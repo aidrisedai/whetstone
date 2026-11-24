@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { MAX_HISTORY_MESSAGES, MAX_IMAGES_PER_MESSAGE, MAX_MESSAGE_CHARS, isSupportedImage } from "./format";
 import type { ChatMessage, CriterionSpec, ImageAttachment, Role } from "./types";
 
 /** Turn an unknown error into a short, builder-friendly message. */
@@ -8,6 +9,11 @@ export function getErrorMessage(err: unknown): string {
   }
   if (err instanceof Anthropic.RateLimitError) {
     return "The advisor is rate-limited right now. Give it a few seconds and try again.";
+  }
+  // No reply at all (network down, DNS, timeout): there is no status to show,
+  // and "API error (?)" tells the builder nothing.
+  if (err instanceof Anthropic.APIConnectionError) {
+    return "Couldn't reach the advisor — check the connection and try again in a moment.";
   }
   if (err instanceof Anthropic.APIError) {
     return `The advisor hit an API error (${err.status ?? "?"}). Try again in a moment.`;
@@ -22,6 +28,14 @@ export function getErrorMessage(err: unknown): string {
  */
 export function safeParseJson<T>(text: string): T {
   const trimmed = (text ?? "").trim();
+  // Clean JSON first: a string value may itself hold a code fence (a fenced
+  // example in a prompt, a snippet in an answer), which the fence match below
+  // would mistake for the wrapper.
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    /* wrapped or surrounded — dig it out below. */
+  }
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   const candidate = fenced ? fenced[1] : trimmed;
   const start = candidate.indexOf("{");
@@ -29,6 +43,21 @@ export function safeParseJson<T>(text: string): T {
   const slice = start >= 0 && end >= start ? candidate.slice(start, end + 1) : candidate;
   return JSON.parse(slice) as T;
 }
+
+/**
+ * Parse a structured reply. One cut off at the token limit is half a JSON
+ * document, so report that plainly instead of the parse error it would cause.
+ */
+export function parseReply<T>(resp: Anthropic.Message, cutOffMessage = CUT_OFF_MESSAGE): T {
+  if (resp.stop_reason === "max_tokens") throw new Error(cutOffMessage);
+  const block = resp.content.find((b) => b.type === "text");
+  const text = block && block.type === "text" ? block.text.trim() : "";
+  // A refusal or a reply with no text has nothing to parse.
+  if (resp.stop_reason === "refusal" || !text) throw new Error(NO_ANSWER_MESSAGE);
+  return safeParseJson<T>(text);
+}
+const NO_ANSWER_MESSAGE = "The model didn't return an answer for that — try rephrasing and send it again.";
+const CUT_OFF_MESSAGE = "That answer got cut off before it finished — try again.";
 
 export function jsonError(message: string, status = 400): Response {
   return new Response(JSON.stringify({ error: message }), {
@@ -54,6 +83,35 @@ export async function readJsonBody(req: Request): Promise<Record<string, unknown
   } catch {
     return null;
   }
+}
+
+/**
+ * Ceiling on the text one build/coach request may carry. The largest honest
+ * field is the app's own code — a few tens of thousands of characters — so
+ * this leaves generous headroom while keeping megabytes of pasted text from
+ * being billed to the operator's API key. (Conversations have their own
+ * limits in `asChatHistory`.)
+ */
+export const MAX_REQUEST_TEXT_CHARS = 400_000;
+
+/** Total length of every string anywhere inside a parsed JSON value. */
+export function textLength(value: unknown): number {
+  let total = 0;
+  // An explicit stack, so a deeply nested body can't overflow the call stack.
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (typeof next === "string") total += next.length;
+    else if (Array.isArray(next)) pending.push(...next);
+    else if (next && typeof next === "object") pending.push(...Object.values(next));
+  }
+  return total;
+}
+
+/** A 413 for a body carrying more text than any real request does, else null. */
+export function textLimitError(body: Record<string, unknown>): Response | null {
+  if (textLength(body) <= MAX_REQUEST_TEXT_CHARS) return null;
+  return jsonError("That's more text than Whetstone can take in one go — trim it down and try again.", 413);
 }
 
 /** A string field, verbatim — anything that isn't a string becomes `fallback`. */
@@ -83,20 +141,24 @@ function asImages(value: unknown): ImageAttachment[] | undefined {
     if (!raw || typeof raw !== "object") return [];
     const img = raw as Record<string, unknown>;
     if (typeof img.mediaType !== "string" || typeof img.data !== "string") return [];
+    // base64 carries 3 bytes per 4 characters.
+    if (!isSupportedImage(img.mediaType, Math.floor((img.data.length * 3) / 4))) return [];
     const out: ImageAttachment = { mediaType: img.mediaType, data: img.data };
     if (typeof img.name === "string") out.name = img.name;
     return [out];
   });
-  return images.length > 0 ? images : undefined;
+  return images.length > 0 ? images.slice(0, MAX_IMAGES_PER_MESSAGE) : undefined;
 }
 
 /**
- * A chat history. Malformed entries are dropped rather than crashing the
+ * A chat history. Oversized ones are refused outright (null) rather than
+ * trimmed, so the model never answers a conversation it only half saw. Malformed entries are dropped rather than crashing the
  * conversion to Anthropic messages; returns null when nothing usable is left,
  * which routes report as a 400.
  */
 export function asChatHistory(value: unknown): ChatMessage[] | null {
-  if (!Array.isArray(value)) return null;
+  if (!Array.isArray(value) || value.length > MAX_HISTORY_MESSAGES) return null;
+  if (value.some((raw) => typeof raw?.content === "string" && raw.content.length > MAX_MESSAGE_CHARS)) return null;
   const history = value.flatMap((raw) => {
     if (!raw || typeof raw !== "object") return [];
     const m = raw as Record<string, unknown>;

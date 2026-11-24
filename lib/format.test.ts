@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { applyEdits, assembleBeats, assembleBeatsUpTo, beatsFormValidDoc, cleanGeneratedHtml } from "./format";
+import {
+  MAX_IMAGE_BYTES,
+  applyEdits,
+  assembleBeats,
+  assembleBeatsUpTo,
+  beatsFormValidDoc,
+  cleanGeneratedHtml,
+  isSupportedImage,
+  previewDoc,
+  splitInlineCode,
+  stripInlineCode,
+} from "./format";
 import type { CodeBeat } from "./types";
 
 function beat(code: string, overrides: Partial<CodeBeat> = {}): CodeBeat {
@@ -7,15 +18,21 @@ function beat(code: string, overrides: Partial<CodeBeat> = {}): CodeBeat {
 }
 
 describe("assembleBeats / assembleBeatsUpTo", () => {
-  const beats = [beat("<a>"), beat("<b>"), beat("<c>")];
+  const beats = [beat("<a>\n"), beat("<b>\n"), beat("<c>\n")];
 
   it("concatenates all beats in order", () => {
-    expect(assembleBeats(beats)).toBe("<a><b><c>");
+    expect(assembleBeats(beats)).toBe("<a>\n<b>\n<c>\n");
   });
 
   it("concatenates only up to and including the given index", () => {
-    expect(assembleBeatsUpTo(beats, 1)).toBe("<a><b>");
-    expect(assembleBeatsUpTo(beats, 0)).toBe("<a>");
+    expect(assembleBeatsUpTo(beats, 1)).toBe("<a>\n<b>\n");
+    expect(assembleBeatsUpTo(beats, 0)).toBe("<a>\n");
+  });
+
+  it("ends each beat's last line so beats cannot fuse", () => {
+    const fused = [beat("const a = 1; // first"), beat("const b = 2"), beat("")];
+    expect(assembleBeats(fused)).toBe("const a = 1; // first\nconst b = 2\n");
+    expect(assembleBeatsUpTo(fused, 0)).toBe("const a = 1; // first\n");
   });
 });
 
@@ -81,5 +98,52 @@ describe("applyEdits", () => {
     ]);
     expect(result.applied).toBe(0);
     expect(result.code).toBe("hello");
+  });
+});
+
+describe("isSupportedImage", () => {
+  it("caps the file so its base64 form stays within the 5 MB vision limit", () => {
+    expect(Math.ceil(MAX_IMAGE_BYTES / 3) * 4).toBeLessThanOrEqual(5 * 1024 * 1024);
+    expect(isSupportedImage("image/png", MAX_IMAGE_BYTES)).toBe(true);
+    expect(isSupportedImage("image/png", 4.5 * 1024 * 1024)).toBe(false);
+  });
+});
+
+describe("previewDoc", () => {
+  it("adds the storage stand-in inside <head>, keeping the doctype first", () => {
+    const doc = previewDoc("<!DOCTYPE html><html><head><title>t</title></head><body></body></html>");
+    expect(doc.startsWith("<!DOCTYPE html><html><head><script>")).toBe(true);
+    expect(doc).toContain("<title>t</title>");
+  });
+
+  it("still adds it to a half-written document", () => {
+    expect(previewDoc("<!DOCTYPE html>\n<body><h1>Hi").startsWith("<!DOCTYPE html><script>")).toBe(true);
+    expect(previewDoc("<h1>Hi</h1>").startsWith("<script>")).toBe(true);
+  });
+
+  it("leaves an empty document empty", () => {
+    expect(previewDoc("")).toBe("");
+  });
+});
+
+describe("splitInlineCode", () => {
+  it("separates backtick spans from the prose around them", () => {
+    expect(splitInlineCode("A `<form>` collects `input`.")).toEqual([
+      { text: "A ", code: false },
+      { text: "<form>", code: true },
+      { text: " collects ", code: false },
+      { text: "input", code: true },
+      { text: ".", code: false },
+    ]);
+  });
+
+  it("leaves plain text and an unmatched backtick alone", () => {
+    expect(splitInlineCode("no code here")).toEqual([{ text: "no code here", code: false }]);
+    expect(splitInlineCode("a ` stray tick")).toEqual([{ text: "a ` stray tick", code: false }]);
+    expect(splitInlineCode("")).toEqual([]);
+  });
+
+  it("gives the voice the same words without the backticks", () => {
+    expect(stripInlineCode("Call `render()` again")).toBe("Call render() again");
   });
 });

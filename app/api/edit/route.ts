@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { EDIT_SCHEMA, EDIT_SYSTEM, editUserMessage } from "@/lib/prompts";
 import { demoEdits } from "@/lib/demo";
-import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody, safeParseJson } from "@/lib/serverUtils";
+import { asText, asTrimmed, getErrorMessage, jsonError, readJsonBody, textLimitError, parseReply } from "@/lib/serverUtils";
 import type { EditResult } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -11,6 +11,8 @@ export const maxDuration = 180;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const currentCode = asText(body.currentCode);
   const changeRequest = asTrimmed(body.changeRequest);
@@ -32,9 +34,7 @@ export async function POST(req: Request): Promise<Response> {
       output_config: { format: { type: "json_schema", schema: EDIT_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
-    const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    return Response.json(safeParseJson<EditResult>(text));
+    return Response.json(parseReply<EditResult>(resp));
   } catch (err) {
     return jsonError(getErrorMessage(err), 502);
   }

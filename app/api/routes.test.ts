@@ -13,150 +13,21 @@
  */
 process.env.WHETSTONE_DEMO = "1";
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-const post = (handler: (req: Request) => Promise<Response>, body: unknown) =>
-  handler(
-    new Request("http://localhost/api/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: typeof body === "string" ? body : JSON.stringify(body),
-    }),
-  );
+import { post, ROUTES, STREAMS } from "./routeFixtures";
 
-const history = [
-  { role: "user", content: "I want to build a habit tracker for teens." },
-  { role: "assistant", content: "Who is it for, and what breaks today?" },
-  { role: "user", content: "High schoolers who forget which subject to revise." },
-];
-
-const part = {
-  title: "The habit list",
-  whatItIs: "A list of habits on screen",
-  concept: "arrays",
-  buildSpec: "Render an array of habit strings into <li> elements.",
-};
-
-/** Every route: [name, module path, a valid body, the keys the client reads]. */
-const ROUTES: Array<[string, string, Record<string, unknown>, string[]]> = [
-  ["score", "./score/route", { history, priorCriteria: null }, ["projectType", "refinedPrompt", "overall", "ready"]],
-  ["lesson", "./lesson/route", { history }, ["title", "lesson", "why"]],
-  ["export", "./export/route", { refinedPrompt: "Build a habit tracker." }, ["builderName", "builderUrl"]],
-  [
-    "coach",
-    "./coach/route",
-    { refinedPrompt: "Build a habit tracker.", projectType: "web app", step: 1, changeRequest: "" },
-    ["whatChanged", "concept", "proTip"],
-  ],
-  [
-    "plan",
-    "./plan/route",
-    {
-      refinedPrompt: "Build a habit tracker.",
-      projectType: "web app",
-      name: "Sam",
-      favoriteGame: "Minecraft",
-      knownConcepts: [],
-    },
-    ["projectName", "bigPicture", "parts"],
-  ],
-  [
-    "board",
-    "./board/route",
-    {
-      projectName: "HabitHero",
-      bigPicture: "Track habits",
-      part,
-      partNumber: 1,
-      totalParts: 3,
-      name: "Sam",
-      favoriteGame: "Minecraft",
-    },
-    ["partTitle", "boardTitle", "steps"],
-  ],
-  [
-    "board-chat",
-    "./board-chat/route",
-    {
-      projectName: "HabitHero",
-      part: { title: part.title, concept: part.concept },
-      boardSoFar: "arrays hold many things",
-      studentSaid: "why an array?",
-    },
-    ["reply", "boardItem"],
-  ],
-  [
-    "lesson-build",
-    "./lesson-build/route",
-    {
-      projectName: "HabitHero",
-      bigPicture: "Track habits",
-      projectType: "web app",
-      partNumber: 1,
-      totalParts: 3,
-      part,
-      currentCode: "",
-      favoriteGame: "Minecraft",
-      name: "Sam",
-    },
-    ["partTitle", "intro", "beats", "outro", "concept"],
-  ],
-  [
-    "code-ask",
-    "./code-ask/route",
-    {
-      projectName: "HabitHero",
-      partTitle: part.title,
-      beatLabel: "the array",
-      beatCode: "const habits = [];",
-      fileSoFar: "<html></html>",
-      studentSaid: "what does const mean?",
-    },
-    ["reply", "highlightHint"],
-  ],
-  [
-    "quiz",
-    "./quiz/route",
-    {
-      projectName: "HabitHero",
-      refinedPrompt: "Build a habit tracker.",
-      partTitle: part.title,
-      concept: "arrays",
-      newCode: "const habits = ['read'];",
-      name: "Sam",
-    },
-    ["partTitle", "questions"],
-  ],
-  [
-    "extend",
-    "./extend/route",
-    {
-      projectName: "HabitHero",
-      refinedPrompt: "Build a habit tracker.",
-      request: "add streaks",
-      currentCode: "<html></html>",
-      knownConcepts: ["arrays"],
-    },
-    ["title", "whatItIs", "concept", "buildSpec"],
-  ],
-  [
-    "edit",
-    "./edit/route",
-    {
-      refinedPrompt: "Build a habit tracker.",
-      projectType: "web app",
-      currentCode: "<html><body><h1>Hi</h1></body></html>",
-      changeRequest: "make the heading say Habits",
-    },
-    ["summary", "edits"],
-  ],
-];
-
-/** The two streaming routes answer with text, not JSON, so they get their own checks. */
-const STREAMS: Array<[string, string, Record<string, unknown>]> = [
-  ["advisor", "./advisor/route", { history, phase: "dialogue" }],
-  ["build", "./build/route", { refinedPrompt: "Build a habit tracker.", projectType: "web app" }],
-];
+/** `body` with every text field (and the first chat message) blown up to half a megabyte. */
+function oversized(body: Record<string, unknown>): Record<string, unknown> {
+  const huge = "x".repeat(500_000);
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (typeof value === "string") out[key] = huge;
+    else if (key === "history" && Array.isArray(value)) out[key] = [{ role: "user", content: huge }, ...value.slice(1)];
+    else out[key] = value;
+  }
+  return out;
+}
 
 describe.each(ROUTES)("POST /api/%s", (_name, modPath, validBody, keys) => {
   let POST: (req: Request) => Promise<Response>;
@@ -177,6 +48,13 @@ describe.each(ROUTES)("POST /api/%s", (_name, modPath, validBody, keys) => {
       expect(res.status).toBeGreaterThanOrEqual(400);
       expect(res.status).toBeLessThan(500);
     }
+  });
+
+  it("refuses megabytes of text instead of passing them to the model", async () => {
+    const res = await post(POST, oversized(validBody));
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+    expect(((await res.json()) as { error?: string }).error).toBeTruthy();
   });
 
   it("never 500s when a field carries the wrong type", async () => {
@@ -205,6 +83,12 @@ describe.each(STREAMS)("POST /api/%s (streaming)", (_name, modPath, validBody) =
     expect(res.headers.get("Content-Type")).toMatch(/text\/plain/);
     const text = await res.text();
     expect(text.trim().length).toBeGreaterThan(20);
+  });
+
+  it("refuses megabytes of text without streaming", async () => {
+    const res = await post(POST, oversized(validBody));
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
   });
 
   it("rejects a malformed body without streaming", async () => {
@@ -236,6 +120,52 @@ describe("/api/speak", () => {
       expect(res.status).toBeGreaterThanOrEqual(400);
       expect(res.status).toBeLessThan(500);
     }
+  });
+});
+
+/**
+ * The webhook is the hands-free hand-off, so it must fire exactly once per
+ * export. The build workspace re-requests the deep link every time it opens;
+ * without `linkOnly` each visit re-delivered the prompt to the operator's
+ * pipeline.
+ */
+describe("/api/export webhook", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.BUILDER_WEBHOOK_URL;
+  });
+
+  const setup = () => {
+    process.env.BUILDER_WEBHOOK_URL = "https://hooks.example.test/whetstone";
+    const fetchMock = vi.fn(async () => new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  };
+
+  it("delivers the prompt on a real export", async () => {
+    const fetchMock = setup();
+    const { POST } = await import("./export/route");
+    const res = await post(POST, { refinedPrompt: "Build a habit tracker." });
+    expect(await res.json()).toMatchObject({ webhook: "sent" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the deep link without delivering when linkOnly is set", async () => {
+    const fetchMock = setup();
+    const { POST } = await import("./export/route");
+    const res = await post(POST, { refinedPrompt: "Build a habit tracker.", linkOnly: true });
+    const json = (await res.json()) as { builderUrl: string; webhook: string };
+    expect(json.webhook).toBe("skipped");
+    expect(json.builderUrl).toMatch(/^https:\/\//);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses an oversized prompt instead of relaying it", async () => {
+    const fetchMock = setup();
+    const { POST } = await import("./export/route");
+    const res = await post(POST, { refinedPrompt: "x".repeat(20_001) });
+    expect(res.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

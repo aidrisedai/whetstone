@@ -114,19 +114,23 @@ tuned for a 10–11‑year‑old who'd rather be gaming:
   **3–5 buildable parts**, each with a fun title, a plain‑language *what it is*, an
   engineering‑manager *why we build it (and why now)*, and the **one concept**
   they'll learn. Favorite‑game analogies are woven in.
-- **Teach → approve → build, part by part.** For each part the kid sees the
-  explanation, then taps **"Build it!"** — only *then* is the code generated. The
-  first part is a full, streamed file (Sonnet 4.6); each later part is added to the
-  **same app** via fast targeted edits (with a full‑rebuild fallback), so the app
-  visibly **grows** one accepted piece at a time.
+- **Teach → build → check, part by part.** For each part Coach Spark first
+  sketches the idea on a **whiteboard** (narrated out loud, and the kid can ask
+  questions by voice or keyboard). Only then is the code written — as a
+  **narrated code lesson** that adds the part to the **same app** a few lines at
+  a time, with the running app one tab away and a "raise your hand" button for
+  questions about the code on screen. A short **checkpoint quiz** on the code
+  just written closes the part, so the app visibly **grows** one understood
+  piece at a time.
 - **Delightful feedback.** Each accepted part fires confetti, **+XP**, a level
   bar, and a quest‑map stepper — learning that feels like leveling up.
-- **Keep it.** Download the `.html`, ask for free‑form changes at the end, or open
-  the prompt in an external builder. Finish with the single transferable lesson.
+- **Keep it.** Download the `.html`, add more features with **Keep building**
+  (each one is planned, taught and built like any other part), or open the
+  prompt in an external builder. Finish with the single transferable lesson.
 
 The build target is deliberately a single self‑contained file (inline CSS +
 vanilla JS, **no external dependencies**): instant, safe (the iframe runs with
-`allow-scripts` only), portable, and genuinely *yours*.
+scripts, forms and dialogs allowed, but never same-origin access), portable, and genuinely *yours*.
 
 ---
 
@@ -145,6 +149,7 @@ All optional — see [`.env.example`](./.env.example).
 | `WHETSTONE_COACH_MODEL`   | `claude-opus-4-8`  | Coach Spark — the build plan and per‑step teaching.            |
 | `WHETSTONE_THRESHOLD`     | `80`               | Overall score (1–100) needed to auto‑export.                   |
 | `WHETSTONE_BUILDER`       | `bolt`             | Connected builder: `bolt` · `v0` · `lovable` · `claude`.       |
+| `WHETSTONE_RATE_LIMIT`    | `300`              | API requests allowed per caller IP per minute; `0` turns it off. In‑memory, per server instance. |
 | `BUILDER_WEBHOOK_URL`     | _(unset)_          | Server‑to‑server hand‑off: the refined prompt is POSTed here.  |
 | `GOOGLE_TTS_API_KEY`      | _(unset)_          | Google Cloud TTS key — swaps the teacher to an HD voice.       |
 | `GOOGLE_TTS_ACCESS_TOKEN` | _(unset)_          | …or a short‑lived OAuth token for TTS, instead of a key.       |
@@ -168,12 +173,18 @@ and are budgeted at 300s; the scoring and planning routes at 90–120s. On Verce
 `maxDuration` above 60s requires a Pro plan or higher — on Hobby, either stay
 under the cap or expect the long build routes to be killed mid‑generation.
 
-**There is no rate limiting or authentication.** Every endpoint is an
-unauthenticated proxy to Claude, and the two build routes can each spend 16 000
-Opus output tokens per request. Do not expose a keyed deployment to the open
-internet as‑is: put it behind auth, a gateway rate limiter, or a per‑IP limit
-first. Demo mode (no `ANTHROPIC_API_KEY`) has no such exposure — it never calls
-the API.
+**There is no authentication, and the built-in rate limit is only a backstop.**
+Every endpoint is an unauthenticated proxy to Claude, and the two build routes
+can each spend 16 000 Opus output tokens per request. A per‑IP limit
+(`WHETSTONE_RATE_LIMIT`, default 300 requests a minute) stops runaway loops and
+casual abuse, but it counts in memory per server instance and trusts the
+forwarding headers, so it is not a billing cap. Requests are also size‑capped
+(a conversation at 200 messages of 20 000 characters, a build or coach request
+at 400 000 characters of text) so one call can't carry megabytes of input to the
+model — which bounds a single request, not the total. Do not expose a keyed deployment
+to the open internet as‑is: put it behind auth or a gateway rate limiter, and
+set a spend limit on the API key. Demo mode (no `ANTHROPIC_API_KEY`) has no such
+exposure — it never calls the API.
 
 ---
 
@@ -192,13 +203,18 @@ app/
     score/route.ts      # structured assessment (json_schema output)
     lesson/route.ts     # structured transferable lesson
     export/route.ts     # builder deep link + optional webhook hand‑off
-    build/route.ts      # streams the generated self‑contained app (first build)
-    edit/route.ts       # targeted find‑and‑replace edits for fast iteration
-    coach/route.ts      # structured teaching card after each build step
+    plan/route.ts       # Coach Spark's build plan (3–5 parts, no code yet)
+    board/route.ts      # whiteboard lesson for one part · board-chat: questions
+    lesson-build/route.ts  # the part's code, as narrated beats · code-ask: questions
+    quiz/route.ts       # checkpoint quiz on the code just written
+    extend/route.ts     # "Keep building": a request → one more part
+    speak/route.ts      # optional Google TTS teacher voice
+    build/ · edit/ · coach/  # earlier one-shot build flow; not called by the UI
 components/             # WhetstoneApp orchestrator, Composer, Conversation,
                         # ScorePanel/Ring/DimensionBar, ExportCard, LessonCard,
-                        # BuildWorkspace (preview + code + coach rail)…
-hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis (voice out)
+                        # BuildWorkspace → Whiteboard, CodeLesson, CheckpointQuiz…
+hooks/                 # useSpeechRecognition (voice in) · useSpeechSynthesis and
+                       # useTeacherVoice (voice out)
 lib/                   # prompts, scoring (threshold logic), builders, demo, types…
 ```
 
@@ -208,7 +224,7 @@ deliberate model (**Opus 4.8**) handles scoring and the lesson, where judgment
 matters. The two run in parallel each turn, so scoring never blocks the chat.
 Scoring and the lesson use **structured outputs** (`output_config.format` with a
 JSON schema) so results are always valid; system prompts are cached. Adaptive
-thinking and `effort` are applied only on models that support them (Opus 4.5+ /
+thinking and `effort` are applied only on models that support them (Opus 4.6+ /
 Sonnet 4.6), so swapping in a faster model like Haiku 4.5 stays valid.
 
 **Multimodal.** Voice in/out uses the browser Web Speech API (no extra keys;
@@ -230,5 +246,8 @@ fallback.
   Where it's missing, the mic/voice controls simply don't appear.
 - **Demo mode** is deterministic and offline‑friendly — scores climb as you give
   more substantive answers, so a handful of sharp turns will cross the bar.
+  The build phase in demo mode always teaches and builds the same small starter
+  app (a list you can add to, delete from, and that is remembered), whatever the
+  pitch was; building *your* idea needs an API key.
 - This repo includes a `SessionStart` hook (`.claude/settings.json`) that installs
   dependencies automatically in Claude Code web sessions.

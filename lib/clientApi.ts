@@ -15,6 +15,23 @@ import type {
   Lesson,
 } from "./types";
 
+/**
+ * A streaming route that fails answers with JSON (`{ error }`) rather than a
+ * stream. Pull the message out so the builder sees words, not a JSON blob.
+ */
+async function streamErrorText(res: Response): Promise<string> {
+  const raw = await res.text().catch(() => "");
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && typeof (parsed as { error?: unknown }).error === "string") {
+      return (parsed as { error: string }).error;
+    }
+  } catch {
+    /* plain text — use it as is. */
+  }
+  return raw;
+}
+
 /** Stream the advisor's reply, invoking `onChunk` with each text delta. */
 export async function streamAdvisor(
   history: ChatMessage[],
@@ -27,8 +44,7 @@ export async function streamAdvisor(
     body: JSON.stringify({ history, phase: closing ? "closing" : "dialogue" }),
   });
   if (!res.ok || !res.body) {
-    const msg = await res.text().catch(() => "");
-    throw new Error(msg || `Advisor request failed (${res.status})`);
+    throw new Error((await streamErrorText(res)) || `Advisor request failed (${res.status})`);
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -68,11 +84,18 @@ export async function fetchLesson(history: ChatMessage[]): Promise<Lesson> {
   return (await res.json()) as Lesson;
 }
 
-export async function requestExport(refinedPrompt: string): Promise<ExportResult> {
+/**
+ * `linkOnly` fetches just the builder deep link, skipping the webhook hand-off
+ * — for callers that need the URL but are not themselves the export.
+ */
+export async function requestExport(
+  refinedPrompt: string,
+  opts: { linkOnly?: boolean } = {},
+): Promise<ExportResult> {
   const res = await fetch("/api/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refinedPrompt }),
+    body: JSON.stringify({ refinedPrompt, linkOnly: opts.linkOnly === true }),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -99,8 +122,7 @@ export async function streamBuild(
     body: JSON.stringify(payload),
   });
   if (!res.ok || !res.body) {
-    const msg = await res.text().catch(() => "");
-    throw new Error(msg || `Build request failed (${res.status})`);
+    throw new Error((await streamErrorText(res)) || `Build request failed (${res.status})`);
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
