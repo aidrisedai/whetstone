@@ -9,7 +9,8 @@ import {
   getErrorMessage,
   jsonError,
   readJsonBody,
-  safeParseJson,
+  textLimitError,
+  parseReply,
 } from "@/lib/serverUtils";
 import type { BoardLesson, BoardStep } from "@/lib/types";
 
@@ -20,6 +21,8 @@ export const maxDuration = 120;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const part = asPart(body.part);
   if (!part || !part.title) return jsonError("`part` with a title is required");
@@ -35,7 +38,7 @@ export async function POST(req: Request): Promise<Response> {
     const tune = reasoning(MODELS.coach, "medium");
     const resp = await getClient().messages.create({
       model: MODELS.coach,
-      max_tokens: 2500,
+      max_tokens: 5000,
       system: [{ type: "text", text: BOARD_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [
         {
@@ -55,9 +58,7 @@ export async function POST(req: Request): Promise<Response> {
       output_config: { format: { type: "json_schema", schema: BOARD_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
-    const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const parsed = safeParseJson<{ boardTitle: string; steps: BoardStep[]; closing: string }>(text);
+    const parsed = parseReply<{ boardTitle: string; steps: BoardStep[]; closing: string }>(resp);
     const lesson: BoardLesson = {
       partTitle: part.title,
       boardTitle: parsed.boardTitle,

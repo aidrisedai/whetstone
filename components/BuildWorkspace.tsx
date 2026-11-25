@@ -19,7 +19,8 @@ import {
   fetchQuiz,
   requestExport,
 } from "@/lib/clientApi";
-import { downloadText } from "@/lib/format";
+import { PREVIEW_SANDBOX, downloadText, previewDoc } from "@/lib/format";
+import { conversationTurns } from "@/lib/messages";
 import {
   addConcept,
   defaultProfile,
@@ -49,12 +50,26 @@ const LOAD_LINES = [
 ];
 const LOAD_EMOJI = ["✏️", "🧩", "🍪", "⌨️", "💬", "✨"];
 
+/** What survives leaving the build for the conversation and coming back. */
+export interface BuildProgress {
+  plan: BuildPlan;
+  partIndex: number;
+  code: string;
+  lesson: Lesson | null;
+  done: boolean;
+}
+
 interface BuildWorkspaceProps {
   refinedPrompt: string;
   projectType: string;
   messages: ChatMessage[];
   builderName: string;
+  /** A build of this idea that was left earlier, to pick up again. */
+  resume?: BuildProgress | null;
+  onProgress?: (progress: BuildProgress) => void;
   onBack: () => void;
+  /** Abandon this idea entirely and return to the blank pitch screen. */
+  onNewIdea: () => void;
 }
 
 type Stage = "profile" | "planning" | "walkthrough" | "board" | "lesson" | "checkpoint" | "done";
@@ -142,7 +157,16 @@ function PlanMap({ plan, partIndex }: { plan: BuildPlan; partIndex: number }) {
 
 /* ----------------------------- main ----------------------------- */
 
-export function BuildWorkspace({ refinedPrompt, projectType, messages, builderName, onBack }: BuildWorkspaceProps) {
+export function BuildWorkspace({
+  refinedPrompt,
+  projectType,
+  messages,
+  builderName,
+  resume,
+  onProgress,
+  onBack,
+  onNewIdea,
+}: BuildWorkspaceProps) {
   const [stage, setStage] = useState<Stage>("planning");
   const [profile, setProfile] = useState<BuilderProfile>(defaultProfile());
   const [plan, setPlan] = useState<BuildPlan | null>(null);
@@ -154,6 +178,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
   const [board, setBoard] = useState<BoardLesson | null>(null);
   const [loadingBoard, setLoadingBoard] = useState(false);
+  const lessonBusyRef = useRef(false);
 
   const [checkpoint, setCheckpoint] = useState<Checkpoint | null>(null);
   const [quizLoading, setQuizLoading] = useState(false);
@@ -171,6 +196,16 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   const [extending, setExtending] = useState(false);
   const [showCode, setShowCode] = useState(false);
 
+  // Escape closes the code viewer, the way every other popup behaves.
+  useEffect(() => {
+    if (!showCode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowCode(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showCode]);
+
   const [nameField, setNameField] = useState("");
   const [gameField, setGameField] = useState("");
   const [loadMsg, setLoadMsg] = useState(0);
@@ -187,6 +222,9 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     const id = setInterval(() => setLoadMsg((m) => m + 1), 2600);
     return () => clearInterval(id);
   }, [loadingLesson, loadingBoard]);
+
+  // A project counts once, however many features are added to it afterwards.
+  const projectCounted = useRef(false);
 
   const awardXp = useCallback((delta: number, patch?: Partial<BuilderProfile>) => {
     setProfile((prev) => {
@@ -210,6 +248,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
         });
         if (!pl.parts.length) throw new Error("The plan came back empty — try again.");
         setPlan(pl);
+        projectCounted.current = false;
         setPartIndex(0);
         setCode("");
         setStage("walkthrough");
@@ -227,12 +266,37 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     setProfile(p);
     setNameField(p.name);
     setGameField(p.favoriteGame);
-    requestExport(refinedPrompt)
+    requestExport(refinedPrompt, { linkOnly: true })
       .then((r) => setBuilderUrl(r.builderUrl))
       .catch(() => {});
-    if (p.name) void makePlan(p);
+    if (resume) {
+      // Coming back from the conversation: pick the build up where it was left
+      // instead of planning (and paying for) the same app from scratch.
+      setPlan(resume.plan);
+      setPartIndex(resume.partIndex);
+      setCode(resume.code);
+      setLesson(resume.lesson);
+      setStage(resume.done ? "done" : "walkthrough");
+    } else if (p.name) void makePlan(p);
     else setStage("profile");
-  }, [makePlan, refinedPrompt]);
+  }, [makePlan, refinedPrompt, resume]);
+
+  // Report the build's durable state — the plan, the parts finished and the
+  // code written so far — so leaving for the conversation does not lose it.
+  useEffect(() => {
+    if (!plan) return;
+    // At the checkpoint the part's code is already written, so the build
+    // resumes after it — not by teaching the same part a second time.
+    const last = partIndex >= plan.parts.length - 1;
+    const partWritten = stage === "checkpoint";
+    onProgress?.({
+      plan,
+      partIndex: partWritten && !last ? partIndex + 1 : partIndex,
+      code,
+      lesson,
+      done: stage === "done" || (partWritten && last),
+    });
+  }, [plan, partIndex, code, lesson, stage, onProgress]);
 
   const startFromProfile = () => {
     const p: BuilderProfile = { ...profile, name: nameField.trim(), favoriteGame: gameField.trim() };
@@ -268,7 +332,10 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
   }, [plan, partIndex, profile.name, profile.favoriteGame]);
 
   const startLesson = useCallback(async () => {
-    if (!plan) return;
+    // A second tap while the lesson is being written would start another build
+    // and later swap the code out from under the lesson already on screen.
+    if (!plan || lessonBusyRef.current) return;
+    lessonBusyRef.current = true;
     const part = plan.parts[partIndex];
     setLoadingLesson(true);
     setError(null);
@@ -290,6 +357,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't start the code lesson.");
     } finally {
+      lessonBusyRef.current = false;
       setLoadingLesson(false);
     }
   }, [plan, partIndex, projectType, profile.favoriteGame, profile.name]);
@@ -350,11 +418,14 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
       if (!plan) return;
       if (partIndex >= plan.parts.length - 1) {
-        awardXp(0, { projectsBuilt: profile.projectsBuilt + 1 });
+        if (!projectCounted.current) {
+          projectCounted.current = true;
+          awardXp(0, { projectsBuilt: profile.projectsBuilt + 1 });
+        }
         setStage("done");
         setLessonLoading(true);
         try {
-          setLesson(await fetchLesson(messages));
+          setLesson(await fetchLesson(conversationTurns(messages)));
         } catch {
           /* optional */
         } finally {
@@ -404,7 +475,13 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
 
       {/* Code viewer modal */}
       {showCode && code && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-base/80 p-4 backdrop-blur" onClick={() => setShowCode(false)}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Your full code"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-base/80 p-4 backdrop-blur"
+          onClick={() => setShowCode(false)}
+        >
           <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="font-display text-lg font-bold text-ink">Your full code</h3>
@@ -633,21 +710,23 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
       {stage === "checkpoint" && plan && (
         <div className="flex flex-col gap-4">
           <PlanMap plan={plan} partIndex={partIndex} />
+          {/* min-w-0: a grid item is otherwise as wide as its widest line, and a
+              long line of quiz code pushed the whole page sideways on a phone. */}
           <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,420px)]">
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[11px] uppercase tracking-widest text-muted">your app so far</span>
                 <span className="font-mono text-[11px] text-good">▶ live</span>
               </div>
               <iframe
                 title="App so far"
-                sandbox="allow-scripts"
-                srcDoc={code}
+                sandbox={PREVIEW_SANDBOX}
+                srcDoc={previewDoc(code)}
                 className="h-[52vh] w-full rounded-xl border border-line bg-white"
               />
             </div>
 
-            <div>
+            <div className="min-w-0">
               {quizLoading ? (
                 <div className="grid h-full min-h-[40vh] place-items-center rounded-2xl border border-steel/30 bg-panel/40 text-center">
                   <div>
@@ -696,11 +775,11 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
                   {"</>"} see the code
                 </button>
               </div>
-              <iframe title="Final app" sandbox="allow-scripts" srcDoc={code} className="h-[58vh] w-full bg-white" />
+              <iframe title="Final app" sandbox={PREVIEW_SANDBOX} srcDoc={previewDoc(code)} className="h-[58vh] w-full bg-white" />
             </div>
 
             <div className="flex flex-col gap-4">
-              <LessonCard lesson={lesson} loading={lessonLoading} />
+              {(lesson || lessonLoading) && <LessonCard lesson={lesson} loading={lessonLoading} />}
 
               {/* KEEP BUILDING */}
               <div className="rounded-2xl border border-ember/30 bg-gradient-to-b from-ember/10 to-panel/40 p-4">
@@ -722,7 +801,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
                       }
                     }}
                     rows={1}
-                    placeholder={extending ? "Planning it…" : "e.g. add a search bar, add sound, add a dark mode toggle…"}
+                    placeholder={extending ? "Planning it…" : "e.g. add a search bar…"}
                     className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-base/50 px-3 py-2 text-[15px] text-ink placeholder:text-muted/70 focus:border-ember focus:outline-none"
                   />
                   <button
@@ -759,7 +838,7 @@ export function BuildWorkspace({ refinedPrompt, projectType, messages, builderNa
                 )}
                 <button
                   type="button"
-                  onClick={onBack}
+                  onClick={onNewIdea}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:border-ember/40 hover:text-ink"
                 >
                   Build something new

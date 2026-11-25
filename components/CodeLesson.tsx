@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BuildLesson, CodeBeat } from "@/lib/types";
-import { assembleBeats, assembleBeatsUpTo } from "@/lib/format";
+import { PREVIEW_SANDBOX, assembleBeats, assembleBeatsUpTo, previewDoc } from "@/lib/format";
 import { askDuringCode } from "@/lib/clientApi";
 import { useTeacherVoice } from "@/hooks/useTeacherVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { Caption } from "./Caption";
+import { RichText } from "./RichText";
 import { ArrowIcon, CheckIcon, KeyboardIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, SparkIcon } from "./icons";
 
 const LANG_BADGE: Record<CodeBeat["lang"], { label: string; cls: string }> = {
@@ -280,7 +281,7 @@ export function CodeLesson({
               </div>
             </div>
             {codeSoFar ? (
-              <iframe title="App preview" sandbox="allow-scripts" srcDoc={codeSoFar} className="w-full flex-1 bg-white" />
+              <iframe title="App preview" sandbox={PREVIEW_SANDBOX} srcDoc={previewDoc(codeSoFar)} className="w-full flex-1 bg-white" />
             ) : (
               <div className="grid flex-1 place-items-center text-sm text-muted">Your app runs here as we write it.</div>
             )}
@@ -351,7 +352,7 @@ export function CodeLesson({
                     : "rounded-tl-sm border border-line bg-panel text-ink"
                 }`}
               >
-                {m.text}
+                {m.who === "teacher" ? <RichText text={m.text} /> : m.text}
               </div>
             </div>
           ))}

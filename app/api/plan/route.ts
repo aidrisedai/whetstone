@@ -7,7 +7,8 @@ import {
   getErrorMessage,
   jsonError,
   readJsonBody,
-  safeParseJson,
+  textLimitError,
+  parseReply,
 } from "@/lib/serverUtils";
 
 export const runtime = "nodejs";
@@ -17,6 +18,8 @@ export const maxDuration = 120;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const refinedPrompt = asTrimmed(body.refinedPrompt);
   const projectType = asTrimmed(body.projectType, "App") || "App";
@@ -33,7 +36,7 @@ export async function POST(req: Request): Promise<Response> {
     const tune = reasoning(MODELS.coach, "medium");
     const resp = await getClient().messages.create({
       model: MODELS.coach,
-      max_tokens: 2500,
+      max_tokens: 5000,
       system: [{ type: "text", text: PLAN_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [
         {
@@ -45,9 +48,7 @@ export async function POST(req: Request): Promise<Response> {
       output_config: { format: { type: "json_schema", schema: PLAN_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
-    const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    return Response.json(safeParseJson(text));
+    return Response.json(parseReply(resp));
   } catch (err) {
     return jsonError(getErrorMessage(err), 502);
   }
