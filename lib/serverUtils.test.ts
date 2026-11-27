@@ -1,5 +1,8 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
+import { MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS } from "./format";
 import {
+  getErrorMessage,
   asChatHistory,
   asCriteria,
   asNumber,
@@ -7,8 +10,12 @@ import {
   asStringArray,
   asText,
   asTrimmed,
+  parseReply,
   readJsonBody,
   safeParseJson,
+  textLength,
+  textLimitError,
+  MAX_REQUEST_TEXT_CHARS,
 } from "./serverUtils";
 
 /** Build a Request the way a route receives one. */
@@ -34,6 +41,32 @@ describe("readJsonBody", () => {
     expect(await readJsonBody(post("42"))).toBeNull();
     expect(await readJsonBody(post('"hi"'))).toBeNull();
     expect(await readJsonBody(post("[1,2]"))).toBeNull();
+  });
+});
+
+describe("textLength / textLimitError", () => {
+  it("adds up strings at any depth and ignores everything else", () => {
+    expect(textLength({ a: "abc", b: 42, c: null, d: [true, "de", { e: "f" }] })).toBe(6);
+    expect(textLength("solo")).toBe(4);
+    expect(textLength(undefined)).toBe(0);
+  });
+
+  it("survives nesting deeper than the call stack", () => {
+    let deep: unknown = "x";
+    for (let i = 0; i < 200_000; i++) deep = [deep];
+    expect(textLength(deep)).toBe(1);
+  });
+
+  it("lets a normal request through, including a full app's code", () => {
+    expect(textLimitError({ refinedPrompt: "Build a habit tracker.", currentCode: "x".repeat(120_000) })).toBeNull();
+    expect(textLimitError({ currentCode: "x".repeat(MAX_REQUEST_TEXT_CHARS) })).toBeNull();
+  });
+
+  it("answers 413 with a readable message once the text adds up past the ceiling", async () => {
+    const half = "x".repeat(MAX_REQUEST_TEXT_CHARS / 2);
+    const res = textLimitError({ part: { title: half, buildSpec: half }, name: "x" });
+    expect(res?.status).toBe(413);
+    expect(((await res!.json()) as { error: string }).error).toMatch(/more text/);
   });
 });
 
@@ -113,6 +146,14 @@ describe("asChatHistory", () => {
     expect(asChatHistory(undefined)).toBeNull();
   });
 
+  it("refuses a history with too many messages or an oversized message", () => {
+    const turn = { id: "1", role: "user", content: "hi" };
+    expect(asChatHistory(Array(MAX_HISTORY_MESSAGES).fill(turn))).toHaveLength(MAX_HISTORY_MESSAGES);
+    expect(asChatHistory(Array(MAX_HISTORY_MESSAGES + 1).fill(turn))).toBeNull();
+    expect(asChatHistory([{ ...turn, content: "a".repeat(MAX_MESSAGE_CHARS) }])).toHaveLength(1);
+    expect(asChatHistory([turn, { ...turn, content: "a".repeat(MAX_MESSAGE_CHARS + 1) }])).toBeNull();
+  });
+
   it("keeps only well-formed image attachments", () => {
     const history = asChatHistory([
       {
@@ -128,6 +169,23 @@ describe("asChatHistory", () => {
       },
     ]);
     expect(history?.[0].images).toEqual([{ mediaType: "image/png", data: "abc", name: "shot.png" }]);
+  });
+
+  it("drops images Claude would reject, and caps the count", () => {
+    const png = { mediaType: "image/png", data: "abc" };
+    const history = asChatHistory([
+      {
+        id: "1",
+        role: "user",
+        content: "look",
+        images: [
+          { mediaType: "image/svg+xml", data: "abc" },
+          { mediaType: "image/png", data: "A".repeat(7 * 1024 * 1024) },
+          png, png, png, png, png,
+        ],
+      },
+    ]);
+    expect(history?.[0].images).toEqual([png, png, png, png]);
   });
 
   it("omits images entirely when none survive", () => {
@@ -176,5 +234,50 @@ describe("safeParseJson", () => {
     expect(safeParseJson('{"a":1}')).toEqual({ a: 1 });
     expect(safeParseJson('```json\n{"a":1}\n```')).toEqual({ a: 1 });
     expect(safeParseJson('here you go: {"a":1} — done')).toEqual({ a: 1 });
+  });
+
+  it("keeps a code fence that sits inside a string value", () => {
+    const reply = { reply: "Try:\n```js\nlet x = 1;\n```" };
+    expect(safeParseJson(JSON.stringify(reply))).toEqual(reply);
+  });
+});
+
+describe("parseReply", () => {
+  const reply = (text: string, stop_reason: string) =>
+    ({ stop_reason, content: [{ type: "text", text }] }) as unknown as Parameters<typeof parseReply>[0];
+
+  it("parses a finished reply", () => {
+    expect(parseReply(reply('{"a":1}', "end_turn"))).toEqual({ a: 1 });
+  });
+
+  it("reports a reply cut off at the token limit in plain words", () => {
+    expect(() => parseReply(reply('{"a":', "max_tokens"))).toThrow(/cut off/);
+  });
+
+  it("reports a refusal or an empty reply plainly instead of a parse error", () => {
+    expect(() => parseReply(reply("", "refusal"))).toThrow(/didn't return an answer/);
+    expect(() => parseReply(reply("  ", "end_turn"))).toThrow(/didn't return an answer/);
+    expect(() => parseReply(reply('{"a":', "max_tokens"), "too big")).toThrow("too big");
+  });
+});
+
+describe("getErrorMessage", () => {
+  it("says the advisor is unreachable when there was no reply at all", () => {
+    const msg = getErrorMessage(new Anthropic.APIConnectionError({ message: "Connection error." }));
+    expect(msg).toMatch(/couldn't reach the advisor/i);
+    expect(msg).not.toContain("?)");
+  });
+
+  it("covers timeouts the same way", () => {
+    expect(getErrorMessage(new Anthropic.APIConnectionTimeoutError())).toMatch(/couldn't reach the advisor/i);
+  });
+
+  it("keeps the status on errors that have one", () => {
+    const err = Anthropic.APIError.generate(500, { error: { message: "boom" } }, "boom", new Headers());
+    expect(getErrorMessage(err)).toContain("(500)");
+  });
+
+  it("passes plain errors through", () => {
+    expect(getErrorMessage(new Error("That answer got cut off"))).toBe("That answer got cut off");
   });
 });

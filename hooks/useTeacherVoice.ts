@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { stripInlineCode } from "@/lib/format";
 import { useSpeechSynthesis } from "./useSpeechSynthesis";
 
 type VoiceKind = "hd" | "browser" | "none";
@@ -65,6 +66,12 @@ export function useTeacherVoice() {
     audioRef.current = el;
     silentUrlRef.current = makeSilentUrl();
     return () => {
+      // Drop the source before revoking: a primer or clip still loading when
+      // the lesson unmounts would otherwise fail against a dead blob URL.
+      reqIdRef.current += 1; // a clip still being fetched must not start playing
+      el.pause();
+      el.removeAttribute("src");
+      el.load();
       el.remove();
       if (silentUrlRef.current) URL.revokeObjectURL(silentUrlRef.current);
       if (lastBlobUrlRef.current) URL.revokeObjectURL(lastBlobUrlRef.current);
@@ -136,7 +143,7 @@ export function useTeacherVoice() {
 
   const speak = useCallback(
     async (text: string) => {
-      const t = (text ?? "").trim();
+      const t = stripInlineCode(text ?? "").trim();
       if (!t) return;
       stop();
       setProgress(0);

@@ -1,7 +1,7 @@
 import { getClient, isDemoMode, MODELS, reasoning } from "@/lib/anthropic";
 import { COACH_SCHEMA, COACH_SYSTEM, coachUserMessage } from "@/lib/prompts";
 import { demoCoach } from "@/lib/demo";
-import { asNumber, asTrimmed, getErrorMessage, jsonError, readJsonBody, safeParseJson } from "@/lib/serverUtils";
+import { asNumber, asTrimmed, getErrorMessage, jsonError, readJsonBody, textLimitError, parseReply } from "@/lib/serverUtils";
 import type { CoachNote } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -11,6 +11,8 @@ export const maxDuration = 90;
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const refinedPrompt = asTrimmed(body.refinedPrompt);
   const projectType = asTrimmed(body.projectType, "App") || "App";
@@ -26,7 +28,7 @@ export async function POST(req: Request): Promise<Response> {
     const tune = reasoning(MODELS.coach, "medium");
     const resp = await getClient().messages.create({
       model: MODELS.coach,
-      max_tokens: 1200,
+      max_tokens: 2500,
       system: [{ type: "text", text: COACH_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [
         { role: "user", content: coachUserMessage({ refinedPrompt, projectType, step, changeRequest }) },
@@ -35,9 +37,7 @@ export async function POST(req: Request): Promise<Response> {
       output_config: { format: { type: "json_schema", schema: COACH_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
-    const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    return Response.json(safeParseJson<CoachNote>(text));
+    return Response.json(parseReply<CoachNote>(resp));
   } catch (err) {
     return jsonError(getErrorMessage(err), 502);
   }

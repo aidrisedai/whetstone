@@ -9,7 +9,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { demoAssessment, demoLesson } from "./demo";
+import { demoAdvisorReply, demoAssessment, demoBuildLesson, demoLesson, demoPlan, demoQuiz } from "./demo";
+import { assembleBeats, beatsFormValidDoc } from "./format";
 import type { ChatMessage } from "./types";
 
 const say = (content: string, i: number): ChatMessage => ({ id: `m${i}`, role: "user", content });
@@ -42,6 +43,13 @@ describe("demoAssessment", () => {
         expect(score).toBeLessThanOrEqual(100);
       }
     }
+  });
+
+  it("does not praise a low conciseness score", () => {
+    const thin = demoAssessment(THIN, null, 80).conciseness;
+    expect(thin.score).toBeLessThan(65);
+    expect(thin.rationale).not.toMatch(/tight and readable/i);
+    expect(demoAssessment(SHARP, null, 80).conciseness.rationale).toMatch(/tight and readable/i);
   });
 
   it("calls a thin dimension thin", () => {
@@ -99,8 +107,68 @@ describe("demoAssessment", () => {
 
   it("builds a refined prompt that names the project type", () => {
     const a = demoAssessment(SHARP, null, 80);
-    expect(a.refinedPrompt).toContain(a.projectType.toLowerCase());
+    expect(a.refinedPrompt.toLowerCase()).toContain(a.projectType.toLowerCase());
     expect(a.refinedPrompt.length).toBeGreaterThan(40);
+  });
+
+  it("opens the refined prompt with the right article for the project type", () => {
+    const open = (pitch: string) =>
+      demoAssessment([{ id: "u1", role: "user" as const, content: pitch }], null, 80).refinedPrompt.split(". ")[0];
+    expect(open("An AI study buddy that quizzes me from my notes")).toBe("Build an AI assistant");
+    expect(open("A game where you mix potions")).toBe("Build a game");
+    expect(open("A tracker for my swim team's lap times")).toBe("Build a data tool");
+    expect(open("A page where neighbors swap books")).toBe("Build a web app");
+  });
+
+  it("keeps the pitch's project type when a later answer mentions another type's keyword", () => {
+    const pitch = { id: "u1", role: "user" as const, content: "An app that helps students find study partners." };
+    const later = { id: "u2", role: "user" as const, content: "You pick a confidence level and it shows your score." };
+    expect(demoAssessment([pitch], null, 80).projectType).toBe("Web app");
+    expect(demoAssessment([pitch, later], null, 80).projectType).toBe("Web app");
+  });
+
+  it("does not call a quiz or study app a game because it keeps a score", () => {
+    const type = (text: string) => demoAssessment([say(text, 0)], null, 80).projectType;
+    expect(type("A flashcard web app where students see a score out of 10")).toBe("Web app");
+    expect(type("An app to level up my Spanish vocabulary")).toBe("Web app");
+    expect(type("A site that lets my band play back practice recordings")).toBe("Web app");
+    expect(type("A game where you learn chemistry by mixing potions")).toBe("Game");
+    expect(type("Puzzles for two players on one phone")).toBe("Game");
+  });
+
+  it("does not call an app a game because its pitch says player", () => {
+    const type = (text: string) => demoAssessment([say(text, 0)], null, 80).projectType;
+    expect(type("A study app with two-player flashcard duels for chemistry")).toBe("Web app");
+    expect(type("A music player for my band's practice recordings")).toBe("Web app");
+  });
+
+  it("exports the pitch as the core idea and later answers as detail", () => {
+    const pitch = { id: "u1", role: "user" as const, content: "A tracker for my swim team's lap times." };
+    const later = { id: "u2", role: "user" as const, content: "Coaches enter times after each practice." };
+    const { refinedPrompt } = demoAssessment([pitch, later], null, 80);
+    expect(refinedPrompt).toContain("Core idea: A tracker for my swim team's lap times.");
+    expect(refinedPrompt).toContain("Coaches enter times after each practice.");
+  });
+
+  it("never ends the exported detail mid-sentence when it has to cut", () => {
+    const answer = "The planner caps each day at two hours of work and shows overdue items first";
+    const a = demoAssessment(
+      [{ id: "0", role: "user", content: "A study planner" }, ...Array.from({ length: 20 }, (_, i) => ({ id: String(i + 1), role: "user" as const, content: answer }))],
+      null,
+      80,
+    );
+    const detail = a.refinedPrompt.split("What the builder pinned down: ")[1].split(". Target one")[0];
+    expect(detail.endsWith("overdue items first")).toBe(true);
+  });
+
+  it("gives a high clarity score a note that agrees with it", () => {
+    const a = demoAssessment(
+      Array.from({ length: 6 }, (_, i) => ({ id: String(i), role: "user" as const, content: "x".repeat(200) })),
+      null,
+      80,
+    );
+    expect(a.clarity.score).toBeGreaterThanOrEqual(85);
+    expect(a.clarity.rationale).not.toMatch(/coming into focus|abstract/);
   });
 
   it("survives an empty history without throwing", () => {
@@ -122,5 +190,220 @@ describe("demoLesson", () => {
 
   it("varies the reason with how long the builder worked", () => {
     expect(demoLesson(THIN).why).not.toBe(demoLesson(SHARP).why);
+  });
+});
+
+/**
+ * The demo plan promises three parts: a screen, a box that adds to a list, and
+ * a list that is remembered. Parts two and three used to add a placeholder
+ * banner instead, so the "finished" demo app did none of what was planned.
+ */
+describe("demo build", () => {
+  const plan = demoPlan("Web app", "", "Sam", "");
+
+  it("opens the plan with a proper sentence whether or not the builder gave a name", () => {
+    expect(plan.bigPicture).toMatch(/^Sam, we're building your web app/);
+    expect(demoPlan("Web app", "", "", "").bigPicture).toMatch(/^We're building your web app/);
+  });
+
+  it("keeps \"AI\" capitalised in the plan's opening line", () => {
+    expect(demoPlan("AI assistant", "", "", "").bigPicture).toMatch(/^We're building your AI assistant/);
+  });
+  function buildAll() {
+    let code = "";
+    const added: string[] = [];
+    plan.parts.forEach((part, i) => {
+      const lesson = demoBuildLesson({ part, partNumber: i + 1, currentCode: code, projectName: plan.projectName });
+      expect(beatsFormValidDoc(lesson.beats)).toBe(true);
+      added.push(lesson.beats.filter((b) => b.isNew).map((b) => b.code).join(""));
+      code = assembleBeats(lesson.beats);
+    });
+    return { code, added };
+  }
+
+  it("builds what each planned part says it will", () => {
+    const { code } = buildAll();
+    expect(code).toContain('<form id="add">');
+    expect(code).toContain("items.push(text)");
+    expect(code).toContain("localStorage.setItem");
+    expect(code).toContain("items.splice(index, 1)");
+    expect(code).not.toContain("wired up in demo mode");
+    expect(code.match(/<\/body>/g)).toHaveLength(1);
+  });
+
+  it("keeps the earlier parts' code when a part is added", () => {
+    const first = demoBuildLesson({ part: plan.parts[0], partNumber: 1, currentCode: "", projectName: "X" });
+    const one = assembleBeats(first.beats);
+    const second = demoBuildLesson({ part: plan.parts[1], partNumber: 2, currentCode: one, projectName: "X" });
+    expect(assembleBeats(second.beats)).toContain(one.slice(0, one.lastIndexOf("</body>")));
+  });
+
+  it("falls back to a labelled stand-in for a part it has no code for", () => {
+    const { code } = buildAll();
+    const extra = demoBuildLesson({
+      part: { title: "Dark mode", whatItIs: "", concept: "Adding a feature", buildSpec: "" },
+      partNumber: 4,
+      currentCode: code,
+      projectName: "X",
+    });
+    expect(beatsFormValidDoc(extra.beats)).toBe(true);
+    expect(assembleBeats(extra.beats)).toContain("Dark mode — wired up in demo mode");
+  });
+
+  it("does not double the sparkle when the part title already carries one", () => {
+    const { code } = buildAll();
+    const extra = demoBuildLesson({
+      part: { title: "✨ Your New Feature", whatItIs: "", concept: "Adding a feature", buildSpec: "" },
+      partNumber: 4,
+      currentCode: code,
+      projectName: "X",
+    });
+    const html = assembleBeats(extra.beats);
+    expect(html).toContain("✨ Your New Feature — wired up in demo mode");
+    expect(html).not.toContain("✨ ✨");
+  });
+
+  it("quizzes each part on the code that part wrote", () => {
+    const { added } = buildAll();
+    const seen = new Set<string>();
+    plan.parts.forEach((part, i) => {
+      const quiz = demoQuiz(part.title, part.concept, added[i]);
+      expect(quiz.questions.length).toBeGreaterThanOrEqual(2);
+      for (const q of quiz.questions) {
+        expect(q.correctIndex).toBeLessThan(q.options.length);
+        if (q.codeRef) expect(added[i]).toContain(q.codeRef);
+        expect(seen.has(q.question)).toBe(false);
+        seen.add(q.question);
+      }
+    });
+  });
+
+  it("does not always put the right answer first", () => {
+    const { added } = buildAll();
+    const answers = plan.parts.flatMap((p, i) => demoQuiz(p.title, p.concept, added[i]).questions.map((q) => q.correctIndex));
+    expect(new Set(answers).size).toBeGreaterThan(1);
+  });
+
+  it("asks general questions when the code is not the demo's own", () => {
+    const quiz = demoQuiz("Dark mode", "Saving data", "<div>something else</div>");
+    expect(quiz.questions.every((q) => !q.codeRef)).toBe(true);
+  });
+});
+
+describe("demoAdvisorReply — things the builder ruled out", () => {
+  it("never asks the builder to expand on something they just cut", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "A study timer for middle schoolers" },
+      { id: "m2", role: "advisor", content: "Who is it for?" },
+      { id: "m3", role: "user", content: "Sixth graders" },
+      { id: "m4", role: "advisor", content: "What do they do?" },
+      { id: "m5", role: "user", content: "Only a timer and a shop. No accounts, without any leaderboards, and we won't have notifications." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toMatch(/accounts|leaderboards|notifications/);
+    expect(reply).toContain("your web app");
+  });
+
+  it("skips the whole ruled-out phrase, not just its first word", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "A parts tracker for my robotics team" },
+      { id: "m2", role: "advisor", content: "Who is it for?" },
+      { id: "m3", role: "user", content: "Twelve students" },
+      { id: "m4", role: "advisor", content: "What do they do?" },
+      { id: "m5", role: "user", content: "A list and a budget counter. No accounts, no chat, no vendor integrations." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toMatch(/integrations|vendor|accounts/);
+    expect(reply).toContain("your data tool");
+  });
+
+  it("treats an 'out of scope' list as cut, and still hears the next sentence", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "Out of scope: vendor integrations and notifications. It must load on school wifi." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toMatch(/integrations|notifications|vendor/);
+    expect(reply).toContain('"school"');
+  });
+
+  it("treats a 'not doing:' list as cut, and still hears the next sentence", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "Must-have: an overdue list. Not doing: vendor integrations and notifications. It must load on school wifi." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toMatch(/integrations|notifications|vendor/);
+    expect(reply).toContain('"overdue"');
+  });
+
+  it("still hears what comes after a joining word", () => {
+    const history: ChatMessage[] = [
+      { id: "m1", role: "user", content: "No logins but leaderboards matter" },
+    ];
+    expect(demoAdvisorReply(history, false)).toContain('"leaderboards"');
+  });
+});
+
+describe("demoAdvisorReply — the word it quotes back", () => {
+  it("quotes something from the pitch, not a pronoun that happens to be long", () => {
+    const history: ChatMessage[] = [
+      { id: "m0", role: "user", content: "A flashcard app for biology exams." },
+      { id: "a0", role: "advisor", content: "Who is it for?" },
+      { id: "m1", role: "user", content: "It is for 10th graders who fail biology quizzes because they reread notes instead of testing themselves." },
+    ];
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toContain('"themselves"');
+    expect(reply).not.toContain('"instead"');
+  });
+
+  it("asks about the product by its type once past the pitch, not by a word from the last answer", () => {
+    const history: ChatMessage[] = [
+      { id: "m0", role: "user", content: "A flashcard web app for high school students who cram before biology tests." },
+      { id: "a0", role: "advisor", content: "Who is it for?" },
+      { id: "m1", role: "user", content: "It is for 10th graders in AP Biology." },
+    ];
+    expect(demoAdvisorReply(history, false)).toContain("when someone uses your web app,");
+    history.push(
+      { id: "a1", role: "advisor", content: "What do they walk away with?" },
+      { id: "m2", role: "user", content: "A student finishes a 10-card round in under 3 minutes." },
+    );
+    const third = demoAdvisorReply(history, false);
+    expect(third).toContain("one piece of your web app first");
+    expect(third).not.toContain('"finishes"');
+  });
+});
+
+describe("demoAdvisorReply — a long conversation", () => {
+  it("never asks the same question twice in a row", () => {
+    const history: ChatMessage[] = [];
+    let previous = "";
+    for (let turn = 0; turn < 20; turn++) {
+      history.push({ id: `u${turn}`, role: "user", content: `Answer ${turn} about the parts tracker` });
+      const reply = demoAdvisorReply(history, false);
+      expect(reply.length).toBeGreaterThan(0);
+      expect(reply).not.toBe(previous);
+      history.push({ id: `a${turn}`, role: "advisor", content: reply });
+      previous = reply;
+    }
+  });
+});
+
+describe("demoAdvisorReply — the 'what are you cutting?' question", () => {
+  const upTo = (answers: string[]): ChatMessage[] =>
+    answers.flatMap((content, i) => [
+      ...(i ? [{ id: `a${i}`, role: "advisor" as const, content: "And then?" }] : []),
+      { id: `u${i}`, role: "user" as const, content },
+    ]);
+
+  it("asks it when the builder has not cut anything yet", () => {
+    const history = upTo(["A flashcard app", "For 10th graders", "Flip and rate", "A finished deck", "Cards I type in", "It looks calm"]);
+    expect(demoAdvisorReply(history, false)).toContain("NOT building");
+  });
+
+  it("does not ask it of a builder who already named their cuts", () => {
+    const history = upTo(["A flashcard app", "For 10th graders", "Flip and rate. No login, no sharing.", "A finished deck", "Cards I type in", "Nothing else. No accounts, no leaderboard."]);
+    const reply = demoAdvisorReply(history, false);
+    expect(reply).not.toContain("NOT building");
+    expect(reply).toContain("your web app");
+    expect(reply).not.toMatch(/login|sharing|accounts|leaderboard/);
   });
 });
