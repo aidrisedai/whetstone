@@ -65,7 +65,13 @@ export function useTeacherVoice() {
     audioRef.current = el;
     silentUrlRef.current = makeSilentUrl();
     return () => {
+      // Detach the source before revoking its blob URL, or the browser may try
+      // to load the revoked URL and log ERR_FILE_NOT_FOUND on unmount.
+      el.pause();
+      el.removeAttribute("src");
+      el.load();
       el.remove();
+      if (audioRef.current === el) audioRef.current = null;
       if (silentUrlRef.current) URL.revokeObjectURL(silentUrlRef.current);
       if (lastBlobUrlRef.current) URL.revokeObjectURL(lastBlobUrlRef.current);
     };
@@ -154,15 +160,17 @@ export function useTeacherVoice() {
           setHdAvailable(true);
           const blob = await res.blob();
           if (myId !== reqIdRef.current) return;
-          if (lastBlobUrlRef.current) URL.revokeObjectURL(lastBlobUrlRef.current);
-          const url = URL.createObjectURL(blob);
-          lastBlobUrlRef.current = url;
           const audio = audioRef.current;
           if (!audio) {
             setStatus("⚠️ no audio element");
             return;
           }
+          const url = URL.createObjectURL(blob);
+          const prevUrl = lastBlobUrlRef.current;
+          lastBlobUrlRef.current = url;
+          // Point the element at the new clip first, then revoke the old one.
           audio.src = url;
+          if (prevUrl) URL.revokeObjectURL(prevUrl);
           audio.muted = false;
           audio.onplay = () => {
             setSpeaking(true);
