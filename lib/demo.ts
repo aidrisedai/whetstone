@@ -162,14 +162,19 @@ export function demoAssessment(
 
   const profile = detectProfile(history);
   const criteria = priorCriteria ?? profile.criteria;
-  const idea = lastUserText(history)
-    .replace(/\s+/g, " ")
-    .replace(/^build\s+/i, "")
-    .replace(/\.+$/, "")
-    .trim();
+  // The pitch (first message) is the core idea; later answers are the
+  // details the builder added while being sharpened.
+  const tidy = (t: string) =>
+    t.replace(/\s+/g, " ").replace(/^build\s+/i, "").replace(/\.+$/, "").trim();
+  const idea = tidy(userMsgs[0]?.content || "");
+  const details = userMsgs
+    .slice(1)
+    .map((m) => tidy(m.content || ""))
+    .filter(Boolean);
   const refinedPrompt =
     `Build a ${profile.type.toLowerCase()}. ` +
     (idea ? `Core idea: ${idea}. ` : "") +
+    (details.length ? `Details: ${details.join(". ")}. ` : "") +
     `Target one specific user, define what a successful first session looks like, and keep v1 tightly scoped.`;
 
   const dynamicOffsets = [-3, 2, -6];

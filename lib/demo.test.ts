@@ -103,6 +103,20 @@ describe("demoAssessment", () => {
     expect(a.refinedPrompt.length).toBeGreaterThan(40);
   });
 
+  it("uses the pitch, not the last answer, as the refined prompt's core idea", () => {
+    const a = demoAssessment(
+      [
+        say("A homework planner that turns a photo of the assignment sheet into a week view", 0),
+        say("Done means every assignment shows with its due date.", 1),
+      ],
+      null,
+      80,
+    );
+    expect(a.refinedPrompt).toContain("Core idea: A homework planner");
+    expect(a.refinedPrompt).not.toMatch(/Core idea: Done means/);
+    expect(a.refinedPrompt).toContain("Details: Done means every assignment shows with its due date.");
+  });
+
   it("survives an empty history without throwing", () => {
     const a = demoAssessment([], null, 80);
     expect(a.overall).toBeGreaterThanOrEqual(0);
