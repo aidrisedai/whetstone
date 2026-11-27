@@ -61,7 +61,8 @@ export function ScorePanel({
                   <span className="text-good">Cleared the bar — exporting ✓</span>
                 ) : assessment.overall < threshold ? (
                   <>
-                    <span className="font-mono text-ink">{threshold - assessment.overall}</span> pts to
+                    <span className="font-mono text-ink">{threshold - assessment.overall}</span>{" "}
+                    {threshold - assessment.overall === 1 ? "pt" : "pts"} to
                     the threshold (<span className="font-mono">{threshold}</span>)
                   </>
                 ) : (

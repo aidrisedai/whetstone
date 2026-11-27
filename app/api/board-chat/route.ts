@@ -8,7 +8,8 @@ import {
   getErrorMessage,
   jsonError,
   readJsonBody,
-  safeParseJson,
+  textLimitError,
+  parseReply,
 } from "@/lib/serverUtils";
 import type { BoardItem } from "@/lib/types";
 
@@ -24,6 +25,8 @@ interface BoardChatResult {
 export async function POST(req: Request): Promise<Response> {
   const body = await readJsonBody(req);
   if (!body) return jsonError("Invalid JSON body");
+  const tooBig = textLimitError(body);
+  if (tooBig) return tooBig;
 
   const studentSaid = asTrimmed(body.studentSaid);
   const part = asPart(body.part);
@@ -39,7 +42,7 @@ export async function POST(req: Request): Promise<Response> {
     const tune = reasoning(MODELS.coach, "low");
     const resp = await getClient().messages.create({
       model: MODELS.coach,
-      max_tokens: 900,
+      max_tokens: 2000,
       system: [{ type: "text", text: BOARD_CHAT_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [
         {
@@ -57,9 +60,7 @@ export async function POST(req: Request): Promise<Response> {
       output_config: { format: { type: "json_schema", schema: BOARD_CHAT_SCHEMA }, ...(tune.output_config ?? {}) },
     });
 
-    const textBlock = resp.content.find((b) => b.type === "text");
-    const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const parsed = safeParseJson<BoardChatResult>(text);
+    const parsed = parseReply<BoardChatResult>(resp);
 
     const item =
       parsed.boardItem && parsed.boardItem.kind !== "none" && parsed.boardItem.text
