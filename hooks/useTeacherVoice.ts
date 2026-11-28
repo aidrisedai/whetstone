@@ -65,6 +65,11 @@ export function useTeacherVoice() {
     audioRef.current = el;
     silentUrlRef.current = makeSilentUrl();
     return () => {
+      // Detach the source before revoking its blob URL, so the element doesn't
+      // try to (re)load a revoked URL and log ERR_FILE_NOT_FOUND on unmount.
+      el.pause();
+      el.removeAttribute("src");
+      el.load();
       el.remove();
       if (silentUrlRef.current) URL.revokeObjectURL(silentUrlRef.current);
       if (lastBlobUrlRef.current) URL.revokeObjectURL(lastBlobUrlRef.current);
